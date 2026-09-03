@@ -25,52 +25,85 @@
       <h1>GCash Tracker</h1>
       <p id="message">Open your tracker or add this page to your Home Screen.</p>
       <button id="openBtn" type="button">Open GCash Tracker</button>
-      <div class="small">For Home Screen: add this page before tapping Open GCash Tracker.</div>
+      <div class="small" id="installNote">Sign in once, then add this GitHub page to your Home Screen.</div>
     </div>
   </div>
 
 <script>
 (function(){
-  // Replace this placeholder with your exact Apps Script WEB_APP_URL ending in /exec.
-  const APP_URL = 'https://script.google.com/macros/s/AKfycbzHZBbsTHU5rRMrO4iNCizaQHd1SqVMb1NgWFSRvw8UHf_zdJTLJEQHYZTouUfvpknouw/exec';
+  // Replace with your exact Apps Script /exec URL.
+  const APP_URL = 'https://script.google.com/u/0/home/projects/1WaxD4vWUMBu6L3hO4A0B8k3DpHFzf9kew46LT7eAQ5QsF2qy7eJUpEQm/edit';
   const DEVICE_KEY = 'gcashTrustedDevice';
 
-  const params = new URLSearchParams(location.search);
-  const incomingDevice = params.get('device') || '';
-  const handoff = params.get('handoff') || '';
+  const query = new URLSearchParams(location.search);
+  const hash = new URLSearchParams(location.hash.replace(/^#/, ''));
 
-  if(incomingDevice){
-    try{ localStorage.setItem(DEVICE_KEY,incomingDevice); }catch(e){}
+  // A device token can arrive from the Apps Script Google callback in ?device=
+  // or be permanently carried by the Home Screen launch URL in #device=.
+  const queryDevice = query.get('device') || '';
+  const hashDevice = hash.get('device') || '';
+  const device = queryDevice || hashDevice || '';
+
+  const handoff = query.get('handoff') || '';
+
+  if(device){
+    try{ localStorage.setItem(DEVICE_KEY, device); }catch(e){}
   }
 
-  // Clean private callback parameters from the visible GitHub URL after saving.
-  if(params.has('device') || params.has('handoff')){
-    history.replaceState(null,'',location.pathname);
+  // IMPORTANT:
+  // When Google sends us back ?device=TOKEN, convert it to #device=TOKEN.
+  // The fragment remains part of the page address that iPhone saves to Home Screen,
+  // but is never sent to the GitHub server.
+  if(queryDevice){
+    const permanentHomeUrl =
+      location.pathname +
+      '#device=' + encodeURIComponent(queryDevice);
+
+    history.replaceState(null, '', permanentHomeUrl);
   }
 
   function getDevice(){
-    try{ return localStorage.getItem(DEVICE_KEY) || ''; }catch(e){ return ''; }
+    const currentHash = new URLSearchParams(location.hash.replace(/^#/, ''));
+    const fromHash = currentHash.get('device') || '';
+    if(fromHash) return fromHash;
+
+    try{ return localStorage.getItem(DEVICE_KEY) || ''; }
+    catch(e){ return ''; }
   }
 
   function openTracker(){
+    const trustedDevice = getDevice();
     const target = new URL(APP_URL);
-    const device = getDevice();
-    if(device) target.searchParams.set('device',device);
-    if(handoff) target.searchParams.set('handoff',handoff);
+
+    if(trustedDevice){
+      target.searchParams.set('device', trustedDevice);
+    }
+
+    // Only use the short-lived handoff on the immediate callback launch.
+    if(handoff){
+      target.searchParams.set('handoff', handoff);
+    }
+
     location.href = target.toString();
   }
 
-  document.getElementById('openBtn').addEventListener('click',openTracker);
+  document.getElementById('openBtn').addEventListener('click', openTracker);
 
-  // When launched as an installed Home Screen web app, open automatically.
-  // The GitHub URL itself remains the saved Home Screen start page.
   const standalone =
     window.matchMedia('(display-mode: standalone)').matches ||
     window.navigator.standalone === true;
 
+  if(getDevice()){
+    document.getElementById('installNote').textContent =
+      'Trusted sign-in is ready. Add this exact page to your Home Screen.';
+  }
+
+  // Installed Home Screen app:
+  // read the trusted device from its own saved #device= launch URL,
+  // then open Apps Script automatically.
   if(standalone){
-    document.getElementById('message').textContent='Opening your GCash Tracker…';
-    setTimeout(openTracker,150);
+    document.getElementById('message').textContent = 'Opening your GCash Tracker…';
+    setTimeout(openTracker, 150);
   }
 })();
 </script>
