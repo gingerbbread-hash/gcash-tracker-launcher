@@ -25,14 +25,14 @@
       <h1>GCash Tracker</h1>
       <p id="message">Open your tracker or add this page to your Home Screen.</p>
       <button id="openBtn" type="button">Open GCash Tracker</button>
-      <div class="small" id="installNote">Sign in once, then add this GitHub page to your Home Screen.</div>
+      <div class="small" id="installNote">Pair this page once, then add it to your Home Screen.</div>
     </div>
   </div>
 
 <script>
 (function(){
   // Replace with your exact Apps Script /exec URL.
-  const APP_URL = 'https://script.google.com/macros/s/AKfycbzHZBbsTHU5rRMrO4iNCizaQHd1SqVMb1NgWFSRvw8UHf_zdJTLJEQHYZTouUfvpknouw/exec';
+  const APP_URL = '__WEB_APP_URL__';
   const DEVICE_KEY = 'gcashTrustedDevice';
 
   const query = new URLSearchParams(location.search);
@@ -41,8 +41,9 @@
   // A device token can arrive from the Apps Script Google callback in ?device=
   // or be permanently carried by the Home Screen launch URL in #device=.
   const queryDevice = query.get('device') || '';
+  const pairDevice = query.get('pair') || '';
   const hashDevice = hash.get('device') || '';
-  const device = queryDevice || hashDevice || '';
+  const device = pairDevice || queryDevice || hashDevice || '';
 
   const handoff = query.get('handoff') || '';
 
@@ -50,14 +51,13 @@
     try{ localStorage.setItem(DEVICE_KEY, device); }catch(e){}
   }
 
-  // IMPORTANT:
-  // When Google sends us back ?device=TOKEN, convert it to #device=TOKEN.
-  // The fragment remains part of the page address that iPhone saves to Home Screen,
-  // but is never sent to the GitHub server.
-  if(queryDevice){
+  // Convert either a normal callback ?device=TOKEN or a one-time
+  // Home Screen pairing link ?pair=TOKEN into a permanent #device=TOKEN
+  // launch address before the page is added to the Home Screen.
+  if(pairDevice || queryDevice){
     const permanentHomeUrl =
       location.pathname +
-      '#device=' + encodeURIComponent(queryDevice);
+      '#device=' + encodeURIComponent(pairDevice || queryDevice);
 
     history.replaceState(null, '', permanentHomeUrl);
   }
