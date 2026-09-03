@@ -2,11 +2,51 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0877e8">
   <title>GCash Tracker</title>
+  <style>
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#fff}
+    iframe{border:0;width:100%;height:100%;display:block}
+  </style>
 </head>
 <body>
-  <h1>GCash Tracker Setup</h1>
-  <p>Stable launcher is ready.</p>
+  <iframe id="app" title="GCash Tracker" allow="clipboard-write"></iframe>
+
+  <script>
+  (function(){
+    // Replace this exact value with your Apps Script /exec URL.
+    const APP_URL = '__WEB_APP_URL__';
+    const DEVICE_KEY = 'gcashTrustedDevice';
+
+    const params = new URLSearchParams(location.search);
+    const incomingDevice = params.get('device') || '';
+    const handoff = params.get('handoff') || '';
+
+    if(incomingDevice){
+      localStorage.setItem(DEVICE_KEY, incomingDevice);
+    }
+
+    const device = incomingDevice || localStorage.getItem(DEVICE_KEY) || '';
+
+    // Remove private handoff/device values from the visible address after saving them.
+    if(params.has('device') || params.has('handoff')){
+      history.replaceState(null, '', location.pathname);
+    }
+
+    const child = new URL(APP_URL);
+    if(device) child.searchParams.set('device', device);
+    if(handoff) child.searchParams.set('handoff', handoff);
+
+    document.getElementById('app').src = child.toString();
+
+    window.addEventListener('message', function(e){
+      if(e.data && e.data.type === 'gcash-signout'){
+        localStorage.removeItem(DEVICE_KEY);
+        document.getElementById('app').src = APP_URL;
+      }
+    });
+  })();
+  </script>
 </body>
 </html>
