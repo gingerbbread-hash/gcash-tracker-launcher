@@ -1161,6 +1161,25 @@ body.app-locked #historyToggle{
   #pairingStatus{min-height:18px;margin-top:8px;font-size:12px;text-align:center;color:#667085}
 
 </style>
+
+<style>
+/* Calendar History */
+.cal-nav{display:grid;grid-template-columns:44px 1fr 44px;gap:8px;align-items:center;margin:6px 0 10px}
+.cal-nav button{min-height:42px;border:1px solid var(--border);border-radius:11px;background:#fff;color:var(--blue-dark);font-size:22px;font-weight:900}
+#calTitle{text-align:center;font-size:17px;font-weight:900}
+.cal-week,.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cal-week{font-size:10px;font-weight:900;color:var(--muted);text-align:center;margin-bottom:4px}
+.cal-day{min-height:62px;border:1px solid var(--border);border-radius:9px;background:#fff;padding:5px 4px;display:flex;flex-direction:column;justify-content:space-between;text-align:left}
+.cal-day.blank{border-color:transparent;background:transparent}
+.cal-day.has{background:var(--blue-soft);border-color:#bfd8ff}
+.cal-day.sel{outline:2px solid var(--blue);outline-offset:-2px}
+.cal-num{font-size:12px;font-weight:900}.cal-fee{font-size:9px;font-weight:900;color:var(--success);overflow-wrap:anywhere}
+#calDetail{margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.cal-head{display:flex;justify-content:space-between;gap:8px;margin-bottom:8px}.cal-head strong:last-child{color:var(--success)}
+.cal-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px}.cal-sum .metric{padding:7px 5px}.cal-sum .metric strong{font-size:12px}
+.cal-exp{background:#fff7ed;color:#9a3412;border-radius:10px;padding:8px;margin:7px 0;font-size:11px}
+@media(max-width:480px){.cal-grid,.cal-week{gap:3px}.cal-day{min-height:57px;padding:4px 3px}.cal-fee{font-size:8px}}
+</style>
 </head>
 <body>
 <main class="app">
@@ -1301,57 +1320,13 @@ body.app-locked #historyToggle{
   </div>
 
   <section class="card history-section collapsed" id="historySection">
-<div class="specific-date-filter-wrap">
-  <button id="specificDateBtn" class="filter-btn" type="button">Specific Date</button>
-<div id="specificDateWrap" class="specific-date-wrap" style="display:none">
-  <input id="specificDateInput" type="date" class="specific-date-input" aria-label="Select history date">
-  <button id="applySpecificDateBtn" class="btn btn-secondary" type="button">View Date</button>
-  <button id="clearSpecificDateBtn" class="btn btn-secondary" type="button">Clear Date</button>
-</div>
-
-</div>
-
-    <div class="history-view-header">
-      <div>
-        <h2 class="section-title">Transaction History &amp; Earnings</h2>
-        <div class="subtle" id="countText">0 transactions</div>
-      </div>
-    </div>
-
-    <div class="type-filter-tabs" id="typeFilterTabs">
-      <button type="button" class="type-filter-btn active" data-typefilter="all">All</button>
-      <button type="button" class="type-filter-btn type-filter-cashin" data-typefilter="Cash In">Cash In</button>
-      <button type="button" class="type-filter-btn type-filter-cashout" data-typefilter="Cash Out">Cash Out</button>
-    </div>
-
-    <div class="period-tabs">
-      <button type="button" class="period-btn active" data-period="today">Daily</button>
-      <button type="button" class="period-btn" data-period="week">Weekly</button>
-      <button type="button" class="period-btn" data-period="month">Monthly</button>
-      <button type="button" class="period-btn" data-period="year">Yearly</button>
-      <button type="button" class="period-btn" data-period="all">All Time</button>
-    </div>
-
-    <div class="earnings-box">
-      <small id="earningsLabel">Daily Earnings</small>
-      <strong id="sumFees">₱0.00</strong>
-      <span>Service fees earned</span>
-    </div>
-
-    <div class="summary">
-      <div class="metric"><small>Amount</small><strong id="sumAmount">₱0.00</strong></div>
-      <div class="metric"><small>Total Collected</small><strong id="sumTotal">₱0.00</strong></div>
-      <div class="metric"><small>Cash In</small><strong id="sumCashIn">₱0.00</strong></div>
-      <div class="metric"><small>Cash Out</small><strong id="sumCashOut">₱0.00</strong></div>
-    </div>
-
-    <div class="row" style="margin-bottom:12px">
-      <button type="button" class="btn btn-secondary" id="refreshBtn">Refresh Sync</button>
-      <button type="button" class="btn btn-danger" id="clearBtn">Clear History</button>
-    </div>
-
-    <div id="empty" class="history-empty">No transactions yet.</div>
-    <div id="history" class="history-list"></div>
+    <div class="history-view-header"><h2 class="section-title">History Calendar</h2><div class="subtle" id="countText">0 transactions</div></div>
+    <div class="cal-nav"><button id="calPrev" type="button">‹</button><div id="calTitle"></div><button id="calNext" type="button">›</button></div>
+    <div class="cal-week"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div>
+    <div id="calGrid" class="cal-grid"></div>
+    <div id="calDetail" style="display:none"></div>
+    <div class="row" style="margin-top:12px"><button type="button" class="btn btn-secondary" id="refreshBtn">Refresh Sync</button><button type="button" class="btn btn-danger" id="clearBtn">Clear History</button></div>
+    <div style="display:none"><div id="empty"></div><div id="history"></div><strong id="sumFees"></strong><strong id="sumAmount"></strong><strong id="sumTotal"></strong><strong id="sumCashIn"></strong><strong id="sumCashOut"></strong><span id="earningsLabel"></span></div>
   </section>
 
 </main>
@@ -1673,6 +1648,8 @@ body.app-locked #historyToggle{
   let selectedPeriod = 'today';
   let selectedTypeFilter = 'all';
   let selectedSpecificDate = '';
+  let calMonth = new Date(new Date().getFullYear(),new Date().getMonth(),1);
+  let calSelected = '';
   let unlocked = true;
 
   const money = n => new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format(Number(n)||0);
@@ -1756,49 +1733,43 @@ body.app-locked #historyToggle{
     return selectedPeriod==='today'?'Daily':selectedPeriod==='week'?'Weekly':selectedPeriod==='month'?'Monthly':selectedPeriod==='year'?'Yearly':'All Time';
   }
 
+  function dateKey(obj){
+    const raw=obj && (obj.timestamp || obj.date);
+    if(!raw) return '';
+    const d=new Date(raw); if(isNaN(d.getTime())) return '';
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  function renderDay(key){
+    const box=$('calDetail'); if(!box)return;
+    const txs=history.filter(x=>dateKey(x)===key);
+    const exps=expenses.filter(x=>dateKey(x)===key);
+    const fees=txs.reduce((s,x)=>s+Number(x.fee||0),0);
+    const ci=txs.filter(x=>x.type==='Cash In').reduce((s,x)=>s+Number(x.amount||0),0);
+    const co=txs.filter(x=>x.type==='Cash Out').reduce((s,x)=>s+Number(x.amount||0),0);
+    const et=exps.reduce((s,x)=>s+Number(x.amount||0),0);
+    const q=key.split('-').map(Number), d=new Date(q[0],q[1]-1,q[2]);
+    const txhtml=txs.map(tx=>`<div class="tx"><div class="tx-top"><div><div class="tx-type"><span class="badge ${tx.type==='Cash In'?'badge-cashin':'badge-cashout'}">${escapeHtml(tx.type)}</span></div><div class="tx-date">${escapeHtml(tx.date||'')}</div></div><div class="tx-total">${money(tx.total)}</div></div><div class="tx-details"><span>Amount: ${money(tx.amount)}</span><span>Fee/Earnings: ${money(tx.fee)}</span><span>Cash: ${money(tx.cashReceived)}</span><span>Change: ${money(tx.change)}</span>${tx.type==='Cash Out'?`<span style="grid-column:1/-1;text-align:left!important;font-weight:800">Fee Location: ${escapeHtml(tx.feeLocation||'GCash')}</span>`:''}</div><div class="tx-actions"><button class="link-btn" type="button" data-cal-remove="${escapeHtml(tx.id)}">Remove</button></div></div>`).join('');
+    const exhtml=exps.length?`<div class="cal-exp"><strong>Expenses: ${money(et)}</strong>${exps.map(x=>`<div>${escapeHtml(x.expense||'Expense')}: -${money(x.amount)}</div>`).join('')}</div>`:'';
+    box.innerHTML=`<div class="cal-head"><strong>${d.toLocaleDateString('en-PH',{month:'long',day:'numeric',year:'numeric'})}</strong><strong>${money(fees)} fees</strong></div><div class="cal-sum"><div class="metric"><small>Cash In</small><strong>${money(ci)}</strong></div><div class="metric"><small>Cash Out</small><strong>${money(co)}</strong></div><div class="metric"><small>Expenses</small><strong>${money(et)}</strong></div></div>${exhtml}${txhtml||'<div class="history-empty">No transactions on this date.</div>'}`;
+    box.style.display='block';
+  }
+  function renderCalendar(){
+    const grid=$('calGrid'), title=$('calTitle'); if(!grid||!title)return;
+    const y=calMonth.getFullYear(),m=calMonth.getMonth(),prefix=`${y}-${String(m+1).padStart(2,'0')}-`;
+    title.textContent=calMonth.toLocaleDateString('en-PH',{month:'long',year:'numeric'}); grid.innerHTML='';
+    for(let i=0;i<new Date(y,m,1).getDay();i++){const z=document.createElement('div');z.className='cal-day blank';grid.appendChild(z)}
+    for(let day=1;day<=new Date(y,m+1,0).getDate();day++){
+      const key=prefix+String(day).padStart(2,'0'), txs=history.filter(x=>dateKey(x)===key), fees=txs.reduce((a,x)=>a+Number(x.fee||0),0);
+      const z=document.createElement('button');z.type='button';z.dataset.calDate=key;z.className='cal-day'+(txs.length?' has':'')+(calSelected===key?' sel':'');
+      z.innerHTML=`<span class="cal-num">${day}</span>${txs.length?`<span class="cal-fee">${money(fees)}</span>`:''}`;grid.appendChild(z);
+    }
+    const mt=history.filter(x=>dateKey(x).startsWith(prefix)); countText.textContent=`${mt.length} transaction${mt.length===1?'':'s'} · ${title.textContent}`;
+    if(calSelected.startsWith(prefix))renderDay(calSelected);else $('calDetail').style.display='none';
+  }
   function render(){
-    const shown = filtered();
-    historyEl.innerHTML = '';
-    emptyEl.style.display = shown.length ? 'none' : 'block';
-
-    shown.forEach(tx => {
-      const item = document.createElement('div');
-      item.className='tx';
-      item.innerHTML = `
-        <div class="tx-top">
-          <div>
-            <div class="tx-type">
-              <span class="badge ${tx.type === 'Cash In' ? 'badge-cashin' : 'badge-cashout'}">${tx.type}</span>
-            </div>
-            <div class="tx-date">${tx.date}</div>
-          </div>
-          <div class="tx-total">${money(tx.total)}</div>
-        </div>
-        <div class="tx-details">
-          <span>Amount: ${money(tx.amount)}</span><span>Fee/Earnings: ${money(tx.fee)}</span>
-          <span>Cash: ${money(tx.cashReceived)}</span><span>Change: ${money(tx.change)}</span>
-          ${tx.type === 'Cash Out' ? `<span style="grid-column:1/-1;text-align:left!important;font-weight:800;color:var(--text)">Fee Location: ${escapeHtml(tx.feeLocation || 'GCash')}</span>` : ''}
-          <span class="charge-method">
-            <span class="badge ${tx.chargeMode === 'deduct' ? 'badge-deduct' : tx.chargeMode === 'add' ? 'badge-add' : 'badge-neutral'}">
-              ${tx.chargeMode === 'deduct' ? 'Deduct fee from amount' : tx.chargeMode === 'add' ? 'Add fee on top' : 'Not recorded'}
-            </span>
-          </span>
-        </div>
-        <div class="tx-actions"><button class="link-btn" type="button" data-id="${tx.id}">Remove</button></div>`;
-      historyEl.appendChild(item);
-    });
-
-    const fees = shown.reduce((s,x)=>s+Number(x.fee||0),0);
-    const amt = shown.reduce((s,x)=>s+Number(x.amount||0),0);
-    const tot = shown.reduce((s,x)=>s+Number(x.total||0),0);
-    const ci = shown.filter(x=>x.type==='Cash In').reduce((s,x)=>s+Number(x.amount||0),0);
-    const co = shown.filter(x=>x.type==='Cash Out').reduce((s,x)=>s+Number(x.amount||0),0);
-
-    countText.textContent = `${shown.length} transaction${shown.length===1?'':'s'} · ${periodName()}`;
-    earningsLabel.textContent = `${periodName()} Earnings`;
-    sumFeesEl.textContent = money(fees); sumAmountEl.textContent = money(amt);
-    sumTotalEl.textContent = money(tot); sumCashInEl.textContent = money(ci); sumCashOutEl.textContent = money(co);
-    periodButtons.forEach(b=>b.classList.toggle('active',b.dataset.period===selectedPeriod));
+    if(emptyEl)emptyEl.style.display='none';
+    if(historyEl)historyEl.innerHTML='';
+    renderCalendar();
   }
 
   function showSync(text, ok=false){
@@ -2433,6 +2404,12 @@ body.app-locked #historyToggle{
     render();
   }));
 
+  const calPrev=$('calPrev'),calNext=$('calNext'),calGrid=$('calGrid'),calDetail=$('calDetail');
+  if(calPrev)calPrev.addEventListener('click',()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()-1,1);calSelected='';renderCalendar()});
+  if(calNext)calNext.addEventListener('click',()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1);calSelected='';renderCalendar()});
+  if(calGrid)calGrid.addEventListener('click',e=>{const b=e.target.closest('[data-cal-date]');if(!b)return;calSelected=b.dataset.calDate;renderCalendar()});
+  if(calDetail)calDetail.addEventListener('click',e=>{const b=e.target.closest('[data-cal-remove]');if(!b)return;pendingDeleteTxId=String(b.dataset.calRemove||'');if(!pendingDeleteTxId)return;deleteTxModal.classList.add('show');deleteTxModal.setAttribute('aria-hidden','false')});
+
   function closeTypeModal(){
     typeModal.classList.remove('show');
     typeModal.style.display='none';
@@ -2654,63 +2631,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
 
-  const specificDateBtn = document.getElementById('specificDateBtn');
-  const specificDateWrap = document.getElementById('specificDateWrap');
-  const specificDateInput = document.getElementById('specificDateInput');
-  const applySpecificDateBtn = document.getElementById('applySpecificDateBtn');
-  const clearSpecificDateBtn = document.getElementById('clearSpecificDateBtn');
-
-  function txLocalDateKey(tx){
-    const raw = tx && (tx.timestamp || tx.date);
-    const d = raw ? new Date(raw) : null;
-    if(!d || isNaN(d.getTime())) return '';
-    const y = d.getFullYear();
-    const m = String(d.getMonth()+1).padStart(2,'0');
-    const day = String(d.getDate()).padStart(2,'0');
-    return `${y}-${m}-${day}`;
-  }
-
-  function setSpecificDateMode(on){
-    if(!specificDateWrap) return;
-    specificDateWrap.style.display = on ? 'grid' : 'none';
-    if(specificDateBtn){
-      specificDateBtn.classList.toggle('active', !!on);
-    }
-  }
-
-  if(specificDateBtn){
-    specificDateBtn.addEventListener('click',()=>{
-      const opening = specificDateWrap.style.display === 'none' || !specificDateWrap.style.display;
-      setSpecificDateMode(opening);
-      if(opening && specificDateInput) specificDateInput.focus();
-    });
-  }
-
-  if(applySpecificDateBtn){
-    applySpecificDateBtn.addEventListener('click',()=>{
-      if(!specificDateInput || !specificDateInput.value) return;
-      selectedSpecificDate = specificDateInput.value;
-      render();
-    });
-  }
-
-  if(clearSpecificDateBtn){
-    clearSpecificDateBtn.addEventListener('click',()=>{
-      selectedSpecificDate = '';
-      if(specificDateInput) specificDateInput.value = '';
-      setSpecificDateMode(false);
-      render();
-    });
-  }
-
-
-  document.addEventListener('click', (e)=>{
-    const b = e.target.closest && e.target.closest('[data-period]');
-    if(!b) return;
-    selectedSpecificDate = ''; // reset when period changes
-    if(specificDateInput) specificDateInput.value = '';
-    setSpecificDateMode(false);
-  });
 
 </script>
 
