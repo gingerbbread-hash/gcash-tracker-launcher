@@ -1510,8 +1510,9 @@ body.app-locked #historyToggle{
   }
 
   // Simple pairing prompt shown only on an unpaired browser/device.
-  if(!deviceToken){
-    window.addEventListener('DOMContentLoaded',()=>{
+  // Initialize immediately if the DOM is already ready; otherwise wait once.
+  function showPairingScreen(){
+      if(document.getElementById('pairingOverlay')) return;
       const overlay = document.createElement('div');
       overlay.id = 'pairingOverlay';
       overlay.innerHTML = `
@@ -1546,7 +1547,14 @@ body.app-locked #historyToggle{
             status.textContent=err.message || 'Pairing failed.';
           });
       });
-    });
+  }
+
+  if(!deviceToken){
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', showPairingScreen, {once:true});
+    }else{
+      showPairingScreen();
+    }
   }
 
   // Emulate google.script.run so the existing tracker code can stay unchanged.
