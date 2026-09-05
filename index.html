@@ -1,111 +1,2655 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#0877e8">
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="GCash Tracker">
-  <title>GCash Tracker</title>
+  <meta name="theme-color" content="#0b5ed7">
   <style>
+    :root{
+      --blue:#0b5ed7;--blue-dark:#073b8c;--blue-soft:#eaf3ff;
+      --bg:#f5f8fc;--card:#fff;--text:#172033;--muted:#667085;
+      --border:#d9e5f5;--danger:#c62828;--success:#0f7b45;
+    }
     *{box-sizing:border-box}
-    html,body{margin:0;min-height:100%;font-family:Arial,sans-serif;background:#f5f7fb;color:#172033}
-    .wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-    .card{width:min(420px,100%);background:#fff;border-radius:18px;padding:26px;box-shadow:0 10px 35px rgba(0,0,0,.08);text-align:center}
-    h1{margin:0 0 8px;font-size:26px}
-    p{margin:0 0 18px;line-height:1.45;color:#667085}
-    button{width:100%;border:0;border-radius:12px;padding:15px 18px;font-size:16px;font-weight:700;background:#0877e8;color:#fff;cursor:pointer}
-    .small{font-size:13px;margin-top:14px;color:#8a94a6}
-  </style>
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text)}
+    .app{max-width:760px;margin:0 auto;padding:12px}
+    .hero{background:linear-gradient(135deg,var(--blue-dark),var(--blue));color:#fff;border-radius:20px;padding:18px;margin-bottom:12px}
+    .hero h1{margin:0 0 5px;font-size:23px}.hero p{margin:0;opacity:.95;font-size:13px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:14px;margin-bottom:12px}
+    .results-card{padding:10px}
+    .results-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+    .result-box{background:var(--blue-soft);border-radius:15px;padding:13px 11px;min-width:0}
+    .result-box small{display:block;color:var(--muted);font-size:12px;margin-bottom:5px;font-weight:700}
+    .result-box strong{display:block;font-size:22px;color:var(--blue-dark);overflow-wrap:anywhere}
+    .result-box-change{background:var(--blue-dark)} .result-box-change small,.result-box-change strong{color:#fff}
+    .result-box-change strong{font-size:28px}
+    .label{font-size:13px;font-weight:800;margin-bottom:7px;display:block}
+    select,input{width:100%;min-height:52px;border:1px solid var(--border);border-radius:14px;background:#fff;color:var(--text);font-size:18px;padding:12px 14px;outline:none}
+    select:focus,input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(11,94,215,.12)}
+    .field-gap{height:12px}.status{min-height:20px;margin-top:7px;font-size:13px}.ok{color:var(--success)}.err{color:var(--danger)}
+    .btn{width:100%;min-height:50px;border:0;border-radius:14px;font-size:16px;font-weight:800;padding:12px 16px;cursor:pointer}
+    .btn-primary{background:var(--blue);color:#fff}.btn-secondary{background:#eef3f8;color:var(--text)}
+    .btn-danger{background:#fff1f1;color:var(--danger);border:1px solid #ffd3d3}.row{display:flex;gap:10px;flex-wrap:wrap}.row .btn{flex:1;min-width:140px}
+    .period-tabs{display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin-bottom:10px;padding-bottom:2px}
+    .period-tabs::-webkit-scrollbar{display:none}
+    .period-btn{flex:0 0 auto;min-width:78px;border:1px solid var(--border);background:#fff;color:var(--blue-dark);border-radius:10px;padding:9px 10px;font-size:11px;font-weight:800;cursor:pointer}
+    .period-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+    .earnings-box{background:var(--blue-dark);color:#fff;border-radius:16px;padding:15px;margin-bottom:9px}
+    .earnings-box small,.earnings-box span{display:block}.earnings-box small{font-size:12px;font-weight:800;opacity:.9}
+    .earnings-box strong{display:block;font-size:30px;line-height:1.15;margin:4px 0}.earnings-box span{font-size:11px;opacity:.85}
+    .summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}.metric{background:var(--blue-soft);border-radius:14px;padding:11px}
+    .metric small{display:block;color:var(--muted);font-size:11px;margin-bottom:4px}.metric strong{font-size:16px}
+    .section-title{font-size:17px;font-weight:900;margin:0}.subtle{font-size:12px;color:var(--muted);margin-top:3px}
+    .history-empty{text-align:center;color:var(--muted);padding:22px 10px;border:1px dashed var(--border);border-radius:14px}
+    .history-list{display:grid;gap:9px}.tx{border:1px solid var(--border);border-radius:14px;padding:12px;background:#fff}
+    .tx-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.tx-type{font-weight:900}.tx-date{font-size:12px;color:var(--muted);margin-top:2px}
+    .tx-total{font-weight:900;color:var(--blue-dark);font-size:18px}.tx-details{margin-top:9px;display:grid;grid-template-columns:1fr 1fr;gap:5px 8px;color:var(--muted);font-size:12px}
+    .tx-details span:nth-child(even){text-align:right}.tx-actions{margin-top:8px;text-align:right}.link-btn{border:0;background:transparent;color:var(--danger);font-weight:800;padding:6px 0;cursor:pointer}
+    .pin-wrap{display:flex;gap:8px}.pin-wrap input{flex:1}.pin-wrap button{width:auto;min-width:96px}
+    .sync{font-size:12px;color:var(--muted);margin-top:6px}
+    @media(min-width:640px){.app{padding:18px}.hero{padding:22px}.results-grid{grid-template-columns:repeat(4,1fr)}}
+  
+    html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+    body{min-width:320px;overflow-x:hidden}
+    .app{width:100%;max-width:680px;padding:10px}
+    .hero{border-radius:16px;padding:14px 15px;margin-bottom:10px}
+    .hero h1{font-size:clamp(20px,6vw,25px);line-height:1.1}
+    .hero p{font-size:clamp(12px,3.4vw,14px);line-height:1.35}
+    .card{border-radius:16px;padding:12px;margin-bottom:10px}
+    .results-card{padding:8px}
+    .results-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+    .result-box{padding:11px 9px;border-radius:13px}
+    .result-box small{font-size:clamp(11px,3vw,13px);margin-bottom:3px}
+    .result-box strong{font-size:clamp(19px,6vw,27px);line-height:1.08;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .result-box-change strong{font-size:clamp(23px,7vw,31px)}
+    .label{font-size:clamp(13px,3.5vw,15px);margin-bottom:5px}
+    select,input{min-height:50px;font-size:16px;padding:10px 12px;border-radius:12px}
+    .field-gap{height:9px}
+    .btn{min-height:48px;font-size:clamp(15px,4vw,17px);padding:10px 12px;border-radius:12px}
+    .row{gap:8px}
+    .row .btn{min-width:0}
+    .pin-wrap{gap:7px;align-items:stretch}
+    .pin-wrap input{min-width:0}
+    .pin-wrap button{min-width:88px;padding-left:10px;padding-right:10px}
+    .period-tabs{gap:5px;margin-bottom:8px}
+    .period-btn{min-width:72px;padding:8px 9px;font-size:11px}
+    .earnings-box{padding:13px;border-radius:14px;margin-bottom:8px}
+    .earnings-box strong{font-size:clamp(27px,8vw,34px)}
+    .summary{gap:7px;margin-bottom:10px}
+    .metric{padding:9px;border-radius:12px}
+    .metric small{font-size:10px}
+    .metric strong{font-size:clamp(14px,4vw,17px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .section-title{font-size:clamp(16px,4.5vw,19px)}
+    .subtle{font-size:11px}
+    .history-list{gap:7px}
+    .tx{padding:10px;border-radius:12px}
+    .tx-type{font-size:14px}
+    .tx-date{font-size:10px}
+    .tx-total{font-size:clamp(16px,4.8vw,20px)}
+    .tx-details{margin-top:7px;gap:4px 7px;font-size:11px}
+    .tx-actions{margin-top:5px}
+    .link-btn{font-size:12px;padding:4px 0}
+    .status,.sync{font-size:12px}
+
+    @media (max-width:374px){
+      .app{padding:7px}
+      .hero,.card{border-radius:14px}
+      .results-grid{gap:6px}
+      .result-box{padding:10px 7px}
+      .result-box strong{font-size:18px}
+      .result-box-change strong{font-size:23px}
+      .period-btn{min-width:66px;padding:7px 8px}
+      .tx-details{font-size:10px}
+    }
+
+    @media (orientation:landscape) and (max-height:520px){
+      .app{max-width:900px;padding:8px 12px}
+      .hero{padding:10px 14px}
+      .hero h1{font-size:20px}
+      .hero p{font-size:11px}
+      .card{padding:10px;margin-bottom:8px}
+      .results-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+      .result-box strong,.result-box-change strong{font-size:19px}
+      select,input{min-height:44px}
+      .btn{min-height:44px}
+    }
+
+    @media (min-width:640px){
+      .app{padding:16px}
+      .hero{padding:18px}
+      .results-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+    }
+
+  
+    /* Compact one-screen mobile homepage */
+    @media (max-width:639px){
+      body{padding:0}
+      .app{padding:6px;max-width:100%}
+      .hero{padding:8px 10px;margin-bottom:6px;border-radius:12px}
+      .hero h1{font-size:18px;line-height:1.05;margin:0 0 2px}
+      .hero p{font-size:10px;line-height:1.2;margin:0}
+
+      .card{padding:8px;margin-bottom:6px;border-radius:12px}
+
+      .results-card{padding:6px}
+      .results-grid{gap:5px}
+      .result-box{padding:7px 6px;border-radius:10px}
+      .result-box small{font-size:10px;margin-bottom:1px}
+      .result-box strong{font-size:18px;line-height:1}
+      .result-box-change strong{font-size:21px}
+
+      .label{font-size:11px;margin-bottom:3px}
+      select,input{min-height:40px;height:40px;font-size:16px;padding:6px 9px;border-radius:9px}
+      .field-gap{height:5px}
+      .btn{min-height:40px;height:40px;font-size:14px;padding:6px 9px;border-radius:9px}
+      .row{gap:6px}
+
+      .status,.sync{font-size:10px;min-height:12px;margin-top:3px}
+      .section-title{font-size:14px}
+      .subtle{font-size:10px}
+
+      .pin-wrap{gap:5px}
+      .pin-wrap button{min-width:74px}
+      .pin-card.unlocked{
+        display:none !important;
+      }
+
+      .history-toggle{
+        width:100%;
+        min-height:40px;
+        margin-top:2px;
+      }
+      .history-section.collapsed{
+        display:none;
+      }
+
+      .period-tabs{gap:4px;margin-bottom:6px}
+      .period-btn{min-width:58px;padding:6px 7px;font-size:10px}
+      .earnings-box{padding:9px;margin-bottom:6px}
+      .earnings-box strong{font-size:24px}
+      .summary{gap:5px;margin-bottom:6px}
+      .metric{padding:7px}
+      .metric small{font-size:9px}
+      .metric strong{font-size:13px}
+
+      .tx{padding:8px}
+      .tx-type{font-size:12px}
+      .tx-date{font-size:9px}
+      .tx-total{font-size:15px}
+      .tx-details{font-size:10px}
+    }
+
+  
+    @media (max-width:639px){
+      .hero p{display:none}
+      .hero{padding:7px 10px}
+      .hero h1{font-size:17px}
+      .results-card{margin-bottom:5px}
+      .result-box{padding:6px 5px}
+      .result-box small{font-size:9px}
+      .result-box strong{font-size:17px}
+      .result-box-change strong{font-size:20px}
+      .card form .label{font-size:10px}
+      select,input{min-height:38px;height:38px}
+      .btn{min-height:38px;height:38px}
+      .history-toggle{margin-bottom:6px}
+    }
+
+
+    @media (max-width:639px){
+      .pin-show-btn{min-height:34px;height:34px;font-size:12px}
+    }
+
+    .tx-details .charge-method{
+      grid-column:1 / -1;
+      font-weight:800;
+      color:var(--blue-dark);
+      text-align:left !important;
+      padding-top:3px;
+    }
+
+    .badge{
+      display:inline-block;
+      padding:4px 8px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:900;
+      line-height:1.2;
+      border:1px solid transparent;
+      white-space:nowrap;
+    }
+    .badge-cashin{
+      color:#137333;
+      background:#e6f4ea;
+      border-color:#b7dfc4;
+    }
+    .badge-cashout{
+      color:#0b57d0;
+      background:#e8f0fe;
+      border-color:#bfd3fb;
+    }
+    .badge-add{
+      color:#b45309;
+      background:#fff3e0;
+      border-color:#ffd29b;
+    }
+    .badge-deduct{
+      color:#7e22ce;
+      background:#f3e8ff;
+      border-color:#d8b4fe;
+    }
+    .badge-neutral{
+      color:#667085;
+      background:#f2f4f7;
+      border-color:#d0d5dd;
+    }
+    .tx-details .charge-method{
+      grid-column:1 / -1;
+      text-align:left !important;
+      padding-top:3px;
+    }
+
+
+.hidden-select{display:none!important}.option-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;width:100%}.option-btn{min-height:40px;border-radius:10px;border:1.5px solid var(--border);background:#fff;color:var(--text);font-size:13px;font-weight:800;padding:6px;cursor:pointer}.option-cashin.active{color:#137333;background:#e6f4ea;border-color:#34a853}.option-cashout.active{color:#0b57d0;background:#e8f0fe;border-color:#4285f4}.option-add.active{color:#b45309;background:#fff3e0;border-color:#f59e0b}.option-deduct.active{color:#7e22ce;background:#f3e8ff;border-color:#a855f7}@media(max-width:639px){.option-btn{min-height:38px;height:38px;font-size:12px;padding:4px}}
+
+    .type-filter-tabs{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:6px;
+      margin:8px 0 7px;
+    }
+    .type-filter-btn{
+      min-height:36px;
+      border:1px solid var(--border);
+      border-radius:10px;
+      background:#fff;
+      color:var(--text);
+      font-size:11px;
+      font-weight:900;
+      padding:6px 5px;
+      cursor:pointer;
+    }
+    .type-filter-btn.active{
+      background:var(--blue-dark);
+      color:#fff;
+      border-color:var(--blue-dark);
+    }
+    .type-filter-cashin.active{
+      background:#34a853;
+      border-color:#34a853;
+      color:#fff;
+    }
+    .type-filter-cashout.active{
+      background:#4285f4;
+      border-color:#4285f4;
+      color:#fff;
+    }
+    @media(max-width:639px){
+      .type-filter-tabs{gap:5px;margin:6px 0}
+      .type-filter-btn{min-height:34px;height:34px;font-size:10px;padding:4px}
+    }
+
+
+    /* iPhone keyboard compatibility */
+    input, textarea, select{
+      font-size:16px !important;
+    }
+
+
+    /* Taller top title header */
+    .top-title,
+    .app-title,
+    .title-bar,
+    header h1{
+      min-height:64px;
+    }
+
+    .cash-app-title{
+      min-height:72px !important;
+      display:flex !important;
+      align-items:center !important;
+      padding:14px 20px !important;
+      font-size:clamp(28px, 7vw, 36px) !important;
+      line-height:1.05 !important;
+      font-weight:900 !important;
+    }
+
+.quick-entry-card{margin-top:8px!important;margin-bottom:8px!important}
+@media(max-width:639px){.quick-entry-card{padding:10px 12px!important}.quick-entry-card input{min-height:48px}}
+    @media(max-width:639px){
+      .customer-search-row input,
+    }
+
+
+    .input-pair-row{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+      gap:8px;
+      align-items:start;
+    }
+    .input-pair-field{min-width:0}
+    .input-pair-field .label{
+      display:block;
+      margin:0 0 5px;
+      line-height:1.15;
+    }
+    .input-pair-field input{
+      width:100%;
+      box-sizing:border-box;
+    }
+    @media(max-width:639px){
+      .input-pair-row{
+        grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
+        gap:6px;
+      }
+      .input-pair-field .label{
+        font-size:11px;
+      }
+      .input-pair-field input{
+        padding-left:8px !important;
+        padding-right:8px !important;
+        font-size:16px !important;
+      }
+    }
+
+
+    .results-grid{grid-template-columns:repeat(3,minmax(0,1fr)) !important}
+    .result-fee{background:#e8f7ee !important;border:1px solid #b7e4c7 !important}
+    .result-fee small,.result-fee strong{color:#118a43 !important}
+    .result-total{background:#eaf3ff !important;border:1px solid #bfd8ff !important}
+    .result-total small,.result-total strong{color:#0b63ce !important}
+    .result-change{background:#f1eaff !important;border:1px solid #d3c0ff !important}
+    .result-change small,.result-change strong{color:#6f42c1 !important}
+    .type-modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:20px;z-index:9999}
+    .type-modal.show{display:flex}
+    .type-modal-card{width:min(420px,100%);background:#fff;border-radius:20px;padding:20px;box-shadow:0 18px 55px rgba(0,0,0,.22)}
+    .type-modal-title{text-align:center;font-size:20px;font-weight:800;margin-bottom:18px}
+    .type-modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .type-choice{border:0;border-radius:14px;min-height:58px;font-size:17px;font-weight:800;color:#fff;cursor:pointer}
+    .cashin-choice{background:#16a34a}
+    .cashout-choice{background:#0b5ed7}
+    .type-cancel{width:100%;margin-top:10px;min-height:46px;border:1px solid #d0d5dd;background:#fff;border-radius:14px;font-weight:700;cursor:pointer}
+
+
+    /* Charge method colors */
+    #chargeModeButtons .option-btn{
+      background:#f3f4f6 !important;
+      color:#475467 !important;
+      border:1px solid #d0d5dd !important;
+    }
+    #chargeModeButtons .option-add.active{
+      background:#16a34a !important;
+      color:#fff !important;
+      border-color:#16a34a !important;
+    }
+    #chargeModeButtons .option-deduct.active{
+      background:#dc2626 !important;
+      color:#fff !important;
+      border-color:#dc2626 !important;
+    }
+
+    /* Change box: grey when there is no change, purple when there is change */
+    .result-change.no-change{
+      background:#f2f4f7 !important;
+      border-color:#d0d5dd !important;
+    }
+    .result-change.no-change small,
+    .result-change.no-change strong{
+      color:#98a2b3 !important;
+    }
+
+
+    .transaction-action-row{
+      display:grid;
+      grid-template-columns:1fr 1.35fr 1fr;
+      gap:8px;
+      align-items:stretch;
+    }
+    .transaction-action-row button{
+      width:100%;
+      min-width:0;
+      min-height:54px;
+      border-radius:14px;
+      padding:9px 6px;
+      font-size:14px;
+      font-weight:800;
+      line-height:1.15;
+      cursor:pointer;
+    }
+    .action-deduct{
+      background:#f3f4f6;
+      color:#475467;
+      border:1px solid #d0d5dd;
+    }
+    .action-deduct.active{
+      background:#dc2626;
+      color:#fff;
+      border-color:#dc2626;
+    }
+    .action-record{
+      background:var(--blue);
+      color:#fff;
+      border:1px solid var(--blue);
+    }
+    .action-clear{
+      background:#f3f4f6;
+      color:#475467;
+      border:1px solid #d0d5dd;
+    }
+    @media(max-width:420px){
+      .transaction-action-row{grid-template-columns:1fr 1.35fr .8fr;gap:6px}
+      .transaction-action-row button{font-size:12px;padding:8px 4px}
+    }
+
+
+    /* Bigger, iPhone-friendly homepage while staying compact */
+    .app{
+      max-width:760px;
+      margin:0 auto;
+      padding:10px !important;
+    }
+    .hero{
+      min-height:112px;
+      padding:22px 18px !important;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+    }
+    .hero h1,
+    .cash-app-title{
+      font-size:30px !important;
+      line-height:1.05 !important;
+    }
+    .hero p{
+      font-size:14px !important;
+      margin-top:6px !important;
+    }
+
+    .quick-entry-card,
+    .results-card,
+    .card{
+      padding:16px !important;
+      border-radius:20px !important;
+      margin-bottom:10px !important;
+    }
+
+    .label{
+      font-size:15px !important;
+      margin-bottom:8px !important;
+    }
+
+    #amount,#cashReceived{
+      min-height:62px !important;
+      font-size:24px !important;
+      font-weight:700 !important;
+      padding:14px 16px !important;
+      border-radius:16px !important;
+    }
+
+    .results-grid{
+      gap:8px !important;
+      grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+    }
+    .result-box{
+      min-height:94px;
+      padding:14px 8px !important;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      border-radius:16px !important;
+    }
+    .result-box small{
+      font-size:12px !important;
+      line-height:1.1 !important;
+      margin-bottom:7px !important;
+    }
+    .result-box strong{
+      font-size:23px !important;
+      line-height:1.05 !important;
+    }
+    .result-change strong{
+      font-size:25px !important;
+    }
+
+    .transaction-action-row{
+      gap:7px !important;
+    }
+    .transaction-action-row button{
+      min-height:62px !important;
+      font-size:15px !important;
+      border-radius:16px !important;
+      padding:10px 6px !important;
+    }
+
+    .status{
+      min-height:18px !important;
+      font-size:12px !important;
+      margin-top:5px !important;
+    }
+
+    /* Keep the primary calculator area compact on iPhone */
+    @media(max-width:480px){
+      .app{padding:8px !important}
+      .hero{
+        min-height:104px;
+        padding:18px 16px !important;
+        margin-bottom:8px !important;
+      }
+      .hero h1,.cash-app-title{font-size:28px !important}
+      .quick-entry-card,.results-card,.card{
+        padding:13px !important;
+        margin-bottom:8px !important;
+      }
+      #amount,#cashReceived{
+        min-height:60px !important;
+        font-size:22px !important;
+      }
+      .result-box{
+        min-height:88px;
+        padding:12px 6px !important;
+      }
+      .result-box strong{font-size:21px !important}
+      .result-change strong{font-size:23px !important}
+      .transaction-action-row{
+        grid-template-columns:1fr 1.3fr .78fr !important;
+        gap:5px !important;
+      }
+      .transaction-action-row button{
+        min-height:58px !important;
+        font-size:13px !important;
+        padding:8px 4px !important;
+      }
+    }
+
+
+    .capital-card{padding:14px !important}
+    .capital-header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+    .capital-title{font-size:17px;font-weight:900}
+    .capital-note{font-size:11px;color:var(--muted);margin-top:2px}
+    .capital-adjust{border:1px solid var(--border);background:#fff;color:var(--blue-dark);font-size:12px;font-weight:800;padding:8px 10px;border-radius:11px;white-space:nowrap}
+    .capital-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .capital-balance{border-radius:16px;padding:12px 10px;min-width:0}
+    .capital-balance small{display:block;font-size:11px;font-weight:800;margin-bottom:5px}
+    .capital-balance strong{display:block;font-size:22px;line-height:1.05;overflow-wrap:anywhere}
+    .capital-balance span{display:block;font-size:10px;margin-top:5px;opacity:.75}
+    .cash-balance{background:#edf9f1;border:1px solid #bde5c8;color:#118a43}
+    .gcash-balance{background:#eaf3ff;border:1px solid #bfd8ff;color:#0b63ce}
+    .capital-total-row{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding:8px 10px;background:#f8fafc;border-radius:12px;font-size:12px}
+    .capital-total-row strong{font-size:15px}
+    .capital-balance.negative{background:#fff1f2 !important;border-color:#fecdd3 !important;color:#b42318 !important}
+
+    .capital-modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:20px;z-index:10000}
+    .capital-modal.show{display:flex}
+    .capital-modal-card{width:min(420px,100%);background:#fff;border-radius:20px;padding:20px;box-shadow:0 18px 55px rgba(0,0,0,.24)}
+    .capital-modal-title{text-align:center;font-size:20px;font-weight:900;margin-bottom:7px}
+    .capital-modal-help{font-size:12px;line-height:1.4;color:var(--muted);margin-bottom:15px;text-align:center}
+    .capital-modal-actions{display:grid;grid-template-columns:1.25fr 1fr;gap:8px;margin-top:10px}
+    .capital-save,.capital-cancel{min-height:50px;border-radius:14px;font-size:14px;font-weight:800;cursor:pointer}
+    .capital-save{border:0;background:var(--blue);color:#fff}
+    .capital-cancel{border:1px solid var(--border);background:#f3f4f6;color:#475467}
+
+    @media(max-width:480px){
+      .capital-card{padding:11px !important}
+      .capital-balance{padding:10px 8px}
+      .capital-balance strong{font-size:20px}
+      .capital-title{font-size:16px}
+    }
+
+
+    /* Smaller placeholder text only. Typed numbers keep their existing size. */
+    #amount::placeholder,
+    #cashReceived::placeholder{
+      font-size:14px !important;
+      font-weight:400 !important;
+    }
+
+
+    .capital-header-actions{display:flex;gap:6px;align-items:center}
+    .capital-expense-btn{border:0;background:#fff1f2;color:#b42318;font-size:12px;font-weight:800;padding:8px 10px;border-radius:11px;white-space:nowrap}
+    .capital-expense-row{display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding:8px 10px;background:#fff7ed;border-radius:12px;font-size:12px;color:#9a3412}
+    .capital-expense-row strong{font-size:15px}
+    .expense-history-toggle{width:100%;margin-top:8px;border:1px solid var(--border);background:#fff;color:#475467;border-radius:12px;min-height:38px;font-size:12px;font-weight:800}
+    .expense-history-section{margin-top:8px}
+    .expense-history-list{display:grid;gap:7px}
+    .expense-item{border:1px solid var(--border);border-radius:13px;padding:10px;background:#fff}
+    .expense-item-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+    .expense-item-title{font-size:13px;font-weight:800}
+    .expense-item-amount{font-size:14px;font-weight:900;color:#b42318;white-space:nowrap}
+    .expense-item-meta{font-size:10px;color:var(--muted);margin-top:3px}
+    .expense-item-note{font-size:11px;color:#475467;margin-top:5px}
+    .expense-item-actions{text-align:right;margin-top:6px}
+    .expense-remove{border:0;background:transparent;color:#b42318;font-size:11px;font-weight:800;padding:0}
+    .expense-paid-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .expense-paid-btn{min-height:48px;border:1px solid var(--border);background:#f8fafc;color:#475467;border-radius:13px;font-size:13px;font-weight:800}
+    .expense-paid-btn.active{background:#eaf3ff;border-color:#8dbbff;color:#0b63ce}
+    @media(max-width:480px){
+      .capital-header-actions{gap:4px}
+      .capital-expense-btn,.capital-adjust{font-size:10px;padding:7px 8px}
+    }
+
+
+    /* Result colors: Fee = red, Total/Cash In-Out Amount = yellow */
+    .result-box.result-fee{
+      background:#fff1f2 !important;
+      border-color:#fecdd3 !important;
+      color:#b42318 !important;
+    }
+    .result-box.result-fee small,
+    .result-box.result-fee strong{
+      color:#b42318 !important;
+    }
+    .result-box.result-total{
+      background:#fff8cc !important;
+      border-color:#f4d35e !important;
+      color:#7a5b00 !important;
+    }
+    .result-box.result-total small,
+    .result-box.result-total strong{
+      color:#7a5b00 !important;
+    }
+
+
+.unlocked-controls{display:block;margin-bottom:6px}
+body.app-locked .capital-card,body.app-locked .quick-entry-card,body.app-locked .results-card,
+body.app-locked #txForm,body.app-locked #unlockedControls,body.app-locked #historyToggle,
+body.app-locked #historySection{display:none!important}
+
+/* Tracker header */
+.hero{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  text-align:center !important;
+}
+.hero h1{
+  width:100% !important;
+  margin:0 !important;
+  text-align:center !important;
+  line-height:1.15 !important;
+}
+.tracker-title-line{
+  display:block;
+  font:inherit;
+  font-size:inherit;
+  font-weight:inherit;
+  letter-spacing:inherit;
+  color:inherit;
+}
+
+/* GCash Tracker: calculator remains available before PIN unlock */
+body.app-locked .quick-entry-card,
+body.app-locked .results-card,
+body.app-locked #txForm{
+  display:block !important;
+}
+/* While locked, only record-related controls stay hidden. */
+body.app-locked #recordBtn{
+  display:inline-flex !important;
+}
+/* Keep calculator actions usable while locked. */
+body.app-locked #deductBtn,
+body.app-locked #clearBtn{
+  display:inline-flex !important;
+}
+
+/* Specific date history filter */
+.specific-date-wrap{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto auto;
+  gap:8px;
+  margin-top:8px;
+  align-items:center;
+}
+.specific-date-input{
+  width:100%;
+  min-width:0;
+  height:44px;
+  padding:0 10px;
+  border:1px solid #d0d5dd;
+  border-radius:10px;
+  background:#fff;
+  font-size:16px;
+  box-sizing:border-box;
+}
+@media (max-width:430px){
+  .specific-date-wrap{
+    grid-template-columns:1fr 1fr;
+  }
+  .specific-date-input{
+    grid-column:1 / -1;
+  }
+}
+
+.hero{min-height:72px!important;height:72px!important;padding:8px 14px!important;box-sizing:border-box!important;display:flex!important;align-items:center!important;justify-content:center!important;text-align:center!important}
+.hero h1{width:100%!important;margin:0!important;padding:0!important;text-align:center!important;line-height:1.05!important;white-space:nowrap!important}
+.tracker-title-line{display:block!important;width:100%!important;margin:0!important;padding:0!important;text-align:center!important;font:inherit!important;color:inherit!important}
+
+/* Google-account access */
+body.app-locked .capital-card,
+body.app-locked #historyToggle,
+body.app-locked #historySection{display:none!important}
+body.app-locked .quick-entry-card,
+body.app-locked .results-card,
+body.app-locked #txForm{display:block!important}
+.auth-card .btn{width:100%}
+
+
+/* Compact signed-in Google account menu */
+.hero{position:relative !important}
+.account-mini{
+  position:absolute;
+  top:10px;
+  right:10px;
+  z-index:50;
+}
+.account-menu-btn{
+  width:34px;
+  height:34px;
+  min-width:34px;
+  min-height:34px;
+  border:1px solid rgba(255,255,255,.45);
+  border-radius:50%;
+  background:rgba(255,255,255,.16);
+  color:#fff;
+  padding:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+}
+.account-person-icon{
+  width:16px;
+  height:16px;
+  position:relative;
+  display:block;
+}
+.account-person-icon:before{
+  content:'';
+  position:absolute;
+  width:6px;
+  height:6px;
+  border:2px solid #fff;
+  border-radius:50%;
+  top:0;
+  left:3px;
+}
+.account-person-icon:after{
+  content:'';
+  position:absolute;
+  width:14px;
+  height:7px;
+  border:2px solid #fff;
+  border-bottom:0;
+  border-radius:10px 10px 0 0;
+  left:-1px;
+  bottom:0;
+}
+.account-popover{
+  display:none;
+  position:absolute;
+  top:40px;
+  right:0;
+  width:min(290px,calc(100vw - 32px));
+  background:#fff;
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:11px;
+  box-shadow:0 14px 34px rgba(16,24,40,.20);
+  text-align:left;
+}
+.account-popover.show{display:block}
+.account-popover-label{font-size:10px;color:var(--muted);font-weight:800;margin-bottom:3px}
+#signedInEmail{font-size:12px;font-weight:800;overflow-wrap:anywhere;margin-bottom:8px}
+.account-popover-actions{display:grid;grid-template-columns:1fr;gap:6px}
+.account-popover .btn{min-height:36px;height:36px;font-size:12px;border-radius:9px;padding:5px 8px}
+.account-popover #authStatus{min-height:0;margin-top:4px;font-size:10px}
+body:not(.app-locked) .auth-card{display:none !important}
+@media(max-width:480px){
+  .account-mini{top:8px;right:8px}
+  .account-menu-btn{width:32px;height:32px;min-width:32px;min-height:32px}
+}
+
+
+/* History popover, same interaction style as the account menu */
+.history-section{display:none}
+.history-section.history-open{
+  color:var(--text);
+  display:block !important;
+  position:absolute;
+  top:40px;
+  left:0;
+  width:min(360px,calc(100vw - 28px));
+  max-height:min(72vh,620px);
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  background:#fff;
+  border:1px solid var(--border) !important;
+  border-radius:14px !important;
+  margin:0 !important;
+  padding:11px !important;
+  box-shadow:0 14px 34px rgba(16,24,40,.20);
+  z-index:60;
+  text-align:left;
+}
+.history-view-header{
+  position:static;
+  background:#fff;
+  padding:2px 0 8px;
+  margin-bottom:4px;
+}
+.history-close-btn{display:none !important}
+body.history-modal-open{overflow:auto !important}
+@media(max-width:480px){
+  .history-section.history-open{
+    top:38px;
+    width:min(340px,calc(100vw - 20px));
+    max-height:70vh;
+    padding:9px !important;
+  }
+}
+
+
+/* Compact History icon in tracker header */
+.history-mini{
+  position:absolute;
+  top:10px;
+  left:10px;
+  z-index:50;
+}
+.history-menu-btn{
+  width:34px;
+  height:34px;
+  min-width:34px;
+  min-height:34px;
+  border:1px solid rgba(255,255,255,.45);
+  border-radius:50%;
+  background:rgba(255,255,255,.16);
+  color:#fff;
+  padding:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  backdrop-filter:blur(6px);
+  -webkit-backdrop-filter:blur(6px);
+}
+.history-list-icon{
+  width:16px;
+  height:14px;
+  position:relative;
+  display:block;
+}
+.history-list-icon:before{
+  content:'';
+  position:absolute;
+  left:0;
+  top:1px;
+  width:3px;
+  height:3px;
+  border-radius:50%;
+  background:#fff;
+  box-shadow:0 5px 0 #fff,0 10px 0 #fff;
+}
+.history-list-icon:after{
+  content:'';
+  position:absolute;
+  left:6px;
+  top:2px;
+  width:10px;
+  height:2px;
+  border-radius:2px;
+  background:#fff;
+  box-shadow:0 5px 0 #fff,0 10px 0 #fff;
+}
+#historyToggle{
+  margin:0;
+}
+body:not(.app-locked) #historyToggle{
+  display:flex !important;
+}
+body.app-locked #historyToggle{
+  display:none !important;
+}
+@media(max-width:480px){
+  .history-mini{top:8px;left:8px}
+  .history-menu-btn{width:32px;height:32px;min-width:32px;min-height:32px}
+}
+
+
+/* Readable text inside History popover */
+#historySection,
+#historySection .section-title,
+#historySection .summary-label,
+#historySection .summary-value,
+#historySection .earnings-label,
+#historySection .earnings-value,
+#historySection label,
+#historySection .muted {
+  color: var(--text);
+}
+
+  /* NO LOGIN MODE */
+    .auth-card,
+    #signedInAuth{display:none !important;}
+
+  /* Cash Out fee location chooser */
+  .fee-location-step{display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+  .fee-location-step.show{display:block}
+  .fee-location-title{text-align:center;font-size:14px;font-weight:900;margin-bottom:10px;color:var(--text)}
+  .fee-location-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .fee-location-choice{min-height:50px;border-radius:13px;border:1px solid var(--border);background:#fff;color:var(--text);font-size:13px;font-weight:900;cursor:pointer}
+  .fee-location-choice.gcash{color:#0b57d0;background:#e8f0fe;border-color:#bfd3fb}
+  .fee-location-choice.cash{color:#137333;background:#e6f4ea;border-color:#b7dfc4}
+
+
+  /* History below the main tracker */
+  .history-section{
+    display:none !important;
+    position:static !important;
+    width:100% !important;
+    max-height:none !important;
+    overflow:visible !important;
+    background:var(--card) !important;
+    border:1px solid var(--border) !important;
+    border-radius:20px !important;
+    margin:0 0 10px !important;
+    padding:16px !important;
+    box-shadow:none !important;
+    color:var(--text) !important;
+    text-align:left !important;
+  }
+  .history-section.history-open{
+    display:block !important;
+  }
+  .history-section.collapsed{
+    display:none !important;
+  }
+
+  /* Delete transaction Yes / No confirmation */
+  .delete-tx-modal{
+    position:fixed;
+    inset:0;
+    z-index:12000;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    background:rgba(0,0,0,.45);
+  }
+  .delete-tx-modal.show{display:flex}
+  .delete-tx-card{
+    width:min(390px,100%);
+    background:#fff;
+    border-radius:18px;
+    padding:20px;
+    box-shadow:0 18px 55px rgba(0,0,0,.24);
+  }
+  .delete-tx-title{
+    font-size:18px;
+    font-weight:900;
+    text-align:center;
+    color:var(--text);
+    margin-bottom:8px;
+  }
+  .delete-tx-note{
+    font-size:12px;
+    line-height:1.4;
+    color:var(--muted);
+    text-align:center;
+    margin-bottom:16px;
+  }
+  .delete-tx-actions{
+    display:grid;
+    grid-template-columns:1fr 1.25fr;
+    gap:8px;
+  }
+  .delete-tx-no,
+  .delete-tx-yes{
+    min-height:48px;
+    border-radius:13px;
+    font-size:14px;
+    font-weight:900;
+    cursor:pointer;
+  }
+  .delete-tx-no{
+    border:1px solid var(--border);
+    background:#f3f4f6;
+    color:#475467;
+  }
+  .delete-tx-yes{
+    border:0;
+    background:#c62828;
+    color:#fff;
+  }
+
+
+  .history-bottom-wrap{width:100%;margin:4px 0 10px}
+  .history-bottom-btn{
+    width:100% !important;
+    min-height:52px;
+    display:flex !important;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    border-radius:14px !important;
+    font-size:15px !important;
+    font-weight:900 !important;
+  }
+  .history-bottom-btn .history-list-icon{display:inline-block}
+
+
+  /* Total Capital + Capital Expenses side by side */
+  .capital-summary-row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-top:8px;
+  }
+  .capital-summary-row .capital-total-row,
+  .capital-summary-row .capital-expense-row{
+    margin-top:0 !important;
+    min-width:0;
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    justify-content:center;
+    gap:4px;
+    padding:10px 11px;
+  }
+  .capital-summary-row .capital-total-row strong,
+  .capital-summary-row .capital-expense-row strong{
+    font-size:16px;
+    overflow-wrap:anywhere;
+  }
+  @media(max-width:380px){
+    .capital-summary-row{gap:6px}
+    .capital-summary-row .capital-total-row,
+    .capital-summary-row .capital-expense-row{padding:9px 8px}
+    .capital-summary-row .capital-total-row strong,
+    .capital-summary-row .capital-expense-row strong{font-size:14px}
+  }
+
+
+  .no-exact-wrap{display:none;margin-top:10px}
+  .no-exact-wrap.show{display:block}
+  .no-exact-btn{width:100%;min-height:46px;border-radius:13px;border:1px solid #f0b429;background:#fff8e1;color:#8a5a00;font-size:14px;font-weight:900;cursor:pointer}
+  .no-exact-btn.active{background:#f0b429;color:#fff}
+  .no-exact-help{margin-top:6px;font-size:11px;line-height:1.35;color:var(--muted);text-align:center}
+
+
+  .capital-summary-three{
+    grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+    gap:6px !important;
+  }
+  .capital-summary-three .capital-total-row,
+  .capital-summary-three .capital-earnings-row,
+  .capital-summary-three .capital-expense-row{
+    min-width:0;
+    padding:9px 6px !important;
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    justify-content:center;
+    gap:4px;
+    border-radius:14px;
+  }
+  .capital-summary-three span{font-size:11px;line-height:1.15}
+  .capital-summary-three strong{font-size:14px !important;overflow-wrap:anywhere}
+  .capital-earnings-row{
+    background:#ecfdf3;
+    border:1px solid #b7e4c7;
+  }
+  .expected-total-row{
+    margin-top:8px;
+    padding:11px 12px;
+    border:1px solid var(--border);
+    border-radius:14px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    background:#f8fafc;
+  }
+  .expected-total-row span{font-size:12px;font-weight:800;color:var(--muted)}
+  .expected-total-row strong{font-size:17px;font-weight:900;color:var(--text)}
+
+
+  /* Hidden Apps Script data bridge for GitHub Pages */
+  #gcashBridgeFrame{
+    position:fixed;
+    width:1px;
+    height:1px;
+    opacity:0;
+    pointer-events:none;
+    border:0;
+    left:-9999px;
+    top:-9999px;
+  }
+
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <h1>GCash Tracker</h1>
-      <p id="message">Open your tracker or add this page to your Home Screen.</p>
-      <button id="openBtn" type="button">Open GCash Tracker</button>
-      <div class="small" id="installNote">Pair this page once, then add it to your Home Screen.</div>
+<iframe
+  id="gcashBridgeFrame"
+  title="GCash Tracker data bridge"
+  src="https://script.google.com/macros/s/AKfycbzHZBbsTHU5rRMrO4iNCizaQHd1SqVMb1NgWFSRvw8UHf_zdJTLJEQHYZTouUfvpknouw/exec?bridge=1">
+</iframe>
+
+<main class="app">
+  <section class="hero">
+    <h1 class="cash-app-title"><span class="tracker-title-line">GCash Tracker</span></h1>
+    <p>Synced across your phones and computers</p>
+    <div class="history-mini">
+
+    </div>
+    <div id="signedInAuth" class="account-mini" style="display:none">
+      <button id="accountMenuBtn" class="account-menu-btn" type="button" aria-label="Google account" aria-expanded="false">
+        <span class="account-person-icon" aria-hidden="true"></span>
+      </button>
+      <div id="accountPopover" class="account-popover">
+        <div class="account-popover-label">Signed in as</div>
+        <div id="signedInEmail"></div>
+        <div class="account-popover-actions">
+          <button id="claimLegacyBtn" class="btn btn-secondary" type="button" style="display:none">Import Existing Records</button>
+          <button id="pairHomeBtn" class="btn btn-secondary" type="button">Pair Home Screen</button>
+          <button id="signOutBtn" class="btn btn-secondary" type="button">Sign Out</button>
+        </div>
+        <div id="authStatus" class="status"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card capital-card">
+    <div class="capital-header">
+      <div>
+        <div class="capital-title">Capital Monitor</div>
+        <div class="capital-note" id="capitalStatus">Loading your balances…</div>
+      </div>
+      <div class="capital-header-actions">
+        <button type="button" id="addExpenseBtn" class="capital-expense-btn">Add Expense</button>
+        <button type="button" id="adjustCapitalBtn" class="capital-adjust">Set / Adjust</button>
+      </div>
+    </div>
+    <div class="capital-grid">
+      <div class="capital-balance cash-balance">
+        <small>Cash Out Available</small>
+        <strong id="cashOutAvailable">₱0.00</strong>
+        <span>Cash on Hand</span>
+      </div>
+      <div class="capital-balance gcash-balance">
+        <small>Cash In Available</small>
+        <strong id="cashInAvailable">₱0.00</strong>
+        <span>GCash Balance</span>
+      </div>
+    </div>
+    <div class="capital-summary-row capital-summary-three">
+      <div class="capital-total-row">
+        <span>Base Capital</span>
+        <strong id="totalCapital">₱0.00</strong>
+      </div>
+      <div class="capital-earnings-row">
+        <span>Net Earnings</span>
+        <strong id="netEarnings">₱0.00</strong>
+      </div>
+      <div class="capital-expense-row">
+        <span>Expenses</span>
+        <strong id="capitalExpensesTotal">₱0.00</strong>
+      </div>
+    </div>
+    <div class="expected-total-row">
+      <span>Expected Total Money</span>
+      <strong id="expectedTotalMoney">₱0.00</strong>
+    </div>
+    <button type="button" id="expenseHistoryToggle" class="expense-history-toggle">View Expense History</button>
+    <div id="expenseHistorySection" class="expense-history-section" style="display:none">
+      <div id="expenseHistoryEmpty" class="history-empty">No capital expenses yet.</div>
+      <div id="expenseHistoryList" class="expense-history-list"></div>
+    </div>
+  </section>
+
+
+  <section class="card quick-entry-card">
+    <div class="input-pair-row">
+      <div class="input-pair-field">
+        <label class="label" for="amount">Amount</label>
+        <input id="amount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="Enter amount">
+      </div>
+      <div class="input-pair-field">
+        <label class="label" id="cashReceivedLabel" for="cashReceived">Cash received</label>
+        <input id="cashReceived" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Enter cash received">
+      </div>
+    </div>
+
+    <div id="noExactCashWrap" class="no-exact-wrap">
+      <button id="noExactCashBtn" class="no-exact-btn" type="button" aria-pressed="false">No Exact Cash</button>
+      <div class="no-exact-help">Use when Cash Out + Deduct Fee and you do not have the exact amount to give.</div>
+    </div>
+  </section>
+
+<section class="card pin-card auth-card">
+  <div id="signedOutAuth">
+    <label class="label">Google Account</label>
+    <button id="googleSignInBtn" class="btn btn-primary" type="button">Sign in with Google</button>
+    <div class="small-note" style="margin-top:7px">The calculator works without signing in. Sign in to save or view your records.</div>
+  </div>
+  <div id="syncStatus" class="sync"></div>
+</section>
+
+  <section class="card results-card">
+    <div class="results-grid">
+      <div class="result-box result-fee"><small>Fee</small><strong id="fee">₱0.00</strong></div>
+      <div class="result-box result-total"><small id="totalLabel">Total</small><strong id="total">₱0.00</strong></div>
+      <div class="result-box result-change"><small id="changeLabel">Change</small><strong id="change">₱0.00</strong></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <form id="txForm">
+      <select id="txType" class="hidden-select" aria-hidden="true" tabindex="-1"><option value=""></option><option>Cash In</option><option>Cash Out</option></select>
+
+      <select id="chargeMode" class="hidden-select" aria-hidden="true" tabindex="-1">
+        <option value="add">Add fee on top</option>
+        <option value="deduct">Deduct fee from amount</option>
+      </select>
+      <div class="field-gap"></div>
+      <div id="status" class="status"></div>
+      <div class="transaction-action-row">
+        <button type="button" id="deductToggleBtn" class="action-deduct">Deduct Fee</button>
+        <button class="action-record" type="submit">Record Transaction</button>
+        <button class="action-clear" id="clearInputsBtn" type="button">Clear</button>
+      </div>
+    </form>
+  </section>
+
+  
+
+
+
+  <div class="history-bottom-wrap">
+    <button id="historyToggle" class="btn btn-secondary history-bottom-btn" type="button" aria-expanded="false" aria-controls="historySection">
+      <span class="history-list-icon" aria-hidden="true"></span>
+      <span>History</span>
+    </button>
+  </div>
+
+  <section class="card history-section collapsed" id="historySection">
+<div class="specific-date-filter-wrap">
+  <button id="specificDateBtn" class="filter-btn" type="button">Specific Date</button>
+<div id="specificDateWrap" class="specific-date-wrap" style="display:none">
+  <input id="specificDateInput" type="date" class="specific-date-input" aria-label="Select history date">
+  <button id="applySpecificDateBtn" class="btn btn-secondary" type="button">View Date</button>
+  <button id="clearSpecificDateBtn" class="btn btn-secondary" type="button">Clear Date</button>
+</div>
+
+</div>
+
+    <div class="history-view-header">
+      <div>
+        <h2 class="section-title">Transaction History &amp; Earnings</h2>
+        <div class="subtle" id="countText">0 transactions</div>
+      </div>
+    </div>
+
+    <div class="type-filter-tabs" id="typeFilterTabs">
+      <button type="button" class="type-filter-btn active" data-typefilter="all">All</button>
+      <button type="button" class="type-filter-btn type-filter-cashin" data-typefilter="Cash In">Cash In</button>
+      <button type="button" class="type-filter-btn type-filter-cashout" data-typefilter="Cash Out">Cash Out</button>
+    </div>
+
+    <div class="period-tabs">
+      <button type="button" class="period-btn active" data-period="today">Daily</button>
+      <button type="button" class="period-btn" data-period="week">Weekly</button>
+      <button type="button" class="period-btn" data-period="month">Monthly</button>
+      <button type="button" class="period-btn" data-period="year">Yearly</button>
+      <button type="button" class="period-btn" data-period="all">All Time</button>
+    </div>
+
+    <div class="earnings-box">
+      <small id="earningsLabel">Daily Earnings</small>
+      <strong id="sumFees">₱0.00</strong>
+      <span>Service fees earned</span>
+    </div>
+
+    <div class="summary">
+      <div class="metric"><small>Amount</small><strong id="sumAmount">₱0.00</strong></div>
+      <div class="metric"><small>Total Collected</small><strong id="sumTotal">₱0.00</strong></div>
+      <div class="metric"><small>Cash In</small><strong id="sumCashIn">₱0.00</strong></div>
+      <div class="metric"><small>Cash Out</small><strong id="sumCashOut">₱0.00</strong></div>
+    </div>
+
+    <div class="row" style="margin-bottom:12px">
+      <button type="button" class="btn btn-secondary" id="refreshBtn">Refresh Sync</button>
+      <button type="button" class="btn btn-danger" id="clearBtn">Clear History</button>
+    </div>
+
+    <div id="empty" class="history-empty">No transactions yet.</div>
+    <div id="history" class="history-list"></div>
+  </section>
+
+</main>
+
+
+<div id="deleteTxModal" class="delete-tx-modal" aria-hidden="true">
+  <div class="delete-tx-card" role="dialog" aria-modal="true" aria-labelledby="deleteTxTitle">
+    <div id="deleteTxTitle" class="delete-tx-title">Delete this transaction?</div>
+    <div class="delete-tx-note">This will permanently remove the transaction and recalculate your Capital Monitor.</div>
+    <div class="delete-tx-actions">
+      <button type="button" id="deleteTxNo" class="delete-tx-no">No</button>
+      <button type="button" id="deleteTxYes" class="delete-tx-yes">Yes, Delete</button>
     </div>
   </div>
+</div>
+
+<div id="typeModal" class="type-modal" aria-hidden="true">
+  <div class="type-modal-card" role="dialog" aria-modal="true" aria-labelledby="typeModalTitle">
+    <div id="typeModalTitle" class="type-modal-title">Is this Cash In or Cash Out?</div>
+    <div class="type-modal-actions" id="typeChoiceActions">
+      <button type="button" id="confirmCashIn" class="type-choice cashin-choice">Cash In</button>
+      <button type="button" id="confirmCashOut" class="type-choice cashout-choice">Cash Out</button>
+    </div>
+
+    <div id="feeLocationStep" class="fee-location-step">
+      <div class="fee-location-title">Where did the Cash Out fee go?</div>
+      <div class="fee-location-actions">
+        <button type="button" id="feeToGcash" class="fee-location-choice gcash">GCash</button>
+        <button type="button" id="feeToCash" class="fee-location-choice cash">Cash on Hand</button>
+      </div>
+    </div>
+
+    <button type="button" id="cancelTypeChoice" class="type-cancel">Cancel</button>
+  </div>
+</div>
+
+
+<div id="capitalModal" class="capital-modal" aria-hidden="true">
+  <div class="capital-modal-card" role="dialog" aria-modal="true" aria-labelledby="capitalModalTitle">
+    <div id="capitalModalTitle" class="capital-modal-title">Set Capital Balances</div>
+    <div class="capital-modal-help">Enter the money you have right now. Saving creates a new starting point, so older transactions will not be counted again.</div>
+    <label class="label" for="capitalCashInput">Cash on Hand</label>
+    <input id="capitalCashInput" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+    <div class="field-gap"></div>
+    <label class="label" for="capitalGcashInput">GCash Balance</label>
+    <input id="capitalGcashInput" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+    <div id="capitalModalStatus" class="status"></div>
+    <div class="capital-modal-actions">
+      <button type="button" id="saveCapitalBtn" class="capital-save">Save Capital</button>
+      <button type="button" id="cancelCapitalBtn" class="capital-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="expenseModal" class="capital-modal" aria-hidden="true">
+  <div class="capital-modal-card" role="dialog" aria-modal="true" aria-labelledby="expenseModalTitle">
+    <div id="expenseModalTitle" class="capital-modal-title">Add Capital Expense</div>
+    <div class="capital-modal-help">Use this for real business costs such as bank fees, ATM charges, transportation, or other expenses that reduce your capital.</div>
+
+    <label class="label" for="expenseNameInput">Expense</label>
+    <input id="expenseNameInput" type="text" placeholder="Example: Bank / ATM Fee">
+
+    <div class="field-gap"></div>
+    <label class="label" for="expenseAmountInput">Amount</label>
+    <input id="expenseAmountInput" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00">
+
+    <div class="field-gap"></div>
+    <label class="label">Paid From</label>
+    <div class="expense-paid-row">
+      <button type="button" id="expensePaidCash" class="expense-paid-btn active" data-value="Cash">Cash on Hand</button>
+      <button type="button" id="expensePaidGcash" class="expense-paid-btn" data-value="GCash">GCash Balance</button>
+    </div>
+
+    <div class="field-gap"></div>
+    <label class="label" for="expenseNoteInput">Note <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+    <input id="expenseNoteInput" type="text" placeholder="Optional note">
+
+    <div id="expenseModalStatus" class="status"></div>
+    <div class="capital-modal-actions">
+      <button type="button" id="saveExpenseBtn" class="capital-save">Save Expense</button>
+      <button type="button" id="cancelExpenseBtn" class="capital-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
 
 <script>
 (function(){
-  // Replace with your exact Apps Script /exec URL.
-  const APP_URL = 'https://script.google.com/macros/s/AKfycbzHZBbsTHU5rRMrO4iNCizaQHd1SqVMb1NgWFSRvw8UHf_zdJTLJEQHYZTouUfvpknouw/exec';
-  const DEVICE_KEY = 'gcashTrustedDevice';
+  const BRIDGE_ORIGIN = '*';
+  const frame = document.getElementById('gcashBridgeFrame');
+  const pending = new Map();
+  let bridgeReady = false;
+  let seq = 0;
 
-  const query = new URLSearchParams(location.search);
-  const hash = new URLSearchParams(location.hash.replace(/^#/, ''));
+  window.addEventListener('message', function(event){
+    if(event.source !== frame.contentWindow) return;
 
-  // A device token can arrive from the Apps Script Google callback in ?device=
-  // or be permanently carried by the Home Screen launch URL in #device=.
-  const queryDevice = query.get('device') || '';
-  const pairDevice = query.get('pair') || '';
-  const hashDevice = hash.get('device') || '';
-  const device = pairDevice || queryDevice || hashDevice || '';
+    const msg = event.data || {};
+    if(msg.source !== 'gcash-tracker-bridge') return;
 
-  const handoff = query.get('handoff') || '';
-
-  if(device){
-    try{ localStorage.setItem(DEVICE_KEY, device); }catch(e){}
-  }
-
-  // Convert either a normal callback ?device=TOKEN or a one-time
-  // Home Screen pairing link ?pair=TOKEN into a permanent #device=TOKEN
-  // launch address before the page is added to the Home Screen.
-  if(pairDevice || queryDevice){
-    const permanentHomeUrl =
-      location.pathname +
-      '#device=' + encodeURIComponent(pairDevice || queryDevice);
-
-    history.replaceState(null, '', permanentHomeUrl);
-  }
-
-  function getDevice(){
-    const currentHash = new URLSearchParams(location.hash.replace(/^#/, ''));
-    const fromHash = currentHash.get('device') || '';
-    if(fromHash) return fromHash;
-
-    try{ return localStorage.getItem(DEVICE_KEY) || ''; }
-    catch(e){ return ''; }
-  }
-
-  function openTracker(){
-    const trustedDevice = getDevice();
-    const target = new URL(APP_URL);
-
-    if(trustedDevice){
-      target.searchParams.set('device', trustedDevice);
+    if(msg.ready){
+      bridgeReady = true;
+      window.dispatchEvent(new Event('gcash-bridge-ready'));
+      return;
     }
 
-    // Only use the short-lived handoff on the immediate callback launch.
-    if(handoff){
-      target.searchParams.set('handoff', handoff);
+    const item = pending.get(msg.id);
+    if(!item) return;
+    pending.delete(msg.id);
+
+    if(msg.ok) item.resolve(msg.data);
+    else item.reject(new Error(msg.error || 'Bridge request failed.'));
+  });
+
+  function bridgeRequest(method,args){
+    return new Promise((resolve,reject)=>{
+      const id = 'g' + Date.now() + '_' + (++seq);
+      pending.set(id,{resolve,reject});
+
+      function send(){
+        try{
+          frame.contentWindow.postMessage({
+            source:'gcash-tracker',
+            id,
+            method,
+            args:Array.isArray(args) ? args : []
+          }, BRIDGE_ORIGIN);
+        }catch(err){
+          pending.delete(id);
+          reject(err);
+        }
+      }
+
+      if(bridgeReady) send();
+      else{
+        const ready = ()=>{ window.removeEventListener('gcash-bridge-ready',ready); send(); };
+        window.addEventListener('gcash-bridge-ready',ready);
+        setTimeout(()=>{
+          if(pending.has(id) && !bridgeReady){
+            window.removeEventListener('gcash-bridge-ready',ready);
+            pending.delete(id);
+            reject(new Error('Could not connect to Google Sheets.'));
+          }
+        },10000);
+      }
+    });
+  }
+
+  function makeRunner(){
+    let success = null;
+    let failure = null;
+
+    return new Proxy({},{
+      get(target,prop){
+        if(prop === 'withSuccessHandler'){
+          return fn => { success = fn; return targetProxy; };
+        }
+        if(prop === 'withFailureHandler'){
+          return fn => { failure = fn; return targetProxy; };
+        }
+
+        return (...args)=>{
+          bridgeRequest(String(prop),args)
+            .then(data=>{ if(typeof success === 'function') success(data); })
+            .catch(err=>{ if(typeof failure === 'function') failure(err); });
+        };
+      }
+    });
+
+    var targetProxy;
+  }
+
+  // Rebuild makeRunner without the forward-reference issue.
+  function newRunner(){
+    let success = null, failure = null;
+    let proxy;
+    proxy = new Proxy({},{
+      get(target,prop){
+        if(prop === 'withSuccessHandler') return fn => { success = fn; return proxy; };
+        if(prop === 'withFailureHandler') return fn => { failure = fn; return proxy; };
+        return (...args)=>{
+          bridgeRequest(String(prop),args)
+            .then(data=>{ if(typeof success === 'function') success(data); })
+            .catch(err=>{ if(typeof failure === 'function') failure(err); });
+        };
+      }
+    });
+    return proxy;
+  }
+
+  window.google = {
+    script: {
+      get run(){ return newRunner(); }
     }
-
-    location.href = target.toString();
-  }
-
-  document.getElementById('openBtn').addEventListener('click', openTracker);
-
-  const standalone =
-    window.matchMedia('(display-mode: standalone)').matches ||
-    window.navigator.standalone === true;
-
-  if(getDevice()){
-    document.getElementById('installNote').textContent =
-      'Trusted sign-in is ready. Add this exact page to your Home Screen.';
-  }
-
-  // Installed Home Screen app:
-  // read the trusted device from its own saved #device= launch URL,
-  // then open Apps Script automatically.
-  if(standalone){
-    document.getElementById('message').textContent = 'Opening your GCash Tracker…';
-    setTimeout(openTracker, 150);
-  }
+  };
 })();
 </script>
+
+<script>
+(function(){
+  const BOOTSTRAP_HANDOFF = '';
+  const BOOTSTRAP_DEVICE = '';
+  const APP_URL = '';
+  const $ = id => document.getElementById(id);
+  const syncStatus = $('syncStatus');
+  const googleSignInBtn = $('googleSignInBtn');
+  const signedOutAuth = $('signedOutAuth');
+  const signedInAuth = $('signedInAuth');
+  const signedInEmail = $('signedInEmail');
+  const accountMenuBtn = $('accountMenuBtn');
+  const accountPopover = $('accountPopover');
+  const signOutBtn = $('signOutBtn');
+  const claimLegacyBtn = $('claimLegacyBtn');
+  const pairHomeBtn = $('pairHomeBtn');
+  const authStatus = $('authStatus');
+  const txType = $('txType'), chargeMode = $('chargeMode'), amount = $('amount'), cashReceived = $('cashReceived');
+  const customerHistoryList = $('customerHistoryList'), customerHistoryEmpty = $('customerHistoryEmpty');
+  const fee = $('fee'), total = $('total'), change = $('change'), totalLabel = $('totalLabel');
+  const cashReceivedLabel = $('cashReceivedLabel'), changeLabel = $('changeLabel');
+  const noExactCashWrap = $('noExactCashWrap'), noExactCashBtn = $('noExactCashBtn');
+  let noExactCashMode = false;
+  const form = $('txForm'), status = $('status'), historyEl = $('history'), emptyEl = $('empty');
+  const countText = $('countText'), sumFeesEl = $('sumFees'), sumAmountEl = $('sumAmount');
+  const sumTotalEl = $('sumTotal'), sumCashInEl = $('sumCashIn'), sumCashOutEl = $('sumCashOut');
+  const earningsLabel = $('earningsLabel'), refreshBtn = $('refreshBtn'), clearBtn = $('clearBtn');
+  const clearInputsBtn = $('clearInputsBtn');
+  const deleteTxModal = $('deleteTxModal');
+  const deleteTxYes = $('deleteTxYes');
+  const deleteTxNo = $('deleteTxNo');
+  let pendingDeleteTxId = '';
+  const periodButtons = document.querySelectorAll('.period-btn');
+  const typeFilterButtons = document.querySelectorAll('.type-filter-btn');
+  const txTypeButtons = [];
+  const deductToggleBtn = $('deductToggleBtn');
+  const typeModal = $('typeModal');
+  const confirmCashIn = $('confirmCashIn');
+  const confirmCashOut = $('confirmCashOut');
+  const cancelTypeChoice = $('cancelTypeChoice');
+  const typeChoiceActions = $('typeChoiceActions');
+  const feeLocationStep = $('feeLocationStep');
+  const feeToGcash = $('feeToGcash');
+  const feeToCash = $('feeToCash');
+  const adjustCapitalBtn = $('adjustCapitalBtn');
+  const capitalModal = $('capitalModal');
+  const capitalCashInput = $('capitalCashInput');
+  const capitalGcashInput = $('capitalGcashInput');
+  const capitalModalStatus = $('capitalModalStatus');
+  const saveCapitalBtn = $('saveCapitalBtn');
+  const cancelCapitalBtn = $('cancelCapitalBtn');
+  const capitalStatus = $('capitalStatus');
+  const cashOutAvailable = $('cashOutAvailable');
+  const cashInAvailable = $('cashInAvailable');
+  const totalCapital = $('totalCapital');
+  const netEarnings = $('netEarnings');
+  const expectedTotalMoney = $('expectedTotalMoney');
+  const capitalExpensesTotal = $('capitalExpensesTotal');
+  const addExpenseBtn = $('addExpenseBtn');
+  const expenseHistoryToggle = $('expenseHistoryToggle');
+  const expenseHistorySection = $('expenseHistorySection');
+  const expenseHistoryList = $('expenseHistoryList');
+  const expenseHistoryEmpty = $('expenseHistoryEmpty');
+  const expenseModal = $('expenseModal');
+  const expenseNameInput = $('expenseNameInput');
+  const expenseAmountInput = $('expenseAmountInput');
+  const expenseNoteInput = $('expenseNoteInput');
+  const expensePaidCash = $('expensePaidCash');
+  const expensePaidGcash = $('expensePaidGcash');
+  const expenseModalStatus = $('expenseModalStatus');
+  const saveExpenseBtn = $('saveExpenseBtn');
+  const cancelExpenseBtn = $('cancelExpenseBtn');
+  let capitalData = null;
+  let expenses = [];
+  let expensePaidFrom = 'Cash';
+  let pendingPayload = null;
+
+  let history = [];
+  let selectedPeriod = 'today';
+  let selectedTypeFilter = 'all';
+  let selectedSpecificDate = '';
+  let unlocked = true;
+
+  const money = n => new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format(Number(n)||0);
+  const calcFee = v => v > 0 ? Math.ceil(v/500)*5 : 0;
+
+  function updateChangeStyle(value){
+    const box = change.closest('.result-change');
+    if(!box) return;
+    box.classList.toggle('no-change', !(Number(value) > 0));
+  }
+
+  function preview(){
+    const v = Number(amount.value), c = Number(cashReceived.value);
+    const isDeduct = chargeMode.value === 'deduct';
+
+    noExactCashWrap.classList.toggle('show', isDeduct);
+    if(!isDeduct && noExactCashMode){
+      noExactCashMode=false;
+      noExactCashBtn.classList.remove('active');
+      noExactCashBtn.setAttribute('aria-pressed','false');
+    }
+    cashReceivedLabel.textContent = noExactCashMode && isDeduct ? 'Cash Given' : 'Cash received';
+    changeLabel.textContent = noExactCashMode && isDeduct ? 'Change to Receive' : 'Change';
+    totalLabel.textContent = isDeduct ? 'Cash In/Out Amount' : 'Total';
+
+    if(!amount.value || !isFinite(v) || v <= 0){
+      fee.textContent = money(0);
+      total.textContent = money(0);
+      change.textContent = money(0);
+      updateChangeStyle(0);
+      return;
+    }
+
+    const f = calcFee(v);
+
+    if(isDeduct){
+      const net = Math.max(v - f, 0);
+      const basis = noExactCashMode ? net : v;
+      const ch = Math.max((isFinite(c)?c:0)-basis,0);
+      fee.textContent = money(f);
+      total.textContent = money(net);
+      change.textContent = money(ch);
+      updateChangeStyle(ch);
+    } else {
+      const t = v + f;
+      const ch = Math.max((isFinite(c)?c:0)-t,0);
+      fee.textContent = money(f);
+      total.textContent = money(t);
+      change.textContent = money(ch);
+      updateChangeStyle(ch);
+    }
+  }
+
+  function txDate(tx){ return new Date(tx.timestamp); }
+  function startToday(){ const d=new Date(); d.setHours(0,0,0,0); return d; }
+  function startWeek(){ const d=startToday(), day=d.getDay(), diff=day===0?6:day-1; d.setDate(d.getDate()-diff); return d; }
+  function startMonth(){ const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),1); }
+  function startYear(){ const d=new Date(); return new Date(d.getFullYear(),0,1); }
+  function filtered(){
+    let shown = history;
+
+    if(selectedSpecificDate){
+      shown = shown.filter(x => txLocalDateKey(x) === selectedSpecificDate);
+    } else if(selectedPeriod!=='all'){
+      const s = selectedPeriod==='today'?startToday():selectedPeriod==='week'?startWeek():selectedPeriod==='month'?startMonth():startYear();
+      shown = shown.filter(x => txDate(x) >= s);
+    }
+
+    if(selectedTypeFilter!=='all'){
+      shown = shown.filter(x => x.type === selectedTypeFilter);
+    }
+
+    return shown;
+  }
+  function periodName(){
+    if(selectedSpecificDate){
+      const parts=selectedSpecificDate.split('-').map(Number);
+      const d=new Date(parts[0],parts[1]-1,parts[2]);
+      return d.toLocaleDateString('en-PH',{month:'long',day:'numeric',year:'numeric'});
+    }
+    return selectedPeriod==='today'?'Daily':selectedPeriod==='week'?'Weekly':selectedPeriod==='month'?'Monthly':selectedPeriod==='year'?'Yearly':'All Time';
+  }
+
+  function render(){
+    const shown = filtered();
+    historyEl.innerHTML = '';
+    emptyEl.style.display = shown.length ? 'none' : 'block';
+
+    shown.forEach(tx => {
+      const item = document.createElement('div');
+      item.className='tx';
+      item.innerHTML = `
+        <div class="tx-top">
+          <div>
+            <div class="tx-type">
+              <span class="badge ${tx.type === 'Cash In' ? 'badge-cashin' : 'badge-cashout'}">${tx.type}</span>
+            </div>
+            <div class="tx-date">${tx.date}</div>
+          </div>
+          <div class="tx-total">${money(tx.total)}</div>
+        </div>
+        <div class="tx-details">
+          <span>Amount: ${money(tx.amount)}</span><span>Fee/Earnings: ${money(tx.fee)}</span>
+          <span>Cash: ${money(tx.cashReceived)}</span><span>Change: ${money(tx.change)}</span>
+          ${tx.type === 'Cash Out' ? `<span style="grid-column:1/-1;text-align:left!important;font-weight:800;color:var(--text)">Fee Location: ${escapeHtml(tx.feeLocation || 'GCash')}</span>` : ''}
+          <span class="charge-method">
+            <span class="badge ${tx.chargeMode === 'deduct' ? 'badge-deduct' : tx.chargeMode === 'add' ? 'badge-add' : 'badge-neutral'}">
+              ${tx.chargeMode === 'deduct' ? 'Deduct fee from amount' : tx.chargeMode === 'add' ? 'Add fee on top' : 'Not recorded'}
+            </span>
+          </span>
+        </div>
+        <div class="tx-actions"><button class="link-btn" type="button" data-id="${tx.id}">Remove</button></div>`;
+      historyEl.appendChild(item);
+    });
+
+    const fees = shown.reduce((s,x)=>s+Number(x.fee||0),0);
+    const amt = shown.reduce((s,x)=>s+Number(x.amount||0),0);
+    const tot = shown.reduce((s,x)=>s+Number(x.total||0),0);
+    const ci = shown.filter(x=>x.type==='Cash In').reduce((s,x)=>s+Number(x.amount||0),0);
+    const co = shown.filter(x=>x.type==='Cash Out').reduce((s,x)=>s+Number(x.amount||0),0);
+
+    countText.textContent = `${shown.length} transaction${shown.length===1?'':'s'} · ${periodName()}`;
+    earningsLabel.textContent = `${periodName()} Earnings`;
+    sumFeesEl.textContent = money(fees); sumAmountEl.textContent = money(amt);
+    sumTotalEl.textContent = money(tot); sumCashInEl.textContent = money(ci); sumCashOutEl.textContent = money(co);
+    periodButtons.forEach(b=>b.classList.toggle('active',b.dataset.period===selectedPeriod));
+  }
+
+  function showSync(text, ok=false){
+    syncStatus.textContent = text;
+    syncStatus.style.color = ok ? 'var(--success)' : 'var(--muted)';
+  }
+
+  function setActiveOption(buttons,value){
+    buttons.forEach(btn=>btn.classList.toggle('active',btn.dataset.value===value));
+  }
+
+  function resetChargeMode(){
+    chargeMode.value = 'add';
+    deductToggleBtn.classList.remove('active');
+    deductToggleBtn.textContent = 'Deduct Fee';
+    preview();
+  }
+
+  deductToggleBtn.addEventListener('click',()=>{
+    const deducting = chargeMode.value !== 'deduct';
+    chargeMode.value = deducting ? 'deduct' : 'add';
+    deductToggleBtn.classList.toggle('active', deducting);
+    deductToggleBtn.textContent = deducting ? 'Deduct Fee ✓' : 'Deduct Fee';
+    preview();
+  });
+
+  function renderCapital(data){
+    capitalData = data || null;
+
+    if(!data || !data.initialized){
+      cashOutAvailable.textContent = money(0);
+      cashInAvailable.textContent = money(0);
+      totalCapital.textContent = money(0);
+      netEarnings.textContent = money(0);
+      expectedTotalMoney.textContent = money(0);
+      capitalExpensesTotal.textContent = money(0);
+      capitalStatus.textContent = unlocked ? 'Set your current balances to start monitoring.' : 'Loading your balances…';
+      document.querySelector('.cash-balance').classList.remove('negative');
+      document.querySelector('.gcash-balance').classList.remove('negative');
+      return;
+    }
+
+    cashOutAvailable.textContent = money(data.cashOnHand);
+    cashInAvailable.textContent = money(data.gcashBalance);
+    totalCapital.textContent = money(data.baseCapital ?? data.totalCapital);
+    netEarnings.textContent = money(data.netEarnings || 0);
+    expectedTotalMoney.textContent = money(data.expectedTotalMoney ?? (Number(data.cashOnHand||0)+Number(data.gcashBalance||0)));
+    capitalExpensesTotal.textContent = money(data.totalExpenses || 0);
+    capitalStatus.textContent = 'Base capital is separate from earnings. Expenses reduce net earnings.';
+    // Persist the latest complete on-screen state after successful mutations.
+    setTimeout(saveLocalTrackerCache, 0);
+
+    document.querySelector('.cash-balance').classList.toggle('negative', Number(data.cashOnHand) < 0);
+    document.querySelector('.gcash-balance').classList.toggle('negative', Number(data.gcashBalance) < 0);
+  }
+
+  function loadCapital(){
+    if(!unlocked) return;
+    google.script.run
+      .withSuccessHandler(renderCapital)
+      .withFailureHandler(err => {
+        capitalStatus.textContent = err.message || 'Could not load capital.';
+      })
+      .getCapitalBySession(getSessionToken());
+  }
+
+  function openCapitalModal(){
+    if(!unlocked){
+      status.textContent='';
+      status.className='status err';
+      return;
+    }
+    capitalCashInput.value = capitalData && capitalData.initialized ? Number(capitalData.cashOnHand || 0).toFixed(2) : '';
+    capitalGcashInput.value = capitalData && capitalData.initialized ? Number(capitalData.gcashBalance || 0).toFixed(2) : '';
+    capitalModalStatus.textContent = '';
+    capitalModal.classList.add('show');
+    capitalModal.style.display='flex';
+    capitalModal.setAttribute('aria-hidden','false');
+  }
+
+  function closeCapitalModal(){
+    capitalModal.classList.remove('show');
+    capitalModal.style.display='none';
+    capitalModal.setAttribute('aria-hidden','true');
+  }
+
+  adjustCapitalBtn.addEventListener('click', openCapitalModal);
+  cancelCapitalBtn.addEventListener('click', closeCapitalModal);
+  capitalModal.addEventListener('click',e=>{
+    if(e.target===capitalModal) closeCapitalModal();
+  });
+
+  saveCapitalBtn.addEventListener('click',()=>{
+    if(!unlocked) return;
+    const cash = Number(capitalCashInput.value);
+    const gcash = Number(capitalGcashInput.value);
+
+    if(!isFinite(cash) || cash < 0 || !isFinite(gcash) || gcash < 0){
+      capitalModalStatus.textContent='Enter valid balances.';
+      capitalModalStatus.className='status err';
+      return;
+    }
+
+    saveCapitalBtn.disabled=true;
+    capitalModalStatus.textContent='Saving…';
+    capitalModalStatus.className='status';
+
+    google.script.run
+      .withSuccessHandler(data=>{
+        saveCapitalBtn.disabled=false;
+        renderCapital(data);
+        closeCapitalModal();
+      })
+      .withFailureHandler(err=>{
+        saveCapitalBtn.disabled=false;
+        capitalModalStatus.textContent=err.message || 'Could not save capital.';
+        capitalModalStatus.className='status err';
+      })
+      .setCapitalBySession(getSessionToken(),cash,gcash);
+  });
+
+  function renderExpenses(){
+    expenseHistoryList.innerHTML = '';
+    expenseHistoryEmpty.style.display = expenses.length ? 'none' : 'block';
+
+    expenses.forEach(x => {
+      const item = document.createElement('div');
+      item.className = 'expense-item';
+      item.innerHTML = `
+        <div class="expense-item-top">
+          <div>
+            <div class="expense-item-title">${escapeHtml(x.expense || 'Expense')}</div>
+            <div class="expense-item-meta">${escapeHtml(x.date)} · Deducted from Earnings · Paid from ${escapeHtml(x.paidFrom === 'GCash' ? 'GCash Balance' : 'Cash on Hand')}</div>
+          </div>
+          <div class="expense-item-amount">-${money(x.amount)}</div>
+        </div>
+        ${x.note ? `<div class="expense-item-note">${escapeHtml(x.note)}</div>` : ''}
+        <div class="expense-item-actions">
+          <button type="button" class="expense-remove" data-expense-id="${x.id}">Remove</button>
+        </div>`;
+      expenseHistoryList.appendChild(item);
+    });
+  }
+
+  function escapeHtml(value){
+    return String(value ?? '')
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#039;');
+  }
+
+  function loadExpenses(){
+    if(!unlocked) return;
+    google.script.run
+      .withSuccessHandler(data=>{
+        expenses = data || [];
+        renderExpenses();
+      })
+      .withFailureHandler(()=>{})
+      .getExpensesBySession(getSessionToken());
+  }
+
+  function setExpensePaidFrom(value){
+    expensePaidFrom = value === 'GCash' ? 'GCash' : 'Cash';
+    expensePaidCash.classList.toggle('active', expensePaidFrom === 'Cash');
+    expensePaidGcash.classList.toggle('active', expensePaidFrom === 'GCash');
+  }
+
+  function openExpenseModal(){
+    if(!unlocked){
+      status.textContent='';
+      status.className='status err';
+      return;
+    }
+    expenseNameInput.value='';
+    expenseAmountInput.value='';
+    expenseNoteInput.value='';
+    expenseModalStatus.textContent='';
+    setExpensePaidFrom('Cash');
+    expenseModal.classList.add('show');
+    expenseModal.style.display='flex';
+    expenseModal.setAttribute('aria-hidden','false');
+  }
+
+  function closeExpenseModal(){
+    expenseModal.classList.remove('show');
+    expenseModal.style.display='none';
+    expenseModal.setAttribute('aria-hidden','true');
+  }
+
+  addExpenseBtn.addEventListener('click', openExpenseModal);
+  cancelExpenseBtn.addEventListener('click', closeExpenseModal);
+  expensePaidCash.addEventListener('click',()=>setExpensePaidFrom('Cash'));
+  expensePaidGcash.addEventListener('click',()=>setExpensePaidFrom('GCash'));
+  expenseModal.addEventListener('click',e=>{
+    if(e.target===expenseModal) closeExpenseModal();
+  });
+
+  expenseHistoryToggle.addEventListener('click',()=>{
+    const open = expenseHistorySection.style.display !== 'none';
+    expenseHistorySection.style.display = open ? 'none' : 'block';
+    expenseHistoryToggle.textContent = open ? 'View Expense History' : 'Hide Expense History';
+  });
+
+  saveExpenseBtn.addEventListener('click',()=>{
+    if(!unlocked) return;
+    const expAmount = Number(expenseAmountInput.value);
+    if(!isFinite(expAmount) || expAmount <= 0){
+      expenseModalStatus.textContent='Enter a valid expense amount.';
+      expenseModalStatus.className='status err';
+      return;
+    }
+
+    saveExpenseBtn.disabled=true;
+    expenseModalStatus.textContent='Saving…';
+    expenseModalStatus.className='status';
+
+    google.script.run
+      .withSuccessHandler(expense=>{
+        saveExpenseBtn.disabled=false;
+        expenses.unshift(expense);
+        renderExpenses();
+        closeExpenseModal();
+        loadCapital();
+      })
+      .withFailureHandler(err=>{
+        saveExpenseBtn.disabled=false;
+        expenseModalStatus.textContent=err.message || 'Could not save expense.';
+        expenseModalStatus.className='status err';
+      })
+      .addExpenseBySession(getSessionToken(),{
+        expense: expenseNameInput.value,
+        amount: expAmount,
+        paidFrom: expensePaidFrom,
+        note: expenseNoteInput.value
+      });
+  });
+
+  expenseHistoryList.addEventListener('click',e=>{
+    const btn = e.target.closest('[data-expense-id]');
+    if(!btn || !unlocked) return;
+    const id = btn.dataset.expenseId;
+    if(!confirm('Remove this capital expense?')) return;
+
+    google.script.run
+      .withSuccessHandler(()=>{
+        expenses = expenses.filter(x=>x.id!==id);
+        renderExpenses();
+        loadCapital();
+      })
+      .withFailureHandler(err=>alert(err.message || 'Could not remove expense.'))
+      .deleteExpenseBySession(getSessionToken(),id);
+  });
+
+  const SESSION_KEY = 'gcashGoogleSession';
+  const SESSION_DB = 'GCashTrackerAuth';
+  const SESSION_STORE = 'auth';
+  let sessionTokenCache = '';
+
+  function readCookieSession(){
+    try{
+      const m = document.cookie.match(new RegExp('(?:^|;\\s*)' + SESSION_KEY + '=([^;]*)'));
+      return m ? decodeURIComponent(m[1]) : '';
+    }catch(e){
+      return '';
+    }
+  }
+
+  function writeCookieSession(token){
+    try{
+      document.cookie = SESSION_KEY + '=' + encodeURIComponent(token || '') +
+        '; Max-Age=315360000; Path=/; SameSite=Lax; Secure';
+    }catch(e){}
+  }
+
+  function clearCookieSession(){
+    try{
+      document.cookie = SESSION_KEY + '=; Max-Age=0; Path=/; SameSite=Lax; Secure';
+    }catch(e){}
+  }
+
+  function openSessionDb(){
+    return new Promise((resolve,reject)=>{
+      if(!window.indexedDB) return reject(new Error('IndexedDB unavailable'));
+      const req = indexedDB.open(SESSION_DB,1);
+      req.onupgradeneeded = ()=>{
+        const db=req.result;
+        if(!db.objectStoreNames.contains(SESSION_STORE)){
+          db.createObjectStore(SESSION_STORE);
+        }
+      };
+      req.onsuccess=()=>resolve(req.result);
+      req.onerror=()=>reject(req.error || new Error('Could not open session storage'));
+    });
+  }
+
+  async function readIndexedSession(){
+    try{
+      const db=await openSessionDb();
+      return await new Promise((resolve,reject)=>{
+        const tx=db.transaction(SESSION_STORE,'readonly');
+        const req=tx.objectStore(SESSION_STORE).get(SESSION_KEY);
+        req.onsuccess=()=>resolve(String(req.result || ''));
+        req.onerror=()=>reject(req.error);
+      });
+    }catch(e){
+      return '';
+    }
+  }
+
+  async function writeIndexedSession(token){
+    try{
+      const db=await openSessionDb();
+      await new Promise((resolve,reject)=>{
+        const tx=db.transaction(SESSION_STORE,'readwrite');
+        tx.objectStore(SESSION_STORE).put(String(token || ''),SESSION_KEY);
+        tx.oncomplete=()=>resolve();
+        tx.onerror=()=>reject(tx.error);
+      });
+    }catch(e){}
+  }
+
+  async function clearIndexedSession(){
+    try{
+      const db=await openSessionDb();
+      await new Promise((resolve,reject)=>{
+        const tx=db.transaction(SESSION_STORE,'readwrite');
+        tx.objectStore(SESSION_STORE).delete(SESSION_KEY);
+        tx.oncomplete=()=>resolve();
+        tx.onerror=()=>reject(tx.error);
+      });
+    }catch(e){}
+  }
+
+  function getSessionToken(){
+    return 'LOCAL_NO_LOGIN';
+  }
+
+  async function restoreSessionToken(){
+    let token = getSessionToken();
+    if(!token){
+      token = await readIndexedSession();
+    }
+    if(token){
+      sessionTokenCache = token;
+      try{ localStorage.setItem(SESSION_KEY,token); }catch(e){}
+      writeCookieSession(token);
+      writeIndexedSession(token);
+    }
+    return token || '';
+  }
+
+  function saveSessionToken(token){
+    sessionTokenCache = String(token || '');
+    try{ localStorage.setItem(SESSION_KEY,sessionTokenCache); }catch(e){}
+    writeCookieSession(sessionTokenCache);
+    writeIndexedSession(sessionTokenCache);
+  }
+
+  function clearSessionToken(){
+    sessionTokenCache = '';
+    try{ localStorage.removeItem(SESSION_KEY); }catch(e){}
+    clearCookieSession();
+    clearIndexedSession();
+  }
+
+  function setLockedView(locked){
+    document.body.classList.remove('app-locked');
+    if(signedOutAuth) signedOutAuth.style.display = 'none';
+    if(signedInAuth) signedInAuth.style.display = 'none';
+  }
+
+  function applySignedInUser(user){
+    if(signedInEmail) signedInEmail.textContent = user && user.email ? user.email : '';
+    if(claimLegacyBtn){
+      claimLegacyBtn.style.display = user && user.legacyAvailable ? 'block' : 'none';
+    }
+  }
+
+  const LOCAL_CACHE_KEY = 'gcashTrackerAllRecordsV2';
+
+  function saveLocalTrackerCache(){
+    try{
+      const snapshot = {
+        version: 2,
+        savedAt: Date.now(),
+        transactions: Array.isArray(history) ? history : [],
+        expenses: Array.isArray(expenses) ? expenses : [],
+        capital: capitalData || null
+      };
+      localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(snapshot));
+    }catch(e){}
+  }
+
+  function loadLocalTrackerCache(){
+    try{
+      const raw = localStorage.getItem(LOCAL_CACHE_KEY);
+      if(!raw) return false;
+
+      const data = JSON.parse(raw);
+      history = Array.isArray(data.transactions) ? data.transactions : [];
+      expenses = Array.isArray(data.expenses) ? data.expenses : [];
+      capitalData = data.capital || null;
+      unlocked = true;
+
+      // Paint saved data immediately before any server request starts.
+      render();
+      renderExpenses();
+      renderCapital(capitalData);
+      setLockedView(false);
+      showSync('Saved records loaded. Syncing…');
+      return true;
+    }catch(e){
+      return false;
+    }
+  }
+
+  function loadAllWithSession(token){
+    unlocked=true;
+    setLockedView(false);
+    showSync('Syncing your records…');
+
+    google.script.run
+      .withSuccessHandler(data=>{
+        history=(data && data.transactions)||[];
+        expenses=(data && data.expenses)||[];
+        capitalData=(data && data.capital)||null;
+        unlocked=true;
+        render();
+        renderExpenses();
+        renderCapital(capitalData);
+        saveLocalTrackerCache();
+        setLockedView(false);
+        showSync('Synced.',true);
+      })
+      .withFailureHandler(err=>{
+        unlocked=true;
+        const msg = (err && err.message) || 'Could not sync records.';
+        setLockedView(false);
+        showSync(msg + ' Saved records remain available.');
+      })
+      .getAppDataBySession('LOCAL_NO_LOGIN');
+  }
+
+  function openGoogleAuth(){
+    googleSignInBtn.disabled=true;
+    showSync('Opening Google sign-in…');
+
+    google.script.run
+      .withSuccessHandler(url=>{
+        googleSignInBtn.disabled=false;
+        window.top.location.href=url;
+      })
+      .withFailureHandler(err=>{
+        googleSignInBtn.disabled=false;
+        showSync((err && err.message) || 'Google sign-in is not configured.');
+      })
+      .getGoogleSignInUrl();
+  }
+
+  function consumeBootstrapHandoff(handoff){
+    showSync('Restoring your Google account…');
+    google.script.run
+      .withSuccessHandler(token=>{
+        saveSessionToken(token);
+        loadAllWithSession(token);
+      })
+      .withFailureHandler(err=>{
+        showSync((err && err.message) || 'Sign-in handoff expired. Sign in again.');
+      })
+      .consumeSessionHandoff(handoff);
+  }
+
+  function restoreFromTrustedDevice(deviceToken){
+    showSync('Restoring your Google account…');
+    google.script.run
+      .withSuccessHandler(token=>{
+        saveSessionToken(token);
+        loadAllWithSession(token);
+      })
+      .withFailureHandler(err=>{
+        clearSessionToken();
+        showSync((err && err.message) || 'This device needs Google sign-in again.');
+      })
+      .restoreSessionFromDevice(deviceToken);
+  }
+
+  googleSignInBtn.addEventListener('click',()=>{
+    openGoogleAuth();
+  });
+
+  if(accountMenuBtn && accountPopover){
+    accountMenuBtn.addEventListener('click',(e)=>{
+      e.stopPropagation();
+      const opening = !accountPopover.classList.contains('show');
+      accountPopover.classList.toggle('show', opening);
+      accountMenuBtn.setAttribute('aria-expanded', opening ? 'true' : 'false');
+    });
+
+    accountPopover.addEventListener('click',e=>e.stopPropagation());
+
+    document.addEventListener('click',()=>{
+      accountPopover.classList.remove('show');
+      accountMenuBtn.setAttribute('aria-expanded','false');
+    });
+  }
+
+  if(pairHomeBtn){
+    pairHomeBtn.addEventListener('click',()=>{
+      const token=getSessionToken();
+      if(!token){
+        showSync('');
+        return;
+      }
+
+      pairHomeBtn.disabled=true;
+      showSync('Preparing Home Screen pairing…');
+
+      google.script.run
+        .withSuccessHandler(url=>{
+          pairHomeBtn.disabled=false;
+          if(accountPopover) accountPopover.classList.remove('show');
+          if(accountMenuBtn) accountMenuBtn.setAttribute('aria-expanded','false');
+          window.top.location.href=url;
+        })
+        .withFailureHandler(err=>{
+          pairHomeBtn.disabled=false;
+          showSync((err && err.message) || 'Could not prepare Home Screen pairing.');
+        })
+        .createHomeScreenPairingLink(token);
+    });
+  }
+
+  signOutBtn.addEventListener('click',()=>{
+    const token=getSessionToken();
+    const device=BOOTSTRAP_DEVICE || '';
+    if(accountPopover) accountPopover.classList.remove('show');
+    if(accountMenuBtn) accountMenuBtn.setAttribute('aria-expanded','false');
+    clearSessionToken();
+    unlocked=false;
+    history=[]; expenses=[]; capitalData=null;
+    render(); renderExpenses(); renderCapital(null);
+    setLockedView(true);
+    showSync('Signing out…');
+
+    google.script.run
+      .withSuccessHandler(()=>{
+        showSync('Signed out. Calculator is still available.');
+        try{ window.parent.postMessage({type:'gcash-signout'}, '*'); }catch(e){}
+      })
+      .withFailureHandler(()=>{
+        showSync('Signed out on this page.');
+        try{ window.parent.postMessage({type:'gcash-signout'}, '*'); }catch(e){}
+      })
+      .signOutGoogleSession(token,device);
+  });
+
+  claimLegacyBtn.addEventListener('click',()=>{
+    const token=getSessionToken();
+    if(!token) return;
+    if(!confirm('Import all existing records from the old PIN version into this Google account? This can only be done once.')) return;
+
+    claimLegacyBtn.disabled=true;
+    if(authStatus){
+      authStatus.textContent='Importing existing records…';
+      authStatus.className='status';
+    }
+
+    google.script.run
+      .withSuccessHandler(data=>{
+        claimLegacyBtn.disabled=false;
+        history=(data && data.transactions)||[];
+        expenses=(data && data.expenses)||[];
+        capitalData=(data && data.capital)||null;
+        applySignedInUser((data && data.user)||{});
+        render(); renderExpenses(); renderCapital(capitalData);
+        if(authStatus){
+          authStatus.textContent='Existing records imported to this account.';
+          authStatus.className='status ok';
+        }
+      })
+      .withFailureHandler(err=>{
+        claimLegacyBtn.disabled=false;
+        if(authStatus){
+          authStatus.textContent=(err && err.message)||'Could not import existing records.';
+          authStatus.className='status err';
+        }
+      })
+      .claimLegacyData(token);
+  });
+
+  refreshBtn.addEventListener('click',()=>{
+    loadAllWithSession('LOCAL_NO_LOGIN');
+  });
+
+  noExactCashBtn.addEventListener('click',()=>{
+    if(chargeMode.value !== 'deduct') return;
+    noExactCashMode = !noExactCashMode;
+    noExactCashBtn.classList.toggle('active', noExactCashMode);
+    noExactCashBtn.setAttribute('aria-pressed', noExactCashMode ? 'true' : 'false');
+    cashReceived.value='';
+    preview();
+    if(noExactCashMode) cashReceived.focus();
+  });
+
+  amount.addEventListener('input', preview);
+  cashReceived.addEventListener('input', preview);
+
+  clearInputsBtn.addEventListener('click', () => {
+    amount.value = '';
+    cashReceived.value = '';
+    noExactCashMode=false;
+    noExactCashBtn.classList.remove('active');
+    noExactCashBtn.setAttribute('aria-pressed','false');
+    status.textContent = '';
+    status.className = 'status';
+    resetChargeMode();
+    amount.focus();
+  });
+
+  periodButtons.forEach(btn=>btn.addEventListener('click',function(){
+    selectedPeriod=this.dataset.period;
+    periodButtons.forEach(b=>b.classList.toggle('active', b===this));
+    render();
+  }));
+
+  typeFilterButtons.forEach(btn=>btn.addEventListener('click',function(){
+    selectedTypeFilter=this.dataset.typefilter;
+    typeFilterButtons.forEach(b=>b.classList.toggle('active', b===this));
+    render();
+  }));
+
+  function closeTypeModal(){
+    typeModal.classList.remove('show');
+    typeModal.style.display='none';
+    typeModal.setAttribute('aria-hidden','true');
+    if(typeChoiceActions) typeChoiceActions.style.display='grid';
+    if(feeLocationStep) feeLocationStep.classList.remove('show');
+  }
+
+  function savePendingTransaction(type){
+    if(!pendingPayload) return;
+    pendingPayload.type = type;
+    closeTypeModal();
+    status.textContent='Saving…'; status.className='status';
+
+    google.script.run
+      .withSuccessHandler(tx => {
+        history.unshift(tx);
+        render();
+        amount.value='';
+        cashReceived.value='';
+        txType.value='';
+        pendingPayload=null;
+        resetChargeMode();
+        loadCapital();
+        status.textContent='Transaction recorded.';
+        status.className='status ok';
+      })
+      .withFailureHandler(err => {
+        pendingPayload=null;
+        status.textContent=err.message || 'Could not save transaction.';
+        status.className='status err';
+      })
+      .addTransactionBySession(getSessionToken(),pendingPayload);
+  }
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    if(!unlocked){ status.textContent=''; status.className='status err'; return; }
+
+    const enteredAmount=Number(amount.value);
+    const enteredCash=Number(cashReceived.value||0);
+    if(!isFinite(enteredAmount) || enteredAmount<=0){
+      status.textContent='Enter a valid amount.';
+      status.className='status err';
+      return;
+    }
+
+    pendingPayload={
+      type:'',
+      chargeMode:chargeMode.value,
+      amount:enteredAmount,
+      cashReceived:isFinite(enteredCash)?enteredCash:0,
+      feeLocation:''
+    };
+    typeModal.classList.add('show');
+    typeModal.style.display='flex';
+    typeModal.setAttribute('aria-hidden','false');
+  });
+
+  confirmCashIn.addEventListener('click',()=>{
+    if(pendingPayload) pendingPayload.feeLocation='';
+    savePendingTransaction('Cash In');
+  });
+
+  confirmCashOut.addEventListener('click',()=>{
+    if(!pendingPayload) return;
+    pendingPayload.type='Cash Out';
+    pendingPayload.feeLocation='';
+    if(typeChoiceActions) typeChoiceActions.style.display='none';
+    if(feeLocationStep) feeLocationStep.classList.add('show');
+  });
+
+  feeToGcash.addEventListener('click',()=>{
+    if(!pendingPayload) return;
+    pendingPayload.feeLocation='GCash';
+    savePendingTransaction('Cash Out');
+  });
+
+  feeToCash.addEventListener('click',()=>{
+    if(!pendingPayload) return;
+    pendingPayload.feeLocation='Cash on Hand';
+    savePendingTransaction('Cash Out');
+  });
+
+  cancelTypeChoice.addEventListener('click',()=>{
+    pendingPayload=null;
+    closeTypeModal();
+  });
+  typeModal.addEventListener('click',e=>{
+    if(e.target===typeModal){
+      pendingPayload=null;
+      closeTypeModal();
+    }
+  });
+
+
+  historyEl.addEventListener('click', e=>{
+    const btn = e.target.closest && e.target.closest('[data-id]');
+    if(!btn) return;
+
+    pendingDeleteTxId = String(btn.dataset.id || '');
+    if(!pendingDeleteTxId) return;
+
+    deleteTxModal.classList.add('show');
+    deleteTxModal.setAttribute('aria-hidden','false');
+  });
+
+  function closeDeleteTxModal(){
+    pendingDeleteTxId = '';
+    deleteTxModal.classList.remove('show');
+    deleteTxModal.setAttribute('aria-hidden','true');
+  }
+
+  deleteTxNo.addEventListener('click', closeDeleteTxModal);
+
+  deleteTxModal.addEventListener('click', e=>{
+    if(e.target === deleteTxModal) closeDeleteTxModal();
+  });
+
+  deleteTxYes.addEventListener('click', ()=>{
+    const id = pendingDeleteTxId;
+    if(!id) return;
+
+    deleteTxYes.disabled = true;
+    deleteTxYes.textContent = 'Deleting…';
+
+    google.script.run
+      .withSuccessHandler(()=>{
+        history = history.filter(x => String(x.id) !== String(id));
+        render();
+        loadCapital();
+        deleteTxYes.disabled = false;
+        deleteTxYes.textContent = 'Yes, Delete';
+        closeDeleteTxModal();
+      })
+      .withFailureHandler(err=>{
+        deleteTxYes.disabled = false;
+        deleteTxYes.textContent = 'Yes, Delete';
+        alert((err && err.message) || 'Could not delete transaction.');
+      })
+      .deleteTransactionBySession(getSessionToken(), id);
+  });
+
+  clearBtn.addEventListener('click', () => {
+    if(!unlocked || !history.length) return;
+    if(!confirm('Clear ALL synced transaction history on every device?')) return;
+    google.script.run
+      .withSuccessHandler(() => { history=[]; render(); loadCapital(); })
+      .withFailureHandler(err => alert(err.message || 'Could not clear history.'))
+      .clearTransactionsBySession(getSessionToken());
+  });
+
+  // Restore the account from durable browser storage.
+  sessionStorage.removeItem('cashAppPin');
+  txType.value=''; resetChargeMode(); render(); renderCapital(null); renderExpenses();
+
+  function restoreSignedInState(){
+    unlocked=true;
+    setLockedView(false);
+
+    const restored = loadLocalTrackerCache();
+
+    // Give Safari/Home Screen mode time to paint the cached snapshot first.
+    // Google Sheets sync starts only after the saved records are already visible.
+    setTimeout(()=>{
+      loadAllWithSession('LOCAL_NO_LOGIN');
+    }, restored ? 250 : 0);
+  }
+
+  // No account restoration is needed in no-login mode.
+  restoreSignedInState();
+})();
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const historyToggle = document.getElementById('historyToggle');
+  const historySection = document.getElementById('historySection');
+
+  function setHistoryOpen(open){
+    if(!historyToggle || !historySection) return;
+
+    historySection.classList.toggle('history-open', open);
+    historySection.classList.toggle('collapsed', !open);
+    historyToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+    if(open){
+      setTimeout(()=>{
+        historySection.scrollIntoView({behavior:'smooth', block:'start'});
+      },50);
+    }
+  }
+
+  if(historyToggle && historySection){
+    historyToggle.addEventListener('click', e=>{
+      e.stopPropagation();
+      setHistoryOpen(!historySection.classList.contains('history-open'));
+    });
+  }
+});
+
+  // iPhone keyboard helper: keep the original page position after typing.
+  let inputStartScrollY = 0;
+  const iosInputs = document.querySelectorAll('#amount, #cashReceived');
+
+  iosInputs.forEach(el => {
+    el.addEventListener('touchstart', () => {
+      inputStartScrollY = window.scrollY || window.pageYOffset || 0;
+    }, {passive:true});
+
+    el.addEventListener('focus', () => {
+      inputStartScrollY = window.scrollY || window.pageYOffset || inputStartScrollY || 0;
+    });
+
+    el.addEventListener('blur', () => {
+      const restoreY = inputStartScrollY;
+      setTimeout(() => window.scrollTo(0, restoreY), 120);
+    });
+  });
+
+
+  const specificDateBtn = document.getElementById('specificDateBtn');
+  const specificDateWrap = document.getElementById('specificDateWrap');
+  const specificDateInput = document.getElementById('specificDateInput');
+  const applySpecificDateBtn = document.getElementById('applySpecificDateBtn');
+  const clearSpecificDateBtn = document.getElementById('clearSpecificDateBtn');
+
+  function txLocalDateKey(tx){
+    const raw = tx && (tx.timestamp || tx.date);
+    const d = raw ? new Date(raw) : null;
+    if(!d || isNaN(d.getTime())) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const day = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function setSpecificDateMode(on){
+    if(!specificDateWrap) return;
+    specificDateWrap.style.display = on ? 'grid' : 'none';
+    if(specificDateBtn){
+      specificDateBtn.classList.toggle('active', !!on);
+    }
+  }
+
+  if(specificDateBtn){
+    specificDateBtn.addEventListener('click',()=>{
+      const opening = specificDateWrap.style.display === 'none' || !specificDateWrap.style.display;
+      setSpecificDateMode(opening);
+      if(opening && specificDateInput) specificDateInput.focus();
+    });
+  }
+
+  if(applySpecificDateBtn){
+    applySpecificDateBtn.addEventListener('click',()=>{
+      if(!specificDateInput || !specificDateInput.value) return;
+      selectedSpecificDate = specificDateInput.value;
+      render();
+    });
+  }
+
+  if(clearSpecificDateBtn){
+    clearSpecificDateBtn.addEventListener('click',()=>{
+      selectedSpecificDate = '';
+      if(specificDateInput) specificDateInput.value = '';
+      setSpecificDateMode(false);
+      render();
+    });
+  }
+
+
+  document.addEventListener('click', (e)=>{
+    const b = e.target.closest && e.target.closest('[data-period]');
+    if(!b) return;
+    selectedSpecificDate = ''; // reset when period changes
+    if(specificDateInput) specificDateInput.value = '';
+    setSpecificDateMode(false);
+  });
+
+</script>
+
+
 </body>
 </html>
