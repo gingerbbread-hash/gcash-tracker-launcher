@@ -1425,6 +1425,8 @@ body.app-locked #historyToggle{
   let seq = 0;
 
   window.addEventListener('message', function(event){
+    // Apps Script redirects its iframe to googleusercontent.com.
+    // Verify the iframe window itself instead of assuming a fixed Google origin.
     if(event.source !== frame.contentWindow) return;
 
     const msg = event.data || {};
