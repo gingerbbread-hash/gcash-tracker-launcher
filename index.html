@@ -1118,28 +1118,51 @@ body.app-locked #historyToggle{
   .expected-total-row span{font-size:12px;font-weight:800;color:var(--muted)}
   .expected-total-row strong{font-size:17px;font-weight:900;color:var(--text)}
 
-
-  /* Hidden Apps Script data bridge for GitHub Pages */
-  #gcashBridgeFrame{
+  #pairingOverlay{
     position:fixed;
-    width:1px;
-    height:1px;
-    opacity:0;
-    pointer-events:none;
-    border:0;
-    left:-9999px;
-    top:-9999px;
+    inset:0;
+    z-index:20000;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+    background:rgba(0,0,0,.52);
   }
+  .pairing-card{
+    width:min(390px,100%);
+    background:#fff;
+    border-radius:20px;
+    padding:22px;
+    box-shadow:0 20px 60px rgba(0,0,0,.25);
+    color:#172033;
+  }
+  .pairing-title{font-size:20px;font-weight:900;text-align:center;margin-bottom:8px}
+  .pairing-note{font-size:12px;line-height:1.45;color:#667085;text-align:center;margin-bottom:14px}
+  #pairingCodeInput{
+    width:100%;
+    min-height:52px;
+    border:1px solid #d9e5f5;
+    border-radius:12px;
+    font-size:22px !important;
+    text-align:center;
+    letter-spacing:6px;
+    margin-bottom:10px;
+  }
+  #pairingBtn{
+    width:100%;
+    min-height:48px;
+    border:0;
+    border-radius:12px;
+    background:#0b5ed7;
+    color:#fff;
+    font-size:15px;
+    font-weight:900;
+  }
+  #pairingStatus{min-height:18px;margin-top:8px;font-size:12px;text-align:center;color:#667085}
 
 </style>
 </head>
 <body>
-<iframe
-  id="gcashBridgeFrame"
-  title="GCash Tracker data bridge"
-  src="https://script.google.com/macros/s/AKfycbzHZBbsTHU5rRMrO4iNCizaQHd1SqVMb1NgWFSRvw8UHf_zdJTLJEQHYZTouUfvpknouw/exec?bridge=1">
-</iframe>
-
 <main class="app">
   <section class="hero">
     <h1 class="cash-app-title"><span class="tracker-title-line">GCash Tracker</span></h1>
@@ -1418,107 +1441,138 @@ body.app-locked #historyToggle{
 
 <script>
 (function(){
-  const BRIDGE_ORIGIN = '*';
-  const frame = document.getElementById('gcashBridgeFrame');
-  const pending = new Map();
-  let bridgeReady = false;
-  let seq = 0;
+  const API_URL = 'https://script.google.com/macros/s/AKfycbzHZBbsTHU5rRMrO4iNCizaQHd1SqVMb1NgWFSRvw8UHf_zdJTLJEQHYZTouUfvpknouw/exec';
+  const DEVICE_KEY = 'gcashGithubDeviceTokenV1';
+  let deviceToken = '';
 
-  window.addEventListener('message', function(event){
-    // Apps Script redirects its iframe to googleusercontent.com.
-    // Verify the iframe window itself instead of assuming a fixed Google origin.
-    if(event.source !== frame.contentWindow) return;
+  try{ deviceToken = localStorage.getItem(DEVICE_KEY) || ''; }catch(e){}
 
-    const msg = event.data || {};
-    if(msg.source !== 'gcash-tracker-bridge') return;
-
-    if(msg.ready){
-      bridgeReady = true;
-      window.dispatchEvent(new Event('gcash-bridge-ready'));
-      return;
-    }
-
-    const item = pending.get(msg.id);
-    if(!item) return;
-    pending.delete(msg.id);
-
-    if(msg.ok) item.resolve(msg.data);
-    else item.reject(new Error(msg.error || 'Bridge request failed.'));
+  let resolveDevice;
+  const deviceReady = new Promise(resolve=>{
+    resolveDevice = resolve;
+    if(deviceToken) resolve(deviceToken);
   });
 
-  function bridgeRequest(method,args){
+  function jsonpRequest(method,args,extra){
     return new Promise((resolve,reject)=>{
-      const id = 'g' + Date.now() + '_' + (++seq);
-      pending.set(id,{resolve,reject});
+      const cb = '__gcash_cb_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+      const script = document.createElement('script');
+      const params = new URLSearchParams();
 
-      function send(){
-        try{
-          frame.contentWindow.postMessage({
-            source:'gcash-tracker',
-            id,
-            method,
-            args:Array.isArray(args) ? args : []
-          }, BRIDGE_ORIGIN);
-        }catch(err){
-          pending.delete(id);
-          reject(err);
-        }
+      params.set('api','1');
+      params.set('callback',cb);
+      params.set('method',method);
+      params.set('_',String(Date.now()));
+
+      if(Array.isArray(args) && args.length){
+        params.set('args',JSON.stringify(args));
+      }
+      if(extra && extra.device) params.set('device',extra.device);
+      if(extra && extra.pairCode) params.set('pairCode',extra.pairCode);
+
+      let timeout = setTimeout(()=>{
+        cleanup();
+        reject(new Error('Google Sheets connection timed out.'));
+      },15000);
+
+      function cleanup(){
+        clearTimeout(timeout);
+        try{ delete window[cb]; }catch(e){}
+        if(script.parentNode) script.parentNode.removeChild(script);
       }
 
-      if(bridgeReady) send();
-      else{
-        const ready = ()=>{ window.removeEventListener('gcash-bridge-ready',ready); send(); };
-        window.addEventListener('gcash-bridge-ready',ready);
-        setTimeout(()=>{
-          if(pending.has(id) && !bridgeReady){
-            window.removeEventListener('gcash-bridge-ready',ready);
-            pending.delete(id);
-            reject(new Error('Could not connect to Google Sheets.'));
-          }
-        },10000);
-      }
+      window[cb] = function(result){
+        cleanup();
+        if(result && result.ok) resolve(result.data);
+        else reject(new Error((result && result.error) || 'Request failed.'));
+      };
+
+      script.onerror = function(){
+        cleanup();
+        reject(new Error('Could not connect to Apps Script.'));
+      };
+
+      script.src = API_URL + '?' + params.toString();
+      document.head.appendChild(script);
     });
   }
 
-  function makeRunner(){
+  function pairDevice(code){
+    return jsonpRequest('pairDevice',[],{pairCode:String(code||'').trim()})
+      .then(data=>{
+        const token = data && data.deviceToken ? String(data.deviceToken) : '';
+        if(!token) throw new Error('Pairing did not return a device token.');
+        deviceToken = token;
+        try{ localStorage.setItem(DEVICE_KEY,token); }catch(e){}
+        resolveDevice(token);
+        return token;
+      });
+  }
+
+  // Simple pairing prompt shown only on an unpaired browser/device.
+  if(!deviceToken){
+    window.addEventListener('DOMContentLoaded',()=>{
+      const overlay = document.createElement('div');
+      overlay.id = 'pairingOverlay';
+      overlay.innerHTML = `
+        <div class="pairing-card">
+          <div class="pairing-title">Pair GCash Tracker</div>
+          <div class="pairing-note">Enter the 6-digit pairing code from Apps Script. You only need to do this once on this device.</div>
+          <input id="pairingCodeInput" inputmode="numeric" maxlength="6" placeholder="6-digit code">
+          <button id="pairingBtn" type="button">Pair This Device</button>
+          <div id="pairingStatus"></div>
+        </div>`;
+      document.body.appendChild(overlay);
+
+      const input = document.getElementById('pairingCodeInput');
+      const btn = document.getElementById('pairingBtn');
+      const status = document.getElementById('pairingStatus');
+
+      btn.addEventListener('click',()=>{
+        const code = input.value.trim();
+        if(!/^\d{6}$/.test(code)){
+          status.textContent='Enter the 6-digit code.';
+          return;
+        }
+        btn.disabled=true;
+        status.textContent='Pairing…';
+        pairDevice(code)
+          .then(()=>{
+            status.textContent='Paired. Loading records…';
+            overlay.remove();
+          })
+          .catch(err=>{
+            btn.disabled=false;
+            status.textContent=err.message || 'Pairing failed.';
+          });
+      });
+    });
+  }
+
+  // Emulate google.script.run so the existing tracker code can stay unchanged.
+  function newRunner(){
     let success = null;
     let failure = null;
-
-    return new Proxy({},{
-      get(target,prop){
-        if(prop === 'withSuccessHandler'){
-          return fn => { success = fn; return targetProxy; };
-        }
-        if(prop === 'withFailureHandler'){
-          return fn => { failure = fn; return targetProxy; };
-        }
-
-        return (...args)=>{
-          bridgeRequest(String(prop),args)
-            .then(data=>{ if(typeof success === 'function') success(data); })
-            .catch(err=>{ if(typeof failure === 'function') failure(err); });
-        };
-      }
-    });
-
-    var targetProxy;
-  }
-
-  // Rebuild makeRunner without the forward-reference issue.
-  function newRunner(){
-    let success = null, failure = null;
     let proxy;
+
     proxy = new Proxy({},{
       get(target,prop){
-        if(prop === 'withSuccessHandler') return fn => { success = fn; return proxy; };
-        if(prop === 'withFailureHandler') return fn => { failure = fn; return proxy; };
+        if(prop === 'withSuccessHandler'){
+          return fn => { success = fn; return proxy; };
+        }
+        if(prop === 'withFailureHandler'){
+          return fn => { failure = fn; return proxy; };
+        }
+
         return (...args)=>{
-          bridgeRequest(String(prop),args)
+          deviceReady
+            .then(token=>jsonpRequest(String(prop),args,{device:token}))
             .then(data=>{ if(typeof success === 'function') success(data); })
             .catch(err=>{ if(typeof failure === 'function') failure(err); });
         };
       }
     });
+
     return proxy;
   }
 
