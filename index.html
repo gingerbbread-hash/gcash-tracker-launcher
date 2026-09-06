@@ -1231,7 +1231,7 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
 
 .bottom-tab-nav{
   position:fixed;left:0;right:0;bottom:0;z-index:15000;
-  display:grid;grid-template-columns:repeat(4,1fr);gap:5px;
+  display:grid;grid-template-columns:repeat(3,1fr);gap:5px;
   padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));
   background:rgba(255,255,255,.97);border-top:1px solid var(--border);
   backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)
@@ -1308,19 +1308,6 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
   <section id="tabWalletsPage" class="app-tab-page">
     <div class="tab-page-heading"><h2>Wallets</h2><p>Balances, capital and Saripay transfers</p></div>
     <div id="walletsTabMount"></div>
-  </section>
-
-  <section id="tabEarningsPage" class="app-tab-page">
-    <div class="tab-page-heading"><h2>Earnings</h2><p>Fees earned, net earnings and expenses</p></div>
-    <div class="earnings-summary-card">
-      <div class="earnings-summary-grid">
-        <div class="metric"><small>Gross Fees Earned</small><strong id="tabGrossFees">₱0.00</strong></div>
-        <div class="metric"><small>Net Earnings</small><strong id="tabNetEarnings">₱0.00</strong></div>
-        <div class="metric"><small>Expenses</small><strong id="tabExpenses">₱0.00</strong></div>
-        <div class="metric"><small>Expected Total Money</small><strong id="tabExpected">₱0.00</strong></div>
-      </div>
-      <div id="earningsExpenseControls"></div>
-    </div>
   </section>
 
   <section id="tabHistoryPage" class="app-tab-page">
@@ -1462,7 +1449,6 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
 <nav class="bottom-tab-nav" aria-label="GCash Tracker tabs">
   <button class="bottom-tab-btn active" type="button" data-main-tab="home"><span class="tab-icon">⌂</span>Home</button>
   <button class="bottom-tab-btn" type="button" data-main-tab="wallets"><span class="tab-icon">▣</span>Wallets</button>
-  <button class="bottom-tab-btn" type="button" data-main-tab="earnings"><span class="tab-icon">₱</span>Earnings</button>
   <button class="bottom-tab-btn" type="button" data-main-tab="history"><span class="tab-icon">▦</span>History</button>
 </nav>
 
@@ -2972,7 +2958,6 @@ document.addEventListener('DOMContentLoaded', function(){
   const main=document.querySelector('main.app');
   const homeMount=document.getElementById('homeTabMount');
   const walletMount=document.getElementById('walletsTabMount');
-  const earningsMount=document.getElementById('earningsExpenseControls');
   const historyMount=document.getElementById('historyTabMount');
 
   const capitalCard=document.querySelector('.capital-card');
@@ -2995,14 +2980,6 @@ document.addEventListener('DOMContentLoaded', function(){
     capitalCard.classList.add('wallets-only-header');
   }
 
-  // Move the real expense controls/list to Earnings, not clones.
-  const addExpense=document.getElementById('addExpenseBtn');
-  const expenseToggle=document.getElementById('expenseHistoryToggle');
-  const expenseSection=document.getElementById('expenseHistorySection');
-  if(addExpense) earningsMount.appendChild(addExpense);
-  if(expenseToggle) earningsMount.appendChild(expenseToggle);
-  if(expenseSection) earningsMount.appendChild(expenseSection);
-
   if(historyBottom) historyMount.appendChild(historyBottom);
   if(historySection){
     historyMount.appendChild(historySection);
@@ -3013,7 +2990,6 @@ document.addEventListener('DOMContentLoaded', function(){
   const pages={
     home:document.getElementById('tabHomePage'),
     wallets:document.getElementById('tabWalletsPage'),
-    earnings:document.getElementById('tabEarningsPage'),
     history:document.getElementById('tabHistoryPage')
   };
   const buttons=[...document.querySelectorAll('[data-main-tab]')];
@@ -3035,13 +3011,6 @@ document.addEventListener('DOMContentLoaded', function(){
     const el=document.getElementById(id);
     return el ? el.textContent : '₱0.00';
   }
-  function parseMoneyText(v){
-    const n=parseFloat(String(v||'').replace(/[^0-9.-]/g,''));
-    return isFinite(n)?n:0;
-  }
-  function formatMoney(n){
-    return new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format(Number(n)||0);
-  }
 
   function refreshTabMirrors(){
     const homeCash=document.getElementById('homeCashBalance');
@@ -3051,23 +3020,10 @@ document.addEventListener('DOMContentLoaded', function(){
     if(homeGcash) homeGcash.textContent=numText('cashInAvailable');
     if(homeSari) homeSari.textContent=numText('saripayAvailable');
 
-    const net=document.getElementById('tabNetEarnings');
-    const exp=document.getElementById('tabExpenses');
-    const expected=document.getElementById('tabExpected');
-    if(net) net.textContent=numText('netEarnings');
-    if(exp) exp.textContent=numText('capitalExpensesTotal');
-    if(expected) expected.textContent=numText('expectedTotalMoney');
-
-    // Gross fees = net earnings + expenses.
-    const gross=document.getElementById('tabGrossFees');
-    if(gross){
-      const g=parseMoneyText(numText('netEarnings'))+parseMoneyText(numText('capitalExpensesTotal'));
-      gross.textContent=formatMoney(g);
-    }
   }
 
   const obs=new MutationObserver(refreshTabMirrors);
-  ['cashOutAvailable','cashInAvailable','saripayAvailable','netEarnings','capitalExpensesTotal','expectedTotalMoney']
+  ['cashOutAvailable','cashInAvailable','saripayAvailable']
     .forEach(id=>{
       const el=document.getElementById(id);
       if(el) obs.observe(el,{childList:true,subtree:true,characterData:true});
