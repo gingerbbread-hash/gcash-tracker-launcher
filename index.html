@@ -1209,49 +1209,63 @@ body.app-locked #historyToggle{
 </style>
 
 <style>
-/* 4-tab app layout */
-:root{--bottom-nav-h:72px}
+/* Stable 4-tab layout: built by moving the existing working controls at runtime */
+:root{--bottom-nav-h:70px}
 body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
-.app-tab{display:none}
-.app-tab.active{display:block}
-.home-wallet-strip{
-  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:8px
+.app-tab-page{display:none}
+.app-tab-page.active{display:block}
+.tab-page-heading{margin:2px 0 10px}
+.tab-page-heading h2{margin:0;font-size:20px}
+.tab-page-heading p{margin:3px 0 0;font-size:11px;color:var(--muted)}
+.home-balance-strip{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0 0 8px
 }
-.home-wallet-mini{
-  border:1px solid var(--border);border-radius:13px;padding:9px 6px;background:#fff;min-width:0
+.home-balance-mini{
+  background:#fff;border:1px solid var(--border);border-radius:13px;padding:9px 6px;min-width:0
 }
-.home-wallet-mini small{display:block;font-size:9px;color:var(--muted);font-weight:800;margin-bottom:3px}
-.home-wallet-mini strong{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.home-wallet-mini.cash strong{color:#118a43}
-.home-wallet-mini.gcash strong{color:#0b63ce}
-.home-wallet-mini.saripay strong{color:#c2410c}
-.bottom-nav{
-  position:fixed;left:0;right:0;bottom:0;z-index:9000;
-  padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));
-  background:rgba(255,255,255,.96);border-top:1px solid var(--border);
+.home-balance-mini small{display:block;font-size:9px;font-weight:800;color:var(--muted);margin-bottom:3px}
+.home-balance-mini strong{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-balance-mini.cash strong{color:#118a43}
+.home-balance-mini.gcash strong{color:#0b63ce}
+.home-balance-mini.saripay strong{color:#c2410c}
+
+.bottom-tab-nav{
+  position:fixed;left:0;right:0;bottom:0;z-index:15000;
   display:grid;grid-template-columns:repeat(4,1fr);gap:5px;
+  padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));
+  background:rgba(255,255,255,.97);border-top:1px solid var(--border);
   backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)
 }
-.bottom-nav-btn{
-  min-height:52px;border:0;border-radius:12px;background:transparent;color:#667085;
-  font-size:11px;font-weight:900;cursor:pointer;padding:5px 3px
+.bottom-tab-btn{
+  min-height:50px;border:0;border-radius:12px;background:transparent;color:#667085;
+  font-size:10px;font-weight:900;padding:5px 2px;cursor:pointer
 }
-.bottom-nav-btn .nav-icon{display:block;font-size:19px;line-height:1.1;margin-bottom:2px}
-.bottom-nav-btn.active{background:var(--blue-soft);color:var(--blue-dark)}
-.tab-heading{margin:2px 0 10px}
-.tab-heading h2{margin:0;font-size:20px}
-.tab-heading p{margin:3px 0 0;font-size:11px;color:var(--muted)}
-.earnings-overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.earnings-overview-grid .metric{min-height:72px;display:flex;flex-direction:column;justify-content:center}
-#tab-history .history-section{display:block !important}
-#tab-history .history-section.collapsed{display:block !important}
-#tab-history .history-section.history-open{display:block !important}
+.bottom-tab-btn .tab-icon{display:block;font-size:18px;line-height:1.05;margin-bottom:3px}
+.bottom-tab-btn.active{background:var(--blue-soft);color:var(--blue-dark)}
+
+.earnings-summary-card{background:#fff;border:1px solid var(--border);border-radius:18px;padding:14px;margin-bottom:10px}
+.earnings-summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.earnings-summary-grid .metric{min-height:72px;display:flex;flex-direction:column;justify-content:center}
+#earningsExpenseControls{margin-top:10px}
+#earningsExpenseControls .capital-expense-btn{width:100%;min-height:44px;border-radius:12px;font-size:13px}
+#tabHistoryPage .history-section{
+  display:block !important;
+  position:static !important;
+  width:100% !important;
+  max-height:none !important;
+  overflow:visible !important;
+}
+#tabHistoryPage .history-section.collapsed{display:block !important}
+#tabHistoryPage .history-section.history-open{display:block !important}
+#tabHistoryPage .history-bottom-wrap{display:none !important}
+
+.wallets-only-header .capital-expense-btn{display:none !important}
+
 @media(max-width:480px){
   :root{--bottom-nav-h:66px}
-  .bottom-nav-btn{min-height:48px;font-size:10px}
-  .bottom-nav-btn .nav-icon{font-size:18px}
-  .home-wallet-mini{padding:8px 5px}
-  .home-wallet-mini strong{font-size:13px}
+  .bottom-tab-btn{min-height:47px}
+  .home-balance-mini{padding:8px 5px}
+  .home-balance-mini strong{font-size:13px}
 }
 </style>
 
@@ -1281,17 +1295,39 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
     </div>
   </section>
 
-  <div id="tab-home" class="app-tab active">
-    <div class="home-wallet-strip">
-      <div class="home-wallet-mini cash"><small>Cash</small><strong id="homeCashMini">₱0.00</strong></div>
-      <div class="home-wallet-mini gcash"><small>GCash</small><strong id="homeGcashMini">₱0.00</strong></div>
-      <div class="home-wallet-mini saripay"><small>Saripay</small><strong id="homeSaripayMini">₱0.00</strong></div>
+
+  <section id="tabHomePage" class="app-tab-page active">
+    <div id="homeBalanceStrip" class="home-balance-strip">
+      <div class="home-balance-mini cash"><small>Cash</small><strong id="homeCashBalance">₱0.00</strong></div>
+      <div class="home-balance-mini gcash"><small>GCash</small><strong id="homeGcashBalance">₱0.00</strong></div>
+      <div class="home-balance-mini saripay"><small>Saripay</small><strong id="homeSaripayBalance">₱0.00</strong></div>
     </div>
+    <div id="homeTabMount"></div>
+  </section>
 
-  </div>
+  <section id="tabWalletsPage" class="app-tab-page">
+    <div class="tab-page-heading"><h2>Wallets</h2><p>Balances, capital and Saripay transfers</p></div>
+    <div id="walletsTabMount"></div>
+  </section>
 
-  <div id="tab-wallets" class="app-tab">
-    <div class="tab-heading"><h2>Wallets</h2><p>Balances, capital and Saripay transfers</p></div>
+  <section id="tabEarningsPage" class="app-tab-page">
+    <div class="tab-page-heading"><h2>Earnings</h2><p>Fees earned, net earnings and expenses</p></div>
+    <div class="earnings-summary-card">
+      <div class="earnings-summary-grid">
+        <div class="metric"><small>Gross Fees Earned</small><strong id="tabGrossFees">₱0.00</strong></div>
+        <div class="metric"><small>Net Earnings</small><strong id="tabNetEarnings">₱0.00</strong></div>
+        <div class="metric"><small>Expenses</small><strong id="tabExpenses">₱0.00</strong></div>
+        <div class="metric"><small>Expected Total Money</small><strong id="tabExpected">₱0.00</strong></div>
+      </div>
+      <div id="earningsExpenseControls"></div>
+    </div>
+  </section>
+
+  <section id="tabHistoryPage" class="app-tab-page">
+    <div class="tab-page-heading"><h2>History</h2><p>Calendar and daily transactions</p></div>
+    <div id="historyTabMount"></div>
+  </section>
+
   <section class="card capital-card">
     <div class="capital-header">
       <div>
@@ -1345,9 +1381,8 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
       <div id="expenseHistoryList" class="expense-history-list"></div>
     </div>
   </section>
-  </div>
 
-  <div id="tab-home-content" class="app-tab-proxy">
+
   <section class="card quick-entry-card">
     <div class="input-pair-row">
       <div class="input-pair-field">
@@ -1421,16 +1456,16 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
     <div class="row" style="margin-top:12px"><button type="button" class="btn btn-secondary" id="refreshBtn">Refresh Sync</button><button type="button" class="btn btn-danger" id="clearBtn">Clear History</button></div>
     <div style="display:none"><div id="empty"></div><div id="history"></div><strong id="sumFees"></strong><strong id="sumAmount"></strong><strong id="sumTotal"></strong><strong id="sumCashIn"></strong><strong id="sumCashOut"></strong><span id="earningsLabel"></span></div>
   </section>
-  </div>
 
 </main>
 
-<nav class="bottom-nav" aria-label="Main navigation">
-  <button class="bottom-nav-btn active" type="button" data-app-tab="home"><span class="nav-icon">⌂</span>Home</button>
-  <button class="bottom-nav-btn" type="button" data-app-tab="wallets"><span class="nav-icon">▣</span>Wallets</button>
-  <button class="bottom-nav-btn" type="button" data-app-tab="earnings"><span class="nav-icon">₱</span>Earnings</button>
-  <button class="bottom-nav-btn" type="button" data-app-tab="history"><span class="nav-icon">▦</span>History</button>
+<nav class="bottom-tab-nav" aria-label="GCash Tracker tabs">
+  <button class="bottom-tab-btn active" type="button" data-main-tab="home"><span class="tab-icon">⌂</span>Home</button>
+  <button class="bottom-tab-btn" type="button" data-main-tab="wallets"><span class="tab-icon">▣</span>Wallets</button>
+  <button class="bottom-tab-btn" type="button" data-main-tab="earnings"><span class="tab-icon">₱</span>Earnings</button>
+  <button class="bottom-tab-btn" type="button" data-main-tab="history"><span class="tab-icon">▦</span>History</button>
 </nav>
+
 
 
 <div id="deleteTxModal" class="delete-tx-modal" aria-hidden="true">
@@ -2934,77 +2969,115 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <script>
 document.addEventListener('DOMContentLoaded', function(){
-  const buttons=[...document.querySelectorAll('[data-app-tab]')];
-  const homeStrip=document.getElementById('tab-home');
-  const homeContent=document.getElementById('tab-home-content');
-  const wallets=document.getElementById('tab-wallets');
-  const earnings=document.getElementById('tab-earnings');
-  const historyTab=document.getElementById('tab-history');
+  const main=document.querySelector('main.app');
+  const homeMount=document.getElementById('homeTabMount');
+  const walletMount=document.getElementById('walletsTabMount');
+  const earningsMount=document.getElementById('earningsExpenseControls');
+  const historyMount=document.getElementById('historyTabMount');
 
-  function showTab(name){
-    homeStrip.style.display = name==='home' ? 'block' : 'none';
-    homeContent.style.display = name==='home' ? 'block' : 'none';
-    wallets.classList.toggle('active',name==='wallets');
-    earnings.classList.toggle('active',name==='earnings');
-    historyTab.classList.toggle('active',name==='history');
-    buttons.forEach(b=>b.classList.toggle('active',b.dataset.appTab===name));
-    try{localStorage.setItem('gcashActiveTabV1',name)}catch(e){}
-    window.scrollTo({top:0,behavior:'auto'});
-    if(name==='history'){
-      const hs=document.getElementById('historySection');
-      if(hs){hs.classList.add('history-open');hs.classList.remove('collapsed');}
+  const capitalCard=document.querySelector('.capital-card');
+  const quickEntry=document.querySelector('.quick-entry-card');
+  const resultsCard=document.querySelector('.results-card');
+  const txForm=document.getElementById('txForm');
+  const txCard=txForm ? txForm.closest('.card') : null;
+  const authCard=document.querySelector('.auth-card');
+  const historySection=document.getElementById('historySection');
+  const historyBottom=document.querySelector('.history-bottom-wrap');
+
+  // Move the original working elements; IDs/listeners stay intact.
+  if(quickEntry) homeMount.appendChild(quickEntry);
+  if(authCard) homeMount.appendChild(authCard);
+  if(resultsCard) homeMount.appendChild(resultsCard);
+  if(txCard) homeMount.appendChild(txCard);
+
+  if(capitalCard){
+    walletMount.appendChild(capitalCard);
+    capitalCard.classList.add('wallets-only-header');
+  }
+
+  // Move the real expense controls/list to Earnings, not clones.
+  const addExpense=document.getElementById('addExpenseBtn');
+  const expenseToggle=document.getElementById('expenseHistoryToggle');
+  const expenseSection=document.getElementById('expenseHistorySection');
+  if(addExpense) earningsMount.appendChild(addExpense);
+  if(expenseToggle) earningsMount.appendChild(expenseToggle);
+  if(expenseSection) earningsMount.appendChild(expenseSection);
+
+  if(historyBottom) historyMount.appendChild(historyBottom);
+  if(historySection){
+    historyMount.appendChild(historySection);
+    historySection.classList.add('history-open');
+    historySection.classList.remove('collapsed');
+  }
+
+  const pages={
+    home:document.getElementById('tabHomePage'),
+    wallets:document.getElementById('tabWalletsPage'),
+    earnings:document.getElementById('tabEarningsPage'),
+    history:document.getElementById('tabHistoryPage')
+  };
+  const buttons=[...document.querySelectorAll('[data-main-tab]')];
+
+  function setTab(name){
+    Object.entries(pages).forEach(([k,p])=>p && p.classList.toggle('active',k===name));
+    buttons.forEach(b=>b.classList.toggle('active',b.dataset.mainTab===name));
+    try{localStorage.setItem('gcashMainTabV2',name)}catch(e){}
+    window.scrollTo(0,0);
+    if(name==='history' && historySection){
+      historySection.classList.add('history-open');
+      historySection.classList.remove('collapsed');
     }
   }
 
-  buttons.forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.appTab)));
+  buttons.forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.mainTab)));
+
+  function numText(id){
+    const el=document.getElementById(id);
+    return el ? el.textContent : '₱0.00';
+  }
+  function parseMoneyText(v){
+    const n=parseFloat(String(v||'').replace(/[^0-9.-]/g,''));
+    return isFinite(n)?n:0;
+  }
+  function formatMoney(n){
+    return new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format(Number(n)||0);
+  }
+
+  function refreshTabMirrors(){
+    const homeCash=document.getElementById('homeCashBalance');
+    const homeGcash=document.getElementById('homeGcashBalance');
+    const homeSari=document.getElementById('homeSaripayBalance');
+    if(homeCash) homeCash.textContent=numText('cashOutAvailable');
+    if(homeGcash) homeGcash.textContent=numText('cashInAvailable');
+    if(homeSari) homeSari.textContent=numText('saripayAvailable');
+
+    const net=document.getElementById('tabNetEarnings');
+    const exp=document.getElementById('tabExpenses');
+    const expected=document.getElementById('tabExpected');
+    if(net) net.textContent=numText('netEarnings');
+    if(exp) exp.textContent=numText('capitalExpensesTotal');
+    if(expected) expected.textContent=numText('expectedTotalMoney');
+
+    // Gross fees = net earnings + expenses.
+    const gross=document.getElementById('tabGrossFees');
+    if(gross){
+      const g=parseMoneyText(numText('netEarnings'))+parseMoneyText(numText('capitalExpensesTotal'));
+      gross.textContent=formatMoney(g);
+    }
+  }
+
+  const obs=new MutationObserver(refreshTabMirrors);
+  ['cashOutAvailable','cashInAvailable','saripayAvailable','netEarnings','capitalExpensesTotal','expectedTotalMoney']
+    .forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) obs.observe(el,{childList:true,subtree:true,characterData:true});
+    });
+  refreshTabMirrors();
+
   let initial='home';
-  try{initial=localStorage.getItem('gcashActiveTabV1')||'home'}catch(e){}
-  if(!['home','wallets','earnings','history'].includes(initial)) initial='home';
-  showTab(initial);
-
-  const moneyText=n=>new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format(Number(n)||0);
-  function mirror(){
-    const cash=document.getElementById('cashOutAvailable');
-    const gcash=document.getElementById('cashInAvailable');
-    const sari=document.getElementById('saripayAvailable');
-    if(cash) document.getElementById('homeCashMini').textContent=cash.textContent;
-    if(gcash) document.getElementById('homeGcashMini').textContent=gcash.textContent;
-    if(sari) document.getElementById('homeSaripayMini').textContent=sari.textContent;
-
-    const net=document.getElementById('netEarnings');
-    const exp=document.getElementById('capitalExpensesTotal');
-    const expected=document.getElementById('expectedTotalMoney');
-    const hist=window.__dummyHistory || null;
-    if(net) document.getElementById('earnNetEarnings').textContent=net.textContent;
-    if(exp) document.getElementById('earnExpenses').textContent=exp.textContent;
-    if(expected) document.getElementById('earnExpected').textContent=expected.textContent;
-
-    // Gross fees are derived from the currently loaded transaction data exposed through calendar cells.
-    let gross=0;
-    document.querySelectorAll('.cal-day.has .cal-fee').forEach(el=>{
-      const v=parseFloat(String(el.textContent).replace(/[^0-9.-]/g,'')); if(isFinite(v)) gross+=v;
-    });
-    document.getElementById('earnGrossFees').textContent=moneyText(gross);
-  }
-  setInterval(mirror,500);
-  mirror();
-
-  const add=document.getElementById('earnAddExpenseBtn');
-  if(add) add.addEventListener('click',()=>document.getElementById('addExpenseBtn').click());
-
-  const view=document.getElementById('earnExpenseHistoryBtn');
-  const list=document.getElementById('earnExpenseList');
-  if(view && list){
-    view.addEventListener('click',()=>{
-      const opening=list.style.display==='none';
-      list.style.display=opening?'grid':'none';
-      view.textContent=opening?'Hide Expense History':'View Expense History';
-      if(opening){
-        const original=document.getElementById('expenseHistoryList');
-        list.innerHTML=original ? original.innerHTML : '';
-      }
-    });
-  }
+  try{initial=localStorage.getItem('gcashMainTabV2')||'home'}catch(e){}
+  if(!pages[initial]) initial='home';
+  setTab(initial);
 });
 </script>
 
