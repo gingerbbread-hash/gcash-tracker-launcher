@@ -1670,6 +1670,7 @@ body.app-locked #historyToggle{
   const deleteTxYes = $('deleteTxYes');
   const deleteTxNo = $('deleteTxNo');
   let pendingDeleteTxId = '';
+  let pendingDeleteKind = 'transaction';
   const periodButtons = document.querySelectorAll('.period-btn');
   const typeFilterButtons = document.querySelectorAll('.type-filter-btn');
   const txTypeButtons = [];
@@ -1839,7 +1840,7 @@ body.app-locked #historyToggle{
     const q=key.split('-').map(Number), d=new Date(q[0],q[1]-1,q[2]);
     const txhtml=txs.map(tx=>`<div class="tx"><div class="tx-top"><div><div class="tx-type"><span class="badge ${tx.type==='Cash In'?'badge-cashin':'badge-cashout'}">${escapeHtml(tx.type)}</span></div><div class="tx-date">${escapeHtml(tx.date||'')}</div></div><div class="tx-total">${money(tx.total)}</div></div><div class="tx-details"><span>Amount: ${money(tx.amount)}</span><span>Fee/Earnings: ${money(tx.fee)}</span><span>Cash: ${money(tx.cashReceived)}</span><span>Change: ${money(tx.change)}</span>${tx.type==='Cash Out'?`<span style="grid-column:1/-1;text-align:left!important;font-weight:800">Cash Out Wallet: ${escapeHtml(tx.walletDestination||'GCash')}</span><span style="grid-column:1/-1;text-align:left!important;font-weight:800">Fee Location: ${escapeHtml(tx.feeLocation||tx.walletDestination||'GCash')}</span>`:''}</div><div class="tx-actions"><button class="link-btn" type="button" data-cal-remove="${escapeHtml(tx.id)}">Remove</button></div></div>`).join('');
     const exhtml=exps.length?`<div class="cal-exp"><strong>Expenses: ${money(et)}</strong>${exps.map(x=>`<div>${escapeHtml(x.expense||'Expense')}: -${money(x.amount)}</div>`).join('')}</div>`:'';
-    const transferHtml=dayTransfers.map(t=>`<div class="cal-transfer"><strong>Saripay → GCash</strong><div>Transfer: ${money(t.amount)}</div><div>Deduction: ${money(t.deduction)}</div><div>GCash received: ${money(t.received)}</div><div>${escapeHtml(t.date||'')}</div></div>`).join('');
+    const transferHtml=dayTransfers.map(t=>`<div class="cal-transfer"><strong>Saripay → GCash</strong><div>Transfer: ${money(t.amount)}</div><div>Deduction: ${money(t.deduction)}</div><div>GCash received: ${money(t.received)}</div><div>${escapeHtml(t.date||'')}</div><div class="tx-actions"><button class="link-btn" type="button" data-cal-transfer-remove="${escapeHtml(t.id)}">Remove</button></div></div>`).join('');
     box.innerHTML=`<div class="cal-head"><strong>${d.toLocaleDateString('en-PH',{month:'long',day:'numeric',year:'numeric'})}</strong><strong>${money(fees)} fees</strong></div><div class="cal-sum"><div class="metric"><small>Cash In</small><strong>${money(ci)}</strong></div><div class="metric"><small>Cash Out</small><strong>${money(co)}</strong></div><div class="metric"><small>Expenses</small><strong>${money(et)}</strong></div></div>${exhtml}${transferHtml}${txhtml||(!dayTransfers.length?'<div class="history-empty">No transactions on this date.</div>':'')}`;
     box.style.display='block';
   }
@@ -2573,7 +2574,28 @@ body.app-locked #historyToggle{
   if(calPrev)calPrev.addEventListener('click',()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()-1,1);calSelected='';renderCalendar()});
   if(calNext)calNext.addEventListener('click',()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1);calSelected='';renderCalendar()});
   if(calGrid)calGrid.addEventListener('click',e=>{const b=e.target.closest('[data-cal-date]');if(!b)return;calSelected=b.dataset.calDate;renderCalendar()});
-  if(calDetail)calDetail.addEventListener('click',e=>{const b=e.target.closest('[data-cal-remove]');if(!b)return;pendingDeleteTxId=String(b.dataset.calRemove||'');if(!pendingDeleteTxId)return;deleteTxModal.classList.add('show');deleteTxModal.setAttribute('aria-hidden','false')});
+  if(calDetail)calDetail.addEventListener('click',e=>{
+    const transferBtn=e.target.closest('[data-cal-transfer-remove]');
+    if(transferBtn){
+      pendingDeleteKind='transfer';
+      pendingDeleteTxId=String(transferBtn.dataset.calTransferRemove||'');
+      if(!pendingDeleteTxId)return;
+      document.getElementById('deleteTxTitle').textContent='Delete this Saripay transfer?';
+      document.querySelector('.delete-tx-note').textContent='This will reverse the Saripay → GCash transfer and remove its ₱10 expense too if one was used.';
+      deleteTxModal.classList.add('show');
+      deleteTxModal.setAttribute('aria-hidden','false');
+      return;
+    }
+    const b=e.target.closest('[data-cal-remove]');
+    if(!b)return;
+    pendingDeleteKind='transaction';
+    pendingDeleteTxId=String(b.dataset.calRemove||'');
+    if(!pendingDeleteTxId)return;
+    document.getElementById('deleteTxTitle').textContent='Delete this transaction?';
+    document.querySelector('.delete-tx-note').textContent='This will permanently remove the transaction and recalculate your Capital Monitor.';
+    deleteTxModal.classList.add('show');
+    deleteTxModal.setAttribute('aria-hidden','false')
+  });
 
   function closeTypeModal(){
     typeModal.classList.remove('show');
@@ -2694,15 +2716,19 @@ body.app-locked #historyToggle{
     const btn = e.target.closest && e.target.closest('[data-id]');
     if(!btn) return;
 
+    pendingDeleteKind = 'transaction';
     pendingDeleteTxId = String(btn.dataset.id || '');
     if(!pendingDeleteTxId) return;
 
+    document.getElementById('deleteTxTitle').textContent='Delete this transaction?';
+    document.querySelector('.delete-tx-note').textContent='This will permanently remove the transaction and recalculate your Capital Monitor.';
     deleteTxModal.classList.add('show');
     deleteTxModal.setAttribute('aria-hidden','false');
   });
 
   function closeDeleteTxModal(){
     pendingDeleteTxId = '';
+    pendingDeleteKind = 'transaction';
     deleteTxModal.classList.remove('show');
     deleteTxModal.setAttribute('aria-hidden','true');
   }
@@ -2715,16 +2741,29 @@ body.app-locked #historyToggle{
 
   deleteTxYes.addEventListener('click', ()=>{
     const id = pendingDeleteTxId;
+    const kind = pendingDeleteKind;
     if(!id) return;
 
     deleteTxYes.disabled = true;
     deleteTxYes.textContent = 'Deleting…';
 
-    google.script.run
-      .withSuccessHandler(()=>{
-        history = history.filter(x => String(x.id) !== String(id));
-        render();
-        loadCapital();
+    const runner = google.script.run
+      .withSuccessHandler(data=>{
+        if(kind === 'transfer'){
+          transfers = (data && Array.isArray(data.transfers))
+            ? data.transfers
+            : transfers.filter(x => String(x.id) !== String(id));
+          if(data && Array.isArray(data.expenses)) expenses = data.expenses;
+          if(data && data.capital) renderCapital(data.capital);
+          renderExpenses();
+          render();
+          saveLocalTrackerCache();
+        }else{
+          history = history.filter(x => String(x.id) !== String(id));
+          render();
+          loadCapital();
+        }
+
         deleteTxYes.disabled = false;
         deleteTxYes.textContent = 'Yes, Delete';
         closeDeleteTxModal();
@@ -2732,9 +2771,14 @@ body.app-locked #historyToggle{
       .withFailureHandler(err=>{
         deleteTxYes.disabled = false;
         deleteTxYes.textContent = 'Yes, Delete';
-        alert((err && err.message) || 'Could not delete transaction.');
-      })
-      .deleteTransactionBySession(getSessionToken(), id);
+        alert((err && err.message) || (kind === 'transfer' ? 'Could not delete transfer.' : 'Could not delete transaction.'));
+      });
+
+    if(kind === 'transfer'){
+      runner.deleteSaripayTransferBySession(getSessionToken(), id);
+    }else{
+      runner.deleteTransactionBySession(getSessionToken(), id);
+    }
   });
 
   clearBtn.addEventListener('click', () => {
