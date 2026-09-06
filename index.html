@@ -1255,8 +1255,6 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
   max-height:none !important;
   overflow:visible !important;
 }
-#tabHistoryPage .history-section.collapsed{display:block !important}
-#tabHistoryPage .history-section.history-open{display:block !important}
 #tabHistoryPage .history-bottom-wrap{display:none !important}
 
 .wallets-only-header .capital-expense-btn{display:none !important}
@@ -2997,10 +2995,6 @@ document.addEventListener('DOMContentLoaded', function(){
     buttons.forEach(b=>b.classList.toggle('active',b.dataset.mainTab===name));
     try{localStorage.setItem('gcashMainTabV2',name)}catch(e){}
     window.scrollTo(0,0);
-    if(name==='history' && historySection){
-      historySection.classList.add('history-open');
-      historySection.classList.remove('collapsed');
-    }
   }
 
   buttons.forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.mainTab)));
