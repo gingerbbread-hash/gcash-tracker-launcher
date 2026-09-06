@@ -2658,7 +2658,18 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
   const calPrev=$('calPrev'),calNext=$('calNext'),calGrid=$('calGrid'),calDetail=$('calDetail');
   if(calPrev)calPrev.addEventListener('click',()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()-1,1);calSelected='';renderCalendar()});
   if(calNext)calNext.addEventListener('click',()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1);calSelected='';renderCalendar()});
-  if(calGrid)calGrid.addEventListener('click',e=>{const b=e.target.closest('[data-cal-date]');if(!b)return;calSelected=b.dataset.calDate;renderCalendar()});
+  if(calGrid)calGrid.addEventListener('click',e=>{
+    const b=e.target.closest('[data-cal-date]');
+    if(!b)return;
+    const key=b.dataset.calDate;
+    if(calSelected===key){
+      calSelected='';
+      renderCalendar();
+      return;
+    }
+    calSelected=key;
+    renderCalendar();
+  });
   if(calDetail)calDetail.addEventListener('click',e=>{
     const transferBtn=e.target.closest('[data-cal-transfer-remove]');
     if(transferBtn){
