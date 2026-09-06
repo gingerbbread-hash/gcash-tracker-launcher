@@ -1180,12 +1180,128 @@ body.app-locked #historyToggle{
 .cal-exp{background:#fff7ed;color:#9a3412;border-radius:10px;padding:8px;margin:7px 0;font-size:11px}
 @media(max-width:480px){.cal-grid,.cal-week{gap:3px}.cal-day{min-height:57px;padding:4px 3px}.cal-fee{font-size:8px}}
 
-.balance-moves{margin-top:8px;padding:8px;border-radius:10px;background:#f8fafc;border:1px solid #e5e7eb}
-.balance-move{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:center;padding:4px 0;font-size:11px}
-.balance-move+.balance-move{border-top:1px dashed #d0d5dd}
-.balance-move-name{font-weight:900;color:#344054}
-.balance-flow{font-weight:800;white-space:nowrap}.balance-prev{color:#667085}.balance-delta.pos{color:#15803d}.balance-delta.neg{color:#b42318}.balance-new{color:#101828;font-weight:900}
-@media(max-width:480px){.balance-move{grid-template-columns:1fr}.balance-flow{white-space:normal}}
+.history-tx-card{
+  border:1px solid #dfe7f1;
+  border-radius:16px;
+  background:#fff;
+  padding:13px;
+  margin:9px 0;
+  box-shadow:0 2px 8px rgba(16,24,40,.04);
+}
+.history-tx-head{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  align-items:flex-start;
+  margin-bottom:8px;
+}
+.history-tx-kind{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:wrap;
+}
+.history-wallet-pill{
+  display:inline-block;
+  padding:4px 7px;
+  border-radius:999px;
+  font-size:10px;
+  font-weight:900;
+  background:#f2f4f7;
+  color:#475467;
+  border:1px solid #e4e7ec;
+}
+.history-tx-amount{
+  font-size:22px;
+  line-height:1;
+  font-weight:950;
+  color:#101828;
+  text-align:right;
+  white-space:nowrap;
+}
+.history-tx-meta{
+  margin-top:4px;
+  font-size:10px;
+  color:#667085;
+  text-align:right;
+}
+.history-tx-fee{
+  font-size:11px;
+  color:#667085;
+  margin:2px 0 0;
+}
+.history-balance-title{
+  margin:10px 0 6px;
+  font-size:10px;
+  font-weight:900;
+  color:#475467;
+  letter-spacing:.04em;
+}
+.balance-moves{
+  margin-top:6px;
+  padding:8px;
+  border-radius:12px;
+  background:#f8fafc;
+  border:1px solid #e5e7eb;
+}
+.balance-move{
+  padding:8px 0;
+}
+.balance-move+.balance-move{
+  border-top:1px solid #e5e7eb;
+}
+.balance-move-name{
+  font-size:12px;
+  font-weight:900;
+  color:#344054;
+  margin-bottom:6px;
+}
+.balance-flow-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:5px;
+  align-items:start;
+}
+.balance-cell{
+  min-width:0;
+  text-align:center;
+}
+.balance-cell-value{
+  display:block;
+  font-size:13px;
+  line-height:1.15;
+  font-weight:800;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.balance-cell-label{
+  display:block;
+  margin-top:3px;
+  font-size:8px;
+  line-height:1;
+  color:#98a2b3;
+  font-weight:900;
+  letter-spacing:.04em;
+}
+.balance-prev{color:#667085}
+.balance-delta.pos{color:#15803d}
+.balance-delta.neg{color:#b42318}
+.balance-new{color:#101828;font-weight:950}
+.history-tx-actions{
+  margin-top:8px;
+  text-align:right;
+}
+.history-tx-actions .link-btn{
+  font-size:10px;
+  padding:3px 0;
+}
+@media(max-width:480px){
+  .history-tx-card{padding:11px;margin:7px 0}
+  .history-tx-amount{font-size:20px}
+  .balance-cell-value{font-size:12px}
+  .balance-move-name{font-size:11px}
+}
 </style>
 
 <style>
@@ -1924,7 +2040,23 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
     const p=Number(previous), n=Number(latest), d=n-p;
     const sign=d>0?'+':d<0?'−':'';
     const cls=d>0?'pos':d<0?'neg':'';
-    return `<div class="balance-move"><span class="balance-move-name">${escapeHtml(name)}</span><span class="balance-flow"><span class="balance-prev">${money(p)}</span> → <span class="balance-delta ${cls}">${sign}${money(Math.abs(d))}</span> → <span class="balance-new">${money(n)}</span></span></div>`;
+    return `<div class="balance-move">
+      <div class="balance-move-name">${escapeHtml(name)}</div>
+      <div class="balance-flow-grid">
+        <div class="balance-cell">
+          <span class="balance-cell-value balance-prev">${money(p)}</span>
+          <span class="balance-cell-label">BEFORE</span>
+        </div>
+        <div class="balance-cell">
+          <span class="balance-cell-value balance-delta ${cls}">${sign}${money(Math.abs(d))}</span>
+          <span class="balance-cell-label">CHANGE</span>
+        </div>
+        <div class="balance-cell">
+          <span class="balance-cell-value balance-new">${money(n)}</span>
+          <span class="balance-cell-label">AFTER</span>
+        </div>
+      </div>
+    </div>`;
   }
   function transactionBalanceHtml(tx){
     let rows='';
@@ -1945,6 +2077,10 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
     const rows=balanceMoveHtml('Saripay',t.previousSaripay,t.newSaripay)+balanceMoveHtml('GCash',t.previousGcash,t.newGcash);
     return rows?`<div class="balance-moves">${rows}</div>`:'';
   }
+  function transactionWalletLabel(tx){
+    if(tx.type==='Cash In') return 'GCash';
+    return tx.walletDestination || 'GCash';
+  }
 
   function renderDay(key){
     const box=$('calDetail'); if(!box)return;
@@ -1956,9 +2092,41 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
     const co=txs.filter(x=>x.type==='Cash Out').reduce((s,x)=>s+Number(x.amount||0),0);
     const et=exps.reduce((s,x)=>s+Number(x.amount||0),0);
     const q=key.split('-').map(Number), d=new Date(q[0],q[1]-1,q[2]);
-    const txhtml=txs.map(tx=>`<div class="tx"><div class="tx-top"><div><div class="tx-type"><span class="badge ${tx.type==='Cash In'?'badge-cashin':'badge-cashout'}">${escapeHtml(tx.type)}</span></div><div class="tx-date">${escapeHtml(tx.date||'')}</div></div><div class="tx-total">${money(tx.total)}</div></div><div class="tx-details"><span>Amount: ${money(tx.amount)}</span><span>Fee/Earnings: ${money(tx.fee)}</span><span>Cash: ${money(tx.cashReceived)}</span><span>Change: ${money(tx.change)}</span>${tx.type==='Cash Out'?`<span style="grid-column:1/-1;text-align:left!important;font-weight:800">Cash Out Wallet: ${escapeHtml(tx.walletDestination||'GCash')}</span><span style="grid-column:1/-1;text-align:left!important;font-weight:800">Fee Location: ${escapeHtml(tx.feeLocation||tx.walletDestination||'GCash')}</span>`:''}</div>${transactionBalanceHtml(tx)}<div class="tx-actions"><button class="link-btn" type="button" data-cal-remove="${escapeHtml(tx.id)}">Remove</button></div></div>`).join('');
+    const txhtml=txs.map(tx=>`<div class="history-tx-card">
+      <div class="history-tx-head">
+        <div>
+          <div class="history-tx-kind">
+            <span class="badge ${tx.type==='Cash In'?'badge-cashin':'badge-cashout'}">${escapeHtml(tx.type)}</span>
+            <span class="history-wallet-pill">${escapeHtml(transactionWalletLabel(tx))}</span>
+          </div>
+          <div class="history-tx-fee">Fee earned ${money(tx.fee)}</div>
+        </div>
+        <div>
+          <div class="history-tx-amount">${money(tx.amount)}</div>
+          <div class="history-tx-meta">${escapeHtml(tx.date||'')}</div>
+        </div>
+      </div>
+      ${transactionBalanceHtml(tx)?`<div class="history-balance-title">BALANCE MOVEMENT</div>${transactionBalanceHtml(tx)}`:''}
+      <div class="history-tx-actions"><button class="link-btn" type="button" data-cal-remove="${escapeHtml(tx.id)}">Remove</button></div>
+    </div>`).join('');
     const exhtml=exps.length?`<div class="cal-exp"><strong>Expenses: ${money(et)}</strong>${exps.map(x=>`<div>${escapeHtml(x.expense||'Expense')}: -${money(x.amount)}</div>`).join('')}</div>`:'';
-    const transferHtml=dayTransfers.map(t=>`<div class="cal-transfer"><strong>Saripay → GCash</strong><div>Transfer: ${money(t.amount)}</div><div>Deduction: ${money(t.deduction)}</div><div>GCash received: ${money(t.received)}</div><div>${escapeHtml(t.date||'')}</div>${transferBalanceHtml(t)}<div class="tx-actions"><button class="link-btn" type="button" data-cal-transfer-remove="${escapeHtml(t.id)}">Remove</button></div></div>`).join('');
+    const transferHtml=dayTransfers.map(t=>`<div class="history-tx-card">
+      <div class="history-tx-head">
+        <div>
+          <div class="history-tx-kind">
+            <span class="badge badge-neutral">Transfer</span>
+            <span class="history-wallet-pill">Saripay → GCash</span>
+          </div>
+          <div class="history-tx-fee">${Number(t.deduction||0)>0?`Transfer expense ${money(t.deduction)}`:'No transfer deduction'}</div>
+        </div>
+        <div>
+          <div class="history-tx-amount">${money(t.amount)}</div>
+          <div class="history-tx-meta">${escapeHtml(t.date||'')}</div>
+        </div>
+      </div>
+      ${transferBalanceHtml(t)?`<div class="history-balance-title">BALANCE MOVEMENT</div>${transferBalanceHtml(t)}`:''}
+      <div class="history-tx-actions"><button class="link-btn" type="button" data-cal-transfer-remove="${escapeHtml(t.id)}">Remove</button></div>
+    </div>`).join('');
     box.innerHTML=`<div class="cal-head"><strong>${d.toLocaleDateString('en-PH',{month:'long',day:'numeric',year:'numeric'})}</strong><strong>${money(fees)} fees</strong></div><div class="cal-sum"><div class="metric"><small>Cash In</small><strong>${money(ci)}</strong></div><div class="metric"><small>Cash Out</small><strong>${money(co)}</strong></div><div class="metric"><small>Expenses</small><strong>${money(et)}</strong></div></div>${exhtml}${transferHtml}${txhtml||(!dayTransfers.length?'<div class="history-empty">No transactions on this date.</div>':'')}`;
     box.style.display='block';
   }
