@@ -1180,6 +1180,33 @@ body.app-locked #historyToggle{
 .cal-exp{background:#fff7ed;color:#9a3412;border-radius:10px;padding:8px;margin:7px 0;font-size:11px}
 @media(max-width:480px){.cal-grid,.cal-week{gap:3px}.cal-day{min-height:57px;padding:4px 3px}.cal-fee{font-size:8px}}
 </style>
+
+<style>
+/* Saripay wallet monitoring */
+.capital-grid-three{grid-template-columns:repeat(3,minmax(0,1fr)) !important}
+.saripay-balance{background:#fff7ed;border:1px solid #fed7aa;color:#c2410c}
+.saripay-transfer-btn{width:100%;margin-top:8px;min-height:42px;border:1px solid #fed7aa;background:#fff7ed;color:#c2410c;border-radius:12px;font-size:12px;font-weight:900}
+.cashout-wallet-step{display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.cashout-wallet-step.show{display:block}
+.cashout-wallet-title{text-align:center;font-size:14px;font-weight:900;margin-bottom:10px}
+.cashout-wallet-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.cashout-wallet-choice{min-height:50px;border-radius:13px;border:1px solid var(--border);font-size:14px;font-weight:900}
+.wallet-gcash{background:#e8f0fe;color:#0b57d0;border-color:#bfd3fb}
+.wallet-saripay{background:#fff7ed;color:#c2410c;border-color:#fed7aa}
+.transfer-choice-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.transfer-choice{min-height:46px;border:1px solid var(--border);border-radius:12px;background:#f8fafc;color:#475467;font-size:12px;font-weight:900}
+.transfer-choice.active{background:#fff7ed;color:#c2410c;border-color:#fdba74}
+.transfer-preview{margin-top:8px;padding:10px;border-radius:12px;background:#f8fafc;font-size:12px}
+.transfer-preview strong{float:right}
+.cal-transfer{border:1px solid #fed7aa;background:#fff7ed;color:#9a3412;border-radius:11px;padding:9px;margin:7px 0;font-size:11px}
+@media(max-width:480px){
+  .capital-grid-three{gap:5px}
+  .capital-grid-three .capital-balance{padding:9px 5px}
+  .capital-grid-three .capital-balance small{font-size:9px}
+  .capital-grid-three .capital-balance strong{font-size:16px}
+  .capital-grid-three .capital-balance span{font-size:8px}
+}
+</style>
 </head>
 <body>
 <main class="app">
@@ -1217,7 +1244,7 @@ body.app-locked #historyToggle{
         <button type="button" id="adjustCapitalBtn" class="capital-adjust">Set / Adjust</button>
       </div>
     </div>
-    <div class="capital-grid">
+    <div class="capital-grid capital-grid-three">
       <div class="capital-balance cash-balance">
         <small>Cash Out Available</small>
         <strong id="cashOutAvailable">₱0.00</strong>
@@ -1228,7 +1255,13 @@ body.app-locked #historyToggle{
         <strong id="cashInAvailable">₱0.00</strong>
         <span>GCash Balance</span>
       </div>
+      <div class="capital-balance saripay-balance">
+        <small>Saripay</small>
+        <strong id="saripayAvailable">₱0.00</strong>
+        <span>Cash Out Wallet</span>
+      </div>
     </div>
+    <button type="button" id="saripayTransferBtn" class="saripay-transfer-btn">Transfer Saripay → GCash</button>
     <div class="capital-summary-row capital-summary-three">
       <div class="capital-total-row">
         <span>Base Capital</span>
@@ -1351,10 +1384,18 @@ body.app-locked #historyToggle{
       <button type="button" id="confirmCashOut" class="type-choice cashout-choice">Cash Out</button>
     </div>
 
+    <div id="cashOutWalletStep" class="cashout-wallet-step">
+      <div class="cashout-wallet-title">Where does this Cash Out go?</div>
+      <div class="cashout-wallet-actions">
+        <button type="button" id="cashOutToGcash" class="cashout-wallet-choice wallet-gcash">GCash</button>
+        <button type="button" id="cashOutToSaripay" class="cashout-wallet-choice wallet-saripay">Saripay</button>
+      </div>
+    </div>
+
     <div id="feeLocationStep" class="fee-location-step">
       <div class="fee-location-title">Where did the Cash Out fee go?</div>
       <div class="fee-location-actions">
-        <button type="button" id="feeToGcash" class="fee-location-choice gcash">GCash</button>
+        <button type="button" id="feeToGcash" class="fee-location-choice gcash">Wallet</button>
         <button type="button" id="feeToCash" class="fee-location-choice cash">Cash on Hand</button>
       </div>
     </div>
@@ -1373,6 +1414,9 @@ body.app-locked #historyToggle{
     <div class="field-gap"></div>
     <label class="label" for="capitalGcashInput">GCash Balance</label>
     <input id="capitalGcashInput" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+    <div class="field-gap"></div>
+    <label class="label" for="capitalSaripayInput">Saripay Balance</label>
+    <input id="capitalSaripayInput" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
     <div id="capitalModalStatus" class="status"></div>
     <div class="capital-modal-actions">
       <button type="button" id="saveCapitalBtn" class="capital-save">Save Capital</button>
@@ -1381,6 +1425,33 @@ body.app-locked #historyToggle{
   </div>
 </div>
 
+
+<div id="saripayTransferModal" class="capital-modal" aria-hidden="true">
+  <div class="capital-modal-card" role="dialog" aria-modal="true" aria-labelledby="saripayTransferModalTitle">
+    <div id="saripayTransferModalTitle" class="capital-modal-title">Transfer Saripay to GCash</div>
+    <div class="capital-modal-help">Enter how much you want to move from Saripay to GCash.</div>
+
+    <label class="label" for="saripayTransferAmount">Transfer Amount</label>
+    <input id="saripayTransferAmount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00">
+
+    <div class="field-gap"></div>
+    <label class="label">Transfer Deduction</label>
+    <div class="transfer-choice-row">
+      <button type="button" id="transferNoDeduction" class="transfer-choice active">No Deduction</button>
+      <button type="button" id="transferWithDeduction" class="transfer-choice">₱10 Deduction</button>
+    </div>
+
+    <div class="transfer-preview">
+      GCash will receive <strong id="saripayTransferReceived">₱0.00</strong>
+    </div>
+
+    <div id="saripayTransferStatus" class="status"></div>
+    <div class="capital-modal-actions">
+      <button type="button" id="saveSaripayTransferBtn" class="capital-save">Transfer to GCash</button>
+      <button type="button" id="cancelSaripayTransferBtn" class="capital-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
 
 <div id="expenseModal" class="capital-modal" aria-hidden="true">
   <div class="capital-modal-card" role="dialog" aria-modal="true" aria-labelledby="expenseModalTitle">
@@ -1611,16 +1682,32 @@ body.app-locked #historyToggle{
   const feeLocationStep = $('feeLocationStep');
   const feeToGcash = $('feeToGcash');
   const feeToCash = $('feeToCash');
+  const cashOutWalletStep = $('cashOutWalletStep');
+  const cashOutToGcash = $('cashOutToGcash');
+  const cashOutToSaripay = $('cashOutToSaripay');
+  let selectedCashOutWallet = '';
   const adjustCapitalBtn = $('adjustCapitalBtn');
   const capitalModal = $('capitalModal');
   const capitalCashInput = $('capitalCashInput');
   const capitalGcashInput = $('capitalGcashInput');
+  const capitalSaripayInput = $('capitalSaripayInput');
   const capitalModalStatus = $('capitalModalStatus');
   const saveCapitalBtn = $('saveCapitalBtn');
   const cancelCapitalBtn = $('cancelCapitalBtn');
   const capitalStatus = $('capitalStatus');
   const cashOutAvailable = $('cashOutAvailable');
   const cashInAvailable = $('cashInAvailable');
+  const saripayAvailable = $('saripayAvailable');
+  const saripayTransferBtn = $('saripayTransferBtn');
+  const saripayTransferModal = $('saripayTransferModal');
+  const saripayTransferAmount = $('saripayTransferAmount');
+  const transferNoDeduction = $('transferNoDeduction');
+  const transferWithDeduction = $('transferWithDeduction');
+  const saripayTransferReceived = $('saripayTransferReceived');
+  const saripayTransferStatus = $('saripayTransferStatus');
+  const saveSaripayTransferBtn = $('saveSaripayTransferBtn');
+  const cancelSaripayTransferBtn = $('cancelSaripayTransferBtn');
+  let saripayTransferDeduction = false;
   const totalCapital = $('totalCapital');
   const netEarnings = $('netEarnings');
   const expectedTotalMoney = $('expectedTotalMoney');
@@ -1641,6 +1728,7 @@ body.app-locked #historyToggle{
   const cancelExpenseBtn = $('cancelExpenseBtn');
   let capitalData = null;
   let expenses = [];
+  let transfers = [];
   let expensePaidFrom = 'Cash';
   let pendingPayload = null;
 
@@ -1743,14 +1831,16 @@ body.app-locked #historyToggle{
     const box=$('calDetail'); if(!box)return;
     const txs=history.filter(x=>dateKey(x)===key);
     const exps=expenses.filter(x=>dateKey(x)===key);
+    const dayTransfers=transfers.filter(x=>dateKey(x)===key);
     const fees=txs.reduce((s,x)=>s+Number(x.fee||0),0);
     const ci=txs.filter(x=>x.type==='Cash In').reduce((s,x)=>s+Number(x.amount||0),0);
     const co=txs.filter(x=>x.type==='Cash Out').reduce((s,x)=>s+Number(x.amount||0),0);
     const et=exps.reduce((s,x)=>s+Number(x.amount||0),0);
     const q=key.split('-').map(Number), d=new Date(q[0],q[1]-1,q[2]);
-    const txhtml=txs.map(tx=>`<div class="tx"><div class="tx-top"><div><div class="tx-type"><span class="badge ${tx.type==='Cash In'?'badge-cashin':'badge-cashout'}">${escapeHtml(tx.type)}</span></div><div class="tx-date">${escapeHtml(tx.date||'')}</div></div><div class="tx-total">${money(tx.total)}</div></div><div class="tx-details"><span>Amount: ${money(tx.amount)}</span><span>Fee/Earnings: ${money(tx.fee)}</span><span>Cash: ${money(tx.cashReceived)}</span><span>Change: ${money(tx.change)}</span>${tx.type==='Cash Out'?`<span style="grid-column:1/-1;text-align:left!important;font-weight:800">Fee Location: ${escapeHtml(tx.feeLocation||'GCash')}</span>`:''}</div><div class="tx-actions"><button class="link-btn" type="button" data-cal-remove="${escapeHtml(tx.id)}">Remove</button></div></div>`).join('');
+    const txhtml=txs.map(tx=>`<div class="tx"><div class="tx-top"><div><div class="tx-type"><span class="badge ${tx.type==='Cash In'?'badge-cashin':'badge-cashout'}">${escapeHtml(tx.type)}</span></div><div class="tx-date">${escapeHtml(tx.date||'')}</div></div><div class="tx-total">${money(tx.total)}</div></div><div class="tx-details"><span>Amount: ${money(tx.amount)}</span><span>Fee/Earnings: ${money(tx.fee)}</span><span>Cash: ${money(tx.cashReceived)}</span><span>Change: ${money(tx.change)}</span>${tx.type==='Cash Out'?`<span style="grid-column:1/-1;text-align:left!important;font-weight:800">Cash Out Wallet: ${escapeHtml(tx.walletDestination||'GCash')}</span><span style="grid-column:1/-1;text-align:left!important;font-weight:800">Fee Location: ${escapeHtml(tx.feeLocation||tx.walletDestination||'GCash')}</span>`:''}</div><div class="tx-actions"><button class="link-btn" type="button" data-cal-remove="${escapeHtml(tx.id)}">Remove</button></div></div>`).join('');
     const exhtml=exps.length?`<div class="cal-exp"><strong>Expenses: ${money(et)}</strong>${exps.map(x=>`<div>${escapeHtml(x.expense||'Expense')}: -${money(x.amount)}</div>`).join('')}</div>`:'';
-    box.innerHTML=`<div class="cal-head"><strong>${d.toLocaleDateString('en-PH',{month:'long',day:'numeric',year:'numeric'})}</strong><strong>${money(fees)} fees</strong></div><div class="cal-sum"><div class="metric"><small>Cash In</small><strong>${money(ci)}</strong></div><div class="metric"><small>Cash Out</small><strong>${money(co)}</strong></div><div class="metric"><small>Expenses</small><strong>${money(et)}</strong></div></div>${exhtml}${txhtml||'<div class="history-empty">No transactions on this date.</div>'}`;
+    const transferHtml=dayTransfers.map(t=>`<div class="cal-transfer"><strong>Saripay → GCash</strong><div>Transfer: ${money(t.amount)}</div><div>Deduction: ${money(t.deduction)}</div><div>GCash received: ${money(t.received)}</div><div>${escapeHtml(t.date||'')}</div></div>`).join('');
+    box.innerHTML=`<div class="cal-head"><strong>${d.toLocaleDateString('en-PH',{month:'long',day:'numeric',year:'numeric'})}</strong><strong>${money(fees)} fees</strong></div><div class="cal-sum"><div class="metric"><small>Cash In</small><strong>${money(ci)}</strong></div><div class="metric"><small>Cash Out</small><strong>${money(co)}</strong></div><div class="metric"><small>Expenses</small><strong>${money(et)}</strong></div></div>${exhtml}${transferHtml}${txhtml||(!dayTransfers.length?'<div class="history-empty">No transactions on this date.</div>':'')}`;
     box.style.display='block';
   }
   function renderCalendar(){
@@ -1802,6 +1892,7 @@ body.app-locked #historyToggle{
     if(!data || !data.initialized){
       cashOutAvailable.textContent = money(0);
       cashInAvailable.textContent = money(0);
+      saripayAvailable.textContent = money(0);
       totalCapital.textContent = money(0);
       netEarnings.textContent = money(0);
       expectedTotalMoney.textContent = money(0);
@@ -1814,6 +1905,7 @@ body.app-locked #historyToggle{
 
     cashOutAvailable.textContent = money(data.cashOnHand);
     cashInAvailable.textContent = money(data.gcashBalance);
+    saripayAvailable.textContent = money(data.saripayBalance || 0);
     totalCapital.textContent = money(data.baseCapital ?? data.totalCapital);
     netEarnings.textContent = money(data.netEarnings || 0);
     expectedTotalMoney.textContent = money(data.expectedTotalMoney ?? (Number(data.cashOnHand||0)+Number(data.gcashBalance||0)));
@@ -1844,6 +1936,7 @@ body.app-locked #historyToggle{
     }
     capitalCashInput.value = capitalData && capitalData.initialized ? Number(capitalData.cashOnHand || 0).toFixed(2) : '';
     capitalGcashInput.value = capitalData && capitalData.initialized ? Number(capitalData.gcashBalance || 0).toFixed(2) : '';
+    capitalSaripayInput.value = capitalData && capitalData.initialized ? Number(capitalData.saripayBalance || 0).toFixed(2) : '';
     capitalModalStatus.textContent = '';
     capitalModal.classList.add('show');
     capitalModal.style.display='flex';
@@ -1866,8 +1959,9 @@ body.app-locked #historyToggle{
     if(!unlocked) return;
     const cash = Number(capitalCashInput.value);
     const gcash = Number(capitalGcashInput.value);
+    const saripay = Number(capitalSaripayInput.value);
 
-    if(!isFinite(cash) || cash < 0 || !isFinite(gcash) || gcash < 0){
+    if(!isFinite(cash) || cash < 0 || !isFinite(gcash) || gcash < 0 || !isFinite(saripay) || saripay < 0){
       capitalModalStatus.textContent='Enter valid balances.';
       capitalModalStatus.className='status err';
       return;
@@ -1888,7 +1982,7 @@ body.app-locked #historyToggle{
         capitalModalStatus.textContent=err.message || 'Could not save capital.';
         capitalModalStatus.className='status err';
       })
-      .setCapitalBySession(getSessionToken(),cash,gcash);
+      .setCapitalBySession(getSessionToken(),cash,gcash,saripay);
   });
 
   function renderExpenses(){
@@ -1902,7 +1996,7 @@ body.app-locked #historyToggle{
         <div class="expense-item-top">
           <div>
             <div class="expense-item-title">${escapeHtml(x.expense || 'Expense')}</div>
-            <div class="expense-item-meta">${escapeHtml(x.date)} · Deducted from Earnings · Paid from ${escapeHtml(x.paidFrom === 'GCash' ? 'GCash Balance' : 'Cash on Hand')}</div>
+            <div class="expense-item-meta">${escapeHtml(x.date)} · Deducted from Earnings · Paid from ${escapeHtml(x.paidFrom === 'GCash' ? 'GCash Balance' : x.paidFrom === 'Saripay Transfer' ? 'Saripay Transfer' : 'Cash on Hand')}</div>
           </div>
           <div class="expense-item-amount">-${money(x.amount)}</div>
         </div>
@@ -1939,6 +2033,74 @@ body.app-locked #historyToggle{
     expensePaidCash.classList.toggle('active', expensePaidFrom === 'Cash');
     expensePaidGcash.classList.toggle('active', expensePaidFrom === 'GCash');
   }
+
+  function updateSaripayTransferPreview(){
+    const amount = Number(saripayTransferAmount.value || 0);
+    const deduction = saripayTransferDeduction ? 10 : 0;
+    saripayTransferReceived.textContent = money(Math.max(amount - deduction, 0));
+  }
+
+  function setSaripayTransferDeduction(on){
+    saripayTransferDeduction = !!on;
+    transferNoDeduction.classList.toggle('active', !saripayTransferDeduction);
+    transferWithDeduction.classList.toggle('active', saripayTransferDeduction);
+    updateSaripayTransferPreview();
+  }
+
+  function openSaripayTransferModal(){
+    saripayTransferAmount.value='';
+    saripayTransferStatus.textContent='';
+    setSaripayTransferDeduction(false);
+    saripayTransferModal.classList.add('show');
+    saripayTransferModal.style.display='flex';
+    saripayTransferModal.setAttribute('aria-hidden','false');
+  }
+
+  function closeSaripayTransferModal(){
+    saripayTransferModal.classList.remove('show');
+    saripayTransferModal.style.display='none';
+    saripayTransferModal.setAttribute('aria-hidden','true');
+  }
+
+  saripayTransferBtn.addEventListener('click', openSaripayTransferModal);
+  cancelSaripayTransferBtn.addEventListener('click', closeSaripayTransferModal);
+  transferNoDeduction.addEventListener('click',()=>setSaripayTransferDeduction(false));
+  transferWithDeduction.addEventListener('click',()=>setSaripayTransferDeduction(true));
+  saripayTransferAmount.addEventListener('input', updateSaripayTransferPreview);
+  saripayTransferModal.addEventListener('click',e=>{if(e.target===saripayTransferModal) closeSaripayTransferModal();});
+
+  saveSaripayTransferBtn.addEventListener('click',()=>{
+    const amount = Number(saripayTransferAmount.value);
+    if(!isFinite(amount) || amount <= 0){
+      saripayTransferStatus.textContent='Enter a valid transfer amount.';
+      saripayTransferStatus.className='status err';
+      return;
+    }
+    saveSaripayTransferBtn.disabled=true;
+    saripayTransferStatus.textContent='Transferring…';
+    saripayTransferStatus.className='status';
+
+    google.script.run
+      .withSuccessHandler(data=>{
+        saveSaripayTransferBtn.disabled=false;
+        if(data && data.transfer) transfers.unshift(data.transfer);
+        if(data && data.expense) expenses.unshift(data.expense);
+        if(data && data.capital) renderCapital(data.capital);
+        renderExpenses();
+        render();
+        saveLocalTrackerCache();
+        closeSaripayTransferModal();
+      })
+      .withFailureHandler(err=>{
+        saveSaripayTransferBtn.disabled=false;
+        saripayTransferStatus.textContent=(err && err.message) || 'Could not transfer Saripay balance.';
+        saripayTransferStatus.className='status err';
+      })
+      .addSaripayTransferBySession(getSessionToken(),{
+        amount,
+        applyDeduction:saripayTransferDeduction
+      });
+  });
 
   function openExpenseModal(){
     if(!unlocked){
@@ -2160,6 +2322,7 @@ body.app-locked #historyToggle{
         savedAt: Date.now(),
         transactions: Array.isArray(history) ? history : [],
         expenses: Array.isArray(expenses) ? expenses : [],
+        transfers: Array.isArray(transfers) ? transfers : [],
         capital: capitalData || null
       };
       localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(snapshot));
@@ -2174,6 +2337,7 @@ body.app-locked #historyToggle{
       const data = JSON.parse(raw);
       history = Array.isArray(data.transactions) ? data.transactions : [];
       expenses = Array.isArray(data.expenses) ? data.expenses : [];
+      transfers = Array.isArray(data.transfers) ? data.transfers : [];
       capitalData = data.capital || null;
       unlocked = true;
 
@@ -2198,6 +2362,7 @@ body.app-locked #historyToggle{
       .withSuccessHandler(data=>{
         history=(data && data.transactions)||[];
         expenses=(data && data.expenses)||[];
+        transfers=(data && data.transfers)||[];
         capitalData=(data && data.capital)||null;
         unlocked=true;
         render();
@@ -2407,7 +2572,7 @@ body.app-locked #historyToggle{
   const calPrev=$('calPrev'),calNext=$('calNext'),calGrid=$('calGrid'),calDetail=$('calDetail');
   if(calPrev)calPrev.addEventListener('click',()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()-1,1);calSelected='';renderCalendar()});
   if(calNext)calNext.addEventListener('click',()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1);calSelected='';renderCalendar()});
-  if(calGrid)calGrid.addEventListener('click',e=>{const b=e.target.closest('[data-cal-date]');if(!b)return;const key=b.dataset.calDate;if(calSelected===key){calSelected='';renderCalendar();return;}calSelected=key;renderCalendar()});
+  if(calGrid)calGrid.addEventListener('click',e=>{const b=e.target.closest('[data-cal-date]');if(!b)return;calSelected=b.dataset.calDate;renderCalendar()});
   if(calDetail)calDetail.addEventListener('click',e=>{const b=e.target.closest('[data-cal-remove]');if(!b)return;pendingDeleteTxId=String(b.dataset.calRemove||'');if(!pendingDeleteTxId)return;deleteTxModal.classList.add('show');deleteTxModal.setAttribute('aria-hidden','false')});
 
   function closeTypeModal(){
@@ -2415,7 +2580,9 @@ body.app-locked #historyToggle{
     typeModal.style.display='none';
     typeModal.setAttribute('aria-hidden','true');
     if(typeChoiceActions) typeChoiceActions.style.display='grid';
+    if(cashOutWalletStep) cashOutWalletStep.classList.remove('show');
     if(feeLocationStep) feeLocationStep.classList.remove('show');
+    selectedCashOutWallet='';
   }
 
   function savePendingTransaction(type){
@@ -2462,7 +2629,8 @@ body.app-locked #historyToggle{
       chargeMode:chargeMode.value,
       amount:enteredAmount,
       cashReceived:isFinite(enteredCash)?enteredCash:0,
-      feeLocation:''
+      feeLocation:'',
+      walletDestination:''
     };
     typeModal.classList.add('show');
     typeModal.style.display='flex';
@@ -2478,13 +2646,29 @@ body.app-locked #historyToggle{
     if(!pendingPayload) return;
     pendingPayload.type='Cash Out';
     pendingPayload.feeLocation='';
+    pendingPayload.walletDestination='';
+    selectedCashOutWallet='';
     if(typeChoiceActions) typeChoiceActions.style.display='none';
-    if(feeLocationStep) feeLocationStep.classList.add('show');
+    if(cashOutWalletStep) cashOutWalletStep.classList.add('show');
   });
 
-  feeToGcash.addEventListener('click',()=>{
+  function chooseCashOutWallet(wallet){
     if(!pendingPayload) return;
-    pendingPayload.feeLocation='GCash';
+    selectedCashOutWallet = wallet;
+    pendingPayload.walletDestination = wallet;
+    cashOutWalletStep.classList.remove('show');
+    feeToGcash.textContent = wallet;
+    feeToGcash.classList.toggle('gcash', wallet === 'GCash');
+    feeToGcash.classList.toggle('cash', wallet === 'Saripay');
+    feeLocationStep.classList.add('show');
+  }
+
+  cashOutToGcash.addEventListener('click',()=>chooseCashOutWallet('GCash'));
+  cashOutToSaripay.addEventListener('click',()=>chooseCashOutWallet('Saripay'));
+
+  feeToGcash.addEventListener('click',()=>{
+    if(!pendingPayload || !selectedCashOutWallet) return;
+    pendingPayload.feeLocation=selectedCashOutWallet;
     savePendingTransaction('Cash Out');
   });
 
