@@ -1736,8 +1736,8 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
 
       let timeout = setTimeout(()=>{
         cleanup();
-        reject(new Error('Google Sheets connection timed out.'));
-      },15000);
+        reject(new Error('Google Sheets is taking longer than expected. Check History before retrying.'));
+      },60000);
 
       function cleanup(){
         clearTimeout(timeout);
@@ -2988,9 +2988,12 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
         loadCapital();
       })
       .withFailureHandler(err => {
-        pendingPayload=null;
+        // Keep the same clientTransactionId. If the first request actually saved
+        // but the browser missed the reply, a retry will return the existing row
+        // instead of creating a duplicate.
+        pendingPayload = payloadToSave;
         setTransactionSaving(false);
-        status.textContent=err.message || 'Could not save transaction.';
+        status.textContent=(err && err.message) || 'Could not save transaction.';
         status.className='status err';
       })
       .addTransactionBySession(getSessionToken(),payloadToSave);
@@ -3015,13 +3018,18 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
       return;
     }
 
+    const clientTransactionId = (window.crypto && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : ('tx-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+
     pendingPayload={
       type:'',
       chargeMode:chargeMode.value,
       amount:enteredAmount,
       cashReceived:isFinite(enteredCash)?enteredCash:0,
       feeLocation:'',
-      walletDestination:''
+      walletDestination:'',
+      clientTransactionId
     };
     typeModal.classList.add('show');
     typeModal.style.display='flex';
