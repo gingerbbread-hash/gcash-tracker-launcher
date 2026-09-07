@@ -1211,6 +1211,16 @@ body.app-locked #historyToggle{
   color:#475467;
   border:1px solid #e4e7ec;
 }
+.history-sync-pill{
+  display:inline-block;
+  padding:4px 7px;
+  border-radius:999px;
+  font-size:9px;
+  font-weight:900;
+  background:#fff7e6;
+  color:#9a6700;
+  border:1px solid #f4d58d;
+}
 .history-tx-amount{
   font-size:22px;
   line-height:1;
@@ -2129,6 +2139,7 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
           <div class="history-tx-kind">
             <span class="badge ${tx.type==='Cash In'?'badge-cashin':'badge-cashout'}">${escapeHtml(tx.type)}</span>
             <span class="history-wallet-pill">${escapeHtml(transactionWalletLabel(tx))}</span>
+            ${tx._pendingSync ? '<span class="history-sync-pill">SYNCING…</span>' : ''}
           </div>
           <div class="history-tx-fee">Fee earned ${money(tx.fee)}</div>
         </div>
@@ -2689,6 +2700,7 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
         saveLocalTrackerCache();
         setLockedView(false);
         showSync('Synced.',true);
+        setTimeout(restorePendingTransactions, 0);
       })
       .withFailureHandler(err=>{
         unlocked=true;
@@ -2958,6 +2970,146 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
     selectedCashOutWallet='';
   }
 
+  const TX_QUEUE_KEY = 'gcash_tracker_pending_tx_v1';
+  let txSyncBusy = false;
+
+  function loadPendingTxQueue(){
+    try{
+      const q = JSON.parse(localStorage.getItem(TX_QUEUE_KEY) || '[]');
+      return Array.isArray(q) ? q : [];
+    }catch(e){ return []; }
+  }
+
+  function savePendingTxQueue(q){
+    try{ localStorage.setItem(TX_QUEUE_KEY, JSON.stringify(q || [])); }catch(e){}
+  }
+
+  function makeOptimisticTransaction(payload){
+    const entered = Number(payload.amount || 0);
+    const feeValue = calcFee(entered);
+    const deduct = payload.chargeMode === 'deduct';
+    const txAmount = deduct ? Math.max(entered - feeValue, 0) : entered;
+    const txTotal = deduct ? entered : entered + feeValue;
+    const cash = Number(payload.cashReceived || 0);
+    const changeValue = Math.max(cash - txTotal, 0);
+
+    const beforeCash = Number((capitalData && capitalData.cashOnHand) || 0);
+    const beforeGcash = Number((capitalData && capitalData.gcashBalance) || 0);
+    const beforeSaripay = Number((capitalData && capitalData.saripayBalance) || 0);
+
+    let afterCash = beforeCash;
+    let afterGcash = beforeGcash;
+    let afterSaripay = beforeSaripay;
+
+    if(payload.type === 'Cash In'){
+      afterCash += txTotal;
+      afterGcash -= txAmount;
+    }else{
+      afterCash -= txAmount;
+      if(payload.walletDestination === 'Saripay') afterSaripay += txAmount;
+      else afterGcash += txAmount;
+
+      if(payload.feeLocation === 'Cash on Hand') afterCash += feeValue;
+      else if(payload.feeLocation === 'Saripay') afterSaripay += feeValue;
+      else afterGcash += feeValue;
+    }
+
+    const now = new Date();
+    return {
+      id: payload.clientTransactionId,
+      timestamp: now.toISOString(),
+      date: new Intl.DateTimeFormat('en-PH',{
+        month:'2-digit',day:'2-digit',year:'numeric',
+        hour:'2-digit',minute:'2-digit'
+      }).format(now),
+      type: payload.type,
+      amount: txAmount,
+      fee: feeValue,
+      total: txTotal,
+      cashReceived: cash,
+      change: changeValue,
+      chargeMode: payload.chargeMode,
+      feeLocation: payload.feeLocation || '',
+      walletDestination: payload.type === 'Cash In' ? 'GCash' : payload.walletDestination,
+      previousCash: beforeCash, newCash: afterCash,
+      previousGcash: beforeGcash, newGcash: afterGcash,
+      previousSaripay: beforeSaripay, newSaripay: afterSaripay,
+      _pendingSync: true
+    };
+  }
+
+  function applyOptimisticTransaction(tx){
+    history.unshift(tx);
+
+    if(capitalData && capitalData.initialized){
+      capitalData.cashOnHand = Number(tx.newCash);
+      capitalData.gcashBalance = Number(tx.newGcash);
+      capitalData.saripayBalance = Number(tx.newSaripay);
+      capitalData.grossFees = Number(capitalData.grossFees || 0) + Number(tx.fee || 0);
+      capitalData.netEarnings = Number(capitalData.netEarnings || 0) + Number(tx.fee || 0);
+      capitalData.expectedTotalMoney = Number(capitalData.expectedTotalMoney || 0) + Number(tx.fee || 0);
+      renderCapital(capitalData);
+    }
+    render();
+    saveLocalTrackerCache();
+  }
+
+  function processPendingTxQueue(){
+    if(txSyncBusy || !unlocked) return;
+    const q = loadPendingTxQueue();
+    if(!q.length){
+      showSync('Synced.', true);
+      // Reconcile only after all queued transactions have reached Google Sheets.
+      loadCapital();
+      return;
+    }
+
+    txSyncBusy = true;
+    const payload = q[0];
+    showSync(`Syncing ${q.length} transaction${q.length===1?'':'s'}…`);
+
+    google.script.run
+      .withSuccessHandler(serverTx=>{
+        const idx = history.findIndex(x => String(x.id) === String(serverTx.id));
+        if(idx >= 0) history[idx] = serverTx;
+        else history.unshift(serverTx);
+
+        q.shift();
+        savePendingTxQueue(q);
+        txSyncBusy = false;
+        render();
+        saveLocalTrackerCache();
+
+        if(q.length){
+          setTimeout(processPendingTxQueue, 50);
+        }else{
+          showSync('Synced.', true);
+          loadCapital();
+        }
+      })
+      .withFailureHandler(err=>{
+        txSyncBusy = false;
+        const msg=(err && err.message) || 'Google Sheets sync delayed.';
+        showSync(msg + ' Transaction is safe on this device and will retry.');
+        // Keep the queue intact. Retry later without creating duplicates.
+        setTimeout(processPendingTxQueue, 15000);
+      })
+      .addTransactionBySession(getSessionToken(), payload);
+  }
+
+  function restorePendingTransactions(){
+    const q = loadPendingTxQueue();
+    if(!q.length) return;
+    q.forEach(payload=>{
+      const id=String(payload.clientTransactionId||'');
+      if(!id || history.some(x=>String(x.id)===id)) return;
+      const tx=makeOptimisticTransaction(payload);
+      history.unshift(tx);
+    });
+    render();
+    setTimeout(processPendingTxQueue, 300);
+  }
+
   function setTransactionSaving(on){
     transactionSaving = !!on;
     if(recordTransactionBtn){
@@ -2997,47 +3149,35 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
   }
 
   function savePendingTransaction(type){
-    if(!pendingPayload || transactionSaving) return;
+    if(!pendingPayload) return;
 
     pendingPayload.type = type;
     const payloadToSave = {...pendingPayload};
 
-    setTransactionSaving(true);
     closeTypeModal();
-    status.textContent='Recording transaction…';
-    status.className='status';
 
-    google.script.run
-      .withSuccessHandler(tx => {
-        history.unshift(tx);
-        applyTransactionSnapshotImmediately(tx);
-        render();
+    // Save to the phone immediately.
+    const optimisticTx = makeOptimisticTransaction(payloadToSave);
+    applyOptimisticTransaction(optimisticTx);
 
-        amount.value='';
-        cashReceived.value='';
-        txType.value='';
-        pendingPayload=null;
-        resetChargeMode();
+    const q = loadPendingTxQueue();
+    if(!q.some(x => String(x.clientTransactionId) === String(payloadToSave.clientTransactionId))){
+      q.push(payloadToSave);
+      savePendingTxQueue(q);
+    }
 
-        status.textContent='Transaction recorded.';
-        status.className='status ok';
-        setTransactionSaving(false);
+    amount.value='';
+    cashReceived.value='';
+    txType.value='';
+    pendingPayload=null;
+    resetChargeMode();
 
-        // Reconcile the complete Capital Monitor in the background.
-        // The wallet amounts are already updated above, so the user does not
-        // need to wait for this second request before seeing the correct balance.
-        loadCapital();
-      })
-      .withFailureHandler(err => {
-        // Keep the same clientTransactionId. If the first request actually saved
-        // but the browser missed the reply, a retry will return the existing row
-        // instead of creating a duplicate.
-        pendingPayload = payloadToSave;
-        setTransactionSaving(false);
-        status.textContent=(err && err.message) || 'Could not save transaction.';
-        status.className='status err';
-      })
-      .addTransactionBySession(getSessionToken(),payloadToSave);
+    status.textContent='Recorded ✓ Syncing to Google Sheets…';
+    status.className='status ok';
+    setTransactionSaving(false);
+
+    // Google Sheets sync happens after the customer-facing save is already complete.
+    setTimeout(processPendingTxQueue, 0);
   }
 
   form.addEventListener('submit', e => {
