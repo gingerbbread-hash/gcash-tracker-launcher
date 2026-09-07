@@ -1455,6 +1455,32 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
 }
 </style>
 
+
+<style id="home-wallet-force-v2">
+/* Force Home wallet cards into:
+   Cash | Saripay
+   GCash | Maya */
+.home-balance-row,
+.home-balances,
+.home-balance-grid{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
+  gap:8px !important;
+}
+.home-wallet-cash{order:1 !important}
+.home-wallet-saripay{order:2 !important}
+.home-wallet-gcash{order:3 !important}
+.home-wallet-maya{order:4 !important}
+.home-wallet-cash,
+.home-wallet-saripay,
+.home-wallet-gcash,
+.home-wallet-maya{
+  width:100% !important;
+  min-width:0 !important;
+  margin:0 !important;
+}
+</style>
+
 </head>
 <body>
 <main class="app">
@@ -1484,10 +1510,10 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
 
   <section id="tabHomePage" class="app-tab-page active">
     <div id="homeBalanceStrip" class="home-balance-strip">
-      <div class="home-balance-mini cash"><small>Cash</small><strong id="homeCashBalance">₱0.00</strong></div>
-      <div class="home-balance-mini saripay"><small>Saripay</small><strong id="homeSaripayBalance">₱0.00</strong></div>
-      <div class="home-balance-mini gcash"><small>GCash</small><strong id="homeGcashBalance">₱0.00</strong></div>
-      <div class="home-balance-mini"><small>Maya</small><strong id="homeMayaBalance">₱0.00</strong></div>
+      <div class="home-balance-mini cash home-wallet-cash"><small>Cash</small><strong id="homeCashBalance">₱0.00</strong></div>
+      <div class="home-balance-mini saripay home-wallet-saripay"><small>Saripay</small><strong id="homeSaripayBalance">₱0.00</strong></div>
+      <div class="home-balance-mini gcash home-wallet-gcash"><small>GCash</small><strong id="homeGcashBalance">₱0.00</strong></div>
+      <div class="home-balance-mini home-wallet-maya"><small>Maya</small><strong id="homeMayaBalance">₱0.00</strong></div>
     </div>
     <div id="homeTabMount"></div>
   </section>
@@ -2983,7 +3009,30 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
     noExactCashBtn.classList.toggle('active', noExactCashMode);
     noExactCashBtn.setAttribute('aria-pressed', noExactCashMode ? 'true' : 'false');
     cashReceived.value='';
-    preview();
+  
+  function forceHomeWalletLayoutV2(){
+    const cash=document.getElementById('homeCashBalance')?.closest('.home-balance-mini');
+    const sari=document.getElementById('homeSaripayBalance')?.closest('.home-balance-mini');
+    const gcash=document.getElementById('homeGcashBalance')?.closest('.home-balance-mini');
+    const maya=document.getElementById('homeMayaBalance')?.closest('.home-balance-mini');
+    const grid=cash?.parentElement;
+    if(!grid) return;
+    grid.style.setProperty('display','grid','important');
+    grid.style.setProperty('grid-template-columns','minmax(0,1fr) minmax(0,1fr)','important');
+    grid.style.setProperty('gap','8px','important');
+    [cash,sari,gcash,maya].forEach(card=>{
+      if(card){
+        card.style.setProperty('width','100%','important');
+        card.style.setProperty('min-width','0','important');
+        grid.appendChild(card);
+      }
+    });
+  }
+  forceHomeWalletLayoutV2();
+  setTimeout(forceHomeWalletLayoutV2,100);
+  setTimeout(forceHomeWalletLayoutV2,800);
+
+  preview();
     if(noExactCashMode) cashReceived.focus();
   });
 
