@@ -1389,6 +1389,17 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
 }
 </style>
 
+
+<style>
+.action-record:disabled,
+.type-choice:disabled,
+.fee-location-choice:disabled,
+.cashout-wallet-choice:disabled{
+  opacity:.6;
+  cursor:not-allowed !important;
+}
+</style>
+
 </head>
 <body>
 <main class="app">
@@ -1939,6 +1950,8 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
   let transfers = [];
   let expensePaidFrom = 'Cash';
   let pendingPayload = null;
+  let transactionSaving = false;
+  const recordTransactionBtn = form ? form.querySelector('.action-record') : null;
 
   let history = [];
   let selectedPeriod = 'today';
@@ -2049,7 +2062,7 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
         </div>
         <div class="balance-cell">
           <span class="balance-cell-value balance-delta ${cls}">${sign}${money(Math.abs(d))}</span>
-          <span class="balance-cell-label">CHANGE</span>
+          <span class="balance-cell-label">AMOUNT</span>
         </div>
         <div class="balance-cell">
           <span class="balance-cell-value balance-new">${money(n)}</span>
@@ -2904,35 +2917,94 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
     selectedCashOutWallet='';
   }
 
+  function setTransactionSaving(on){
+    transactionSaving = !!on;
+    if(recordTransactionBtn){
+      recordTransactionBtn.disabled = transactionSaving;
+      recordTransactionBtn.textContent = transactionSaving ? 'Recording…' : 'Record Transaction';
+      recordTransactionBtn.style.opacity = transactionSaving ? '.65' : '';
+      recordTransactionBtn.style.cursor = transactionSaving ? 'not-allowed' : '';
+    }
+  }
+
+  function applyTransactionSnapshotImmediately(tx){
+    if(!tx) return;
+
+    // Use the permanent balance snapshot returned by Apps Script immediately,
+    // so the user sees the new wallet balances without waiting for a second sync.
+    if(tx.newCash !== undefined && tx.newCash !== null){
+      cashOutAvailable.textContent = money(tx.newCash);
+    }
+    if(tx.newGcash !== undefined && tx.newGcash !== null){
+      cashInAvailable.textContent = money(tx.newGcash);
+    }
+    if(tx.newSaripay !== undefined && tx.newSaripay !== null){
+      saripayAvailable.textContent = money(tx.newSaripay);
+    }
+
+    if(capitalData && capitalData.initialized){
+      capitalData.cashOnHand = Number(tx.newCash ?? capitalData.cashOnHand ?? 0);
+      capitalData.gcashBalance = Number(tx.newGcash ?? capitalData.gcashBalance ?? 0);
+      capitalData.saripayBalance = Number(tx.newSaripay ?? capitalData.saripayBalance ?? 0);
+      capitalData.grossFees = Number(capitalData.grossFees || 0) + Number(tx.fee || 0);
+      capitalData.netEarnings = Number(capitalData.netEarnings || 0) + Number(tx.fee || 0);
+      capitalData.expectedTotalMoney = Number(capitalData.expectedTotalMoney || 0) + Number(tx.fee || 0);
+      netEarnings.textContent = money(capitalData.netEarnings);
+      expectedTotalMoney.textContent = money(capitalData.expectedTotalMoney);
+      saveLocalTrackerCache();
+    }
+  }
+
   function savePendingTransaction(type){
-    if(!pendingPayload) return;
+    if(!pendingPayload || transactionSaving) return;
+
     pendingPayload.type = type;
+    const payloadToSave = {...pendingPayload};
+
+    setTransactionSaving(true);
     closeTypeModal();
-    status.textContent='Saving…'; status.className='status';
+    status.textContent='Recording transaction…';
+    status.className='status';
 
     google.script.run
       .withSuccessHandler(tx => {
         history.unshift(tx);
+        applyTransactionSnapshotImmediately(tx);
         render();
+
         amount.value='';
         cashReceived.value='';
         txType.value='';
         pendingPayload=null;
         resetChargeMode();
-        loadCapital();
+
         status.textContent='Transaction recorded.';
         status.className='status ok';
+        setTransactionSaving(false);
+
+        // Reconcile the complete Capital Monitor in the background.
+        // The wallet amounts are already updated above, so the user does not
+        // need to wait for this second request before seeing the correct balance.
+        loadCapital();
       })
       .withFailureHandler(err => {
         pendingPayload=null;
+        setTransactionSaving(false);
         status.textContent=err.message || 'Could not save transaction.';
         status.className='status err';
       })
-      .addTransactionBySession(getSessionToken(),pendingPayload);
+      .addTransactionBySession(getSessionToken(),payloadToSave);
   }
 
   form.addEventListener('submit', e => {
     e.preventDefault();
+
+    if(transactionSaving){
+      status.textContent='Please wait. The current transaction is still recording.';
+      status.className='status';
+      return;
+    }
+
     if(!unlocked){ status.textContent=''; status.className='status err'; return; }
 
     const enteredAmount=Number(amount.value);
