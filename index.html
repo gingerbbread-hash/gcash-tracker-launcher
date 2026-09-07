@@ -1481,6 +1481,20 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
 }
 </style>
 
+
+<style id="home-balance-strip-final-fix">
+#homeBalanceStrip{
+  display:grid !important;
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  gap:8px !important;
+}
+#homeBalanceStrip .home-balance-mini{
+  width:auto !important;
+  min-width:0 !important;
+  margin:0 !important;
+}
+</style>
+
 </head>
 <body>
 <main class="app">
