@@ -1317,7 +1317,10 @@ body.app-locked #historyToggle{
 <style>
 /* Saripay wallet monitoring */
 .capital-grid-three{grid-template-columns:repeat(3,minmax(0,1fr)) !important}
+.maya-balance{background:#ecfdf3;border:1px solid #abefc6;color:#067647}
 .saripay-balance{background:#fff7ed;border:1px solid #fed7aa;color:#c2410c}
+.maya-transfer-btn{width:100%;margin-top:8px;min-height:42px;border:1px solid #abefc6;background:#ecfdf3;color:#067647;border-radius:12px;font-size:12px;font-weight:900}
+.maya-transfer-history{margin-top:8px;border:1px solid #d0d5dd;border-radius:12px;background:#fff;padding:10px}.maya-transfer-item{padding:9px 0;border-bottom:1px solid #eaecf0;font-size:12px}.maya-transfer-item:last-child{border-bottom:0}.maya-transfer-top{display:flex;justify-content:space-between;gap:8px;font-weight:900}.maya-transfer-meta{color:#667085;font-size:10px;margin-top:3px}
 .saripay-transfer-btn{width:100%;margin-top:8px;min-height:42px;border:1px solid #fed7aa;background:#fff7ed;color:#c2410c;border-radius:12px;font-size:12px;font-weight:900}
 .cashout-wallet-step{display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
 .cashout-wallet-step.show{display:block}
@@ -1441,6 +1444,7 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
     <div id="homeBalanceStrip" class="home-balance-strip">
       <div class="home-balance-mini cash"><small>Cash</small><strong id="homeCashBalance">₱0.00</strong></div>
       <div class="home-balance-mini gcash"><small>GCash</small><strong id="homeGcashBalance">₱0.00</strong></div>
+      <div class="home-balance-mini"><small>Maya</small><strong id="homeMayaBalance">₱0.00</strong></div>
       <div class="home-balance-mini saripay"><small>Saripay</small><strong id="homeSaripayBalance">₱0.00</strong></div>
     </div>
     <div id="homeTabMount"></div>
@@ -1490,11 +1494,21 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
         <strong id="cashInAvailable">₱0.00</strong>
         <span>GCash Balance</span>
       </div>
+      <div class="capital-balance maya-balance">
+        <small>Maya</small>
+        <strong id="mayaAvailable">₱0.00</strong>
+        <span>Transfer Wallet</span>
+      </div>
       <div class="capital-balance saripay-balance">
         <small>Saripay</small>
         <strong id="saripayAvailable">₱0.00</strong>
         <span>Cash Out Wallet</span>
       </div>
+    </div>
+    <button type="button" id="mayaTransferBtn" class="maya-transfer-btn">Transfer GCash ↔ Maya</button>
+    <button type="button" id="mayaTransferHistoryToggle" class="expense-history-toggle">View Maya Transfer History</button>
+    <div id="mayaTransferHistorySection" class="maya-transfer-history" style="display:none">
+      <div id="mayaTransferHistoryEmpty" class="history-empty">No GCash / Maya transfers yet.</div><div id="mayaTransferHistoryList"></div>
     </div>
     <button type="button" id="saripayTransferBtn" class="saripay-transfer-btn">Transfer Saripay → GCash</button>
     <div class="capital-summary-row capital-summary-three">
@@ -1657,6 +1671,9 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
     <label class="label" for="capitalGcashInput">GCash Balance</label>
     <input id="capitalGcashInput" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
     <div class="field-gap"></div>
+    <label class="label" for="capitalMayaInput">Maya Balance</label>
+    <input id="capitalMayaInput" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+
     <label class="label" for="capitalSaripayInput">Saripay Balance</label>
     <input id="capitalSaripayInput" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
     <div id="capitalModalStatus" class="status"></div>
@@ -1668,6 +1685,20 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
 </div>
 
 
+<div id="mayaTransferModal" class="capital-modal" aria-hidden="true">
+  <div class="capital-modal-card" role="dialog" aria-modal="true">
+    <div class="capital-modal-title">GCash / Maya Transfer</div>
+    <div class="toggle-group" style="margin-bottom:12px">
+      <button type="button" id="mayaDirGcashToMaya" class="toggle-btn active">GCash → Maya</button>
+      <button type="button" id="mayaDirMayaToGcash" class="toggle-btn">Maya → GCash</button>
+    </div>
+    <label class="label" for="mayaTransferAmount">Transfer Amount</label>
+    <input id="mayaTransferAmount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00">
+    <div class="note" style="margin-top:8px">No fee. No expense. Earnings are not affected.</div>
+    <div id="mayaTransferStatus" class="status"></div>
+    <div class="capital-modal-actions"><button type="button" id="cancelMayaTransferBtn" class="btn btn-secondary">Cancel</button><button type="button" id="saveMayaTransferBtn" class="btn btn-primary">Transfer</button></div>
+  </div>
+</div>
 <div id="saripayTransferModal" class="capital-modal" aria-hidden="true">
   <div class="capital-modal-card" role="dialog" aria-modal="true" aria-labelledby="saripayTransferModalTitle">
     <div id="saripayTransferModalTitle" class="capital-modal-title">Transfer Saripay to GCash</div>
@@ -1944,6 +1975,11 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
   const capitalStatus = $('capitalStatus');
   const cashOutAvailable = $('cashOutAvailable');
   const cashInAvailable = $('cashInAvailable');
+  const mayaAvailable=$('mayaAvailable'), homeMayaBalance=$('homeMayaBalance'), capitalMayaInput=$('capitalMayaInput');
+  const mayaTransferBtn=$('mayaTransferBtn'), mayaTransferModal=$('mayaTransferModal'), mayaTransferAmount=$('mayaTransferAmount'), mayaTransferStatus=$('mayaTransferStatus');
+  const mayaDirGcashToMaya=$('mayaDirGcashToMaya'), mayaDirMayaToGcash=$('mayaDirMayaToGcash'), cancelMayaTransferBtn=$('cancelMayaTransferBtn'), saveMayaTransferBtn=$('saveMayaTransferBtn');
+  const mayaTransferHistoryToggle=$('mayaTransferHistoryToggle'), mayaTransferHistorySection=$('mayaTransferHistorySection'), mayaTransferHistoryEmpty=$('mayaTransferHistoryEmpty'), mayaTransferHistoryList=$('mayaTransferHistoryList');
+  let mayaTransferDirection='GCashToMaya', mayaTransfers=[];
   const saripayAvailable = $('saripayAvailable');
   const saripayTransferBtn = $('saripayTransferBtn');
   const saripayTransferModal = $('saripayTransferModal');
@@ -2221,6 +2257,7 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
     if(!data || !data.initialized){
       cashOutAvailable.textContent = money(0);
       cashInAvailable.textContent = money(0);
+      mayaAvailable.textContent=money(0); if(homeMayaBalance)homeMayaBalance.textContent=money(0);
       saripayAvailable.textContent = money(0);
       totalCapital.textContent = money(0);
       netEarnings.textContent = money(0);
@@ -2234,6 +2271,7 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
 
     cashOutAvailable.textContent = money(data.cashOnHand);
     cashInAvailable.textContent = money(data.gcashBalance);
+    mayaAvailable.textContent=money(data.mayaBalance||0); if(homeMayaBalance)homeMayaBalance.textContent=money(data.mayaBalance||0);
     saripayAvailable.textContent = money(data.saripayBalance || 0);
     totalCapital.textContent = money(data.baseCapital ?? data.totalCapital);
     netEarnings.textContent = money(data.netEarnings || 0);
@@ -2265,6 +2303,7 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
     }
     capitalCashInput.value = capitalData && capitalData.initialized ? Number(capitalData.cashOnHand || 0).toFixed(2) : '';
     capitalGcashInput.value = capitalData && capitalData.initialized ? Number(capitalData.gcashBalance || 0).toFixed(2) : '';
+    capitalMayaInput.value=capitalData&&capitalData.initialized?Number(capitalData.mayaBalance||0).toFixed(2):'';
     capitalSaripayInput.value = capitalData && capitalData.initialized ? Number(capitalData.saripayBalance || 0).toFixed(2) : '';
     capitalModalStatus.textContent = '';
     capitalModal.classList.add('show');
@@ -2288,9 +2327,10 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
     if(!unlocked) return;
     const cash = Number(capitalCashInput.value);
     const gcash = Number(capitalGcashInput.value);
+    const maya=Number(capitalMayaInput.value);
     const saripay = Number(capitalSaripayInput.value);
 
-    if(!isFinite(cash) || cash < 0 || !isFinite(gcash) || gcash < 0 || !isFinite(saripay) || saripay < 0){
+    if(!isFinite(cash) || cash < 0 || !isFinite(gcash) || gcash < 0 || !isFinite(maya) || maya < 0 || !isFinite(saripay) || saripay < 0){
       capitalModalStatus.textContent='Enter valid balances.';
       capitalModalStatus.className='status err';
       return;
@@ -2311,7 +2351,7 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
         capitalModalStatus.textContent=err.message || 'Could not save capital.';
         capitalModalStatus.className='status err';
       })
-      .setCapitalBySession(getSessionToken(),cash,gcash,saripay);
+      .setCapitalBySession(getSessionToken(),cash,gcash,saripay,maya);
   });
 
   function renderExpenses(){
@@ -2362,6 +2402,16 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
     expensePaidCash.classList.toggle('active', expensePaidFrom === 'Cash');
     expensePaidGcash.classList.toggle('active', expensePaidFrom === 'GCash');
   }
+
+  function setMayaTransferDirection(d){mayaTransferDirection=d==='MayaToGCash'?'MayaToGCash':'GCashToMaya';mayaDirGcashToMaya.classList.toggle('active',mayaTransferDirection==='GCashToMaya');mayaDirMayaToGcash.classList.toggle('active',mayaTransferDirection==='MayaToGCash');}
+  function renderMayaTransfers(){mayaTransferHistoryList.innerHTML='';mayaTransferHistoryEmpty.style.display=mayaTransfers.length?'none':'block';mayaTransfers.forEach(t=>{const item=document.createElement('div');item.className='maya-transfer-item';item.innerHTML=`<div class="maya-transfer-top"><span>${escapeHtml(t.fromWallet)} → ${escapeHtml(t.toWallet)}</span><span>${money(t.amount)}</span></div><div class="maya-transfer-meta">${escapeHtml(t.date||'')}</div><div class="maya-transfer-meta">GCash: ${money(t.previousGcash)} → ${money(t.newGcash)} · Maya: ${money(t.previousMaya)} → ${money(t.newMaya)}</div><div style="text-align:right"><button type="button" class="link-btn" data-remove-maya-transfer="${escapeHtml(t.id)}">Remove</button></div>`;mayaTransferHistoryList.appendChild(item);});}
+  function loadMayaTransfers(){if(!unlocked)return;google.script.run.withSuccessHandler(d=>{mayaTransfers=d||[];renderMayaTransfers();}).withFailureHandler(()=>{}).getMayaTransfersBySession(getSessionToken());}
+  mayaTransferBtn.addEventListener('click',()=>{mayaTransferAmount.value='';mayaTransferStatus.textContent='';setMayaTransferDirection('GCashToMaya');mayaTransferModal.classList.add('show');mayaTransferModal.style.display='flex';});
+  cancelMayaTransferBtn.addEventListener('click',()=>{mayaTransferModal.classList.remove('show');mayaTransferModal.style.display='none';});
+  mayaDirGcashToMaya.addEventListener('click',()=>setMayaTransferDirection('GCashToMaya'));mayaDirMayaToGcash.addEventListener('click',()=>setMayaTransferDirection('MayaToGCash'));
+  mayaTransferHistoryToggle.addEventListener('click',()=>{const o=mayaTransferHistorySection.style.display==='none';mayaTransferHistorySection.style.display=o?'block':'none';mayaTransferHistoryToggle.textContent=o?'Hide Maya Transfer History':'View Maya Transfer History';if(o)loadMayaTransfers();});
+  saveMayaTransferBtn.addEventListener('click',()=>{const amount=Number(mayaTransferAmount.value);if(!isFinite(amount)||amount<=0){mayaTransferStatus.textContent='Enter a valid transfer amount.';mayaTransferStatus.className='status err';return;}saveMayaTransferBtn.disabled=true;mayaTransferStatus.textContent='Transferring…';google.script.run.withSuccessHandler(d=>{saveMayaTransferBtn.disabled=false;if(d&&d.transfer)mayaTransfers.unshift(d.transfer);if(d&&d.capital)renderCapital(d.capital);renderMayaTransfers();saveLocalTrackerCache();cancelMayaTransferBtn.click();}).withFailureHandler(e=>{saveMayaTransferBtn.disabled=false;mayaTransferStatus.textContent=(e&&e.message)||'Could not transfer funds.';mayaTransferStatus.className='status err';}).addMayaTransferBySession(getSessionToken(),{amount,direction:mayaTransferDirection});});
+  mayaTransferHistoryList.addEventListener('click',e=>{const b=e.target.closest('[data-remove-maya-transfer]');if(!b)return;const id=b.getAttribute('data-remove-maya-transfer');if(!confirm('Remove this GCash / Maya transfer?'))return;google.script.run.withSuccessHandler(d=>{mayaTransfers=(d&&d.transfers)||mayaTransfers.filter(x=>String(x.id)!==String(id));if(d&&d.capital)renderCapital(d.capital);renderMayaTransfers();saveLocalTrackerCache();}).withFailureHandler(e=>alert((e&&e.message)||'Could not remove transfer.')).deleteMayaTransferBySession(getSessionToken(),id);});
 
   function updateSaripayTransferPreview(){
     const amount = Number(saripayTransferAmount.value || 0);
@@ -3483,12 +3533,13 @@ document.addEventListener('DOMContentLoaded', function(){
     const homeSari=document.getElementById('homeSaripayBalance');
     if(homeCash) homeCash.textContent=numText('cashOutAvailable');
     if(homeGcash) homeGcash.textContent=numText('cashInAvailable');
+    if(homeMayaBalance) homeMayaBalance.textContent=numText('mayaAvailable');
     if(homeSari) homeSari.textContent=numText('saripayAvailable');
 
   }
 
   const obs=new MutationObserver(refreshTabMirrors);
-  ['cashOutAvailable','cashInAvailable','saripayAvailable']
+  ['cashOutAvailable','cashInAvailable','mayaAvailable','saripayAvailable']
     .forEach(id=>{
       const el=document.getElementById(id);
       if(el) obs.observe(el,{childList:true,subtree:true,characterData:true});
