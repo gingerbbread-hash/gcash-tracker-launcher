@@ -1413,6 +1413,20 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
 }
 </style>
 
+
+<style id="wallet-layout-force">
+#capitalBalances{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
+  gap:10px !important;
+}
+#capitalBalances .capital-balance{
+  width:auto !important;
+  min-width:0 !important;
+  margin:0 !important;
+}
+</style>
+
 </head>
 <body>
 <main class="app">
@@ -1489,11 +1503,6 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
         <strong id="cashOutAvailable">₱0.00</strong>
         <span>Cash on Hand</span>
       </div>
-      <div class="capital-balance saripay-balance">
-        <small>Saripay</small>
-        <strong id="saripayAvailable">₱0.00</strong>
-        <span>Cash Out Wallet</span>
-      </div>
       <div class="capital-balance gcash-balance">
         <small>Cash In Available</small>
         <strong id="cashInAvailable">₱0.00</strong>
@@ -1503,6 +1512,11 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
         <small>Maya</small>
         <strong id="mayaAvailable">₱0.00</strong>
         <span>Transfer Wallet</span>
+      </div>
+      <div class="capital-balance saripay-balance">
+        <small>Saripay</small>
+        <strong id="saripayAvailable">₱0.00</strong>
+        <span>Cash Out Wallet</span>
       </div>
     </div>
     <button type="button" id="mayaTransferBtn" class="maya-transfer-btn">Transfer GCash ↔ Maya</button>
