@@ -1438,6 +1438,20 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
 
   <section id="tabWalletsPage" class="app-tab-page">
     <div id="walletsTabMount"></div>
+
+    <section class="card" id="bloggerPairingCard" style="margin-top:12px">
+      <h2 class="section-title" style="margin-bottom:6px">Device Pairing</h2>
+      <p class="note" style="margin:0 0 10px">
+        Create a one-time 6-digit code to connect the Blogger tracker to these same Google Sheets records.
+      </p>
+      <button id="createPairingCodeBtn" class="btn btn-secondary" type="button">Create Pairing Code</button>
+      <div id="createdPairingCodeWrap" style="display:none;margin-top:10px;text-align:center">
+        <div style="font-size:11px;color:#667085;font-weight:800">PAIRING CODE</div>
+        <div id="createdPairingCode" style="font-size:30px;letter-spacing:6px;font-weight:950;color:#101828;margin:5px 0"></div>
+        <div class="note">Valid for 10 minutes and one use only.</div>
+      </div>
+      <div id="createPairingCodeStatus" class="status"></div>
+    </section>
   </section>
 
   <section id="tabHistoryPage" class="app-tab-page">
@@ -1872,6 +1886,10 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
   const signOutBtn = $('signOutBtn');
   const claimLegacyBtn = $('claimLegacyBtn');
   const pairHomeBtn = $('pairHomeBtn');
+  const createPairingCodeBtn = $('createPairingCodeBtn');
+  const createdPairingCodeWrap = $('createdPairingCodeWrap');
+  const createdPairingCode = $('createdPairingCode');
+  const createPairingCodeStatus = $('createPairingCodeStatus');
   const authStatus = $('authStatus');
   const txType = $('txType'), chargeMode = $('chargeMode'), amount = $('amount'), cashReceived = $('cashReceived');
   const customerHistoryList = $('customerHistoryList'), customerHistoryEmpty = $('customerHistoryEmpty');
@@ -2741,6 +2759,29 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
     document.addEventListener('click',()=>{
       accountPopover.classList.remove('show');
       accountMenuBtn.setAttribute('aria-expanded','false');
+    });
+  }
+
+  if(createPairingCodeBtn){
+    createPairingCodeBtn.addEventListener('click',()=>{
+      createPairingCodeBtn.disabled=true;
+      createPairingCodeStatus.textContent='Creating pairing code…';
+      createPairingCodeStatus.className='status';
+
+      google.script.run
+        .withSuccessHandler(code=>{
+          createPairingCodeBtn.disabled=false;
+          createdPairingCode.textContent=String(code||'');
+          createdPairingCodeWrap.style.display='block';
+          createPairingCodeStatus.textContent='Enter this code in the Blogger tracker.';
+          createPairingCodeStatus.className='status ok';
+        })
+        .withFailureHandler(err=>{
+          createPairingCodeBtn.disabled=false;
+          createPairingCodeStatus.textContent=(err && err.message) || 'Could not create pairing code.';
+          createPairingCodeStatus.className='status err';
+        })
+        .generateGithubPairingCode();
     });
   }
 
