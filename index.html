@@ -1441,6 +1441,20 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
 }
 </style>
 
+
+<style id="home-wallet-layout-corrected">
+.home-balance-row{
+  display:grid !important;
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  gap:8px !important;
+}
+.home-balance-row > .home-balance-mini{
+  width:100% !important;
+  min-width:0 !important;
+  margin:0 !important;
+}
+</style>
+
 </head>
 <body>
 <main class="app">
@@ -1471,9 +1485,9 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
   <section id="tabHomePage" class="app-tab-page active">
     <div id="homeBalanceStrip" class="home-balance-strip">
       <div class="home-balance-mini cash"><small>Cash</small><strong id="homeCashBalance">₱0.00</strong></div>
+      <div class="home-balance-mini saripay"><small>Saripay</small><strong id="homeSaripayBalance">₱0.00</strong></div>
       <div class="home-balance-mini gcash"><small>GCash</small><strong id="homeGcashBalance">₱0.00</strong></div>
       <div class="home-balance-mini"><small>Maya</small><strong id="homeMayaBalance">₱0.00</strong></div>
-      <div class="home-balance-mini saripay"><small>Saripay</small><strong id="homeSaripayBalance">₱0.00</strong></div>
     </div>
     <div id="homeTabMount"></div>
   </section>
