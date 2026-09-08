@@ -4104,8 +4104,32 @@ document.addEventListener('DOMContentLoaded', function(){
  const total=p=>D.reduce((n,d)=>n+Number(p[d[0]]||0)*d[2],0);
  function subs(prefix){document.querySelectorAll(`[data-cc-prefix="${prefix}"]`).forEach(i=>{const d=D.find(x=>x[0]===i.dataset.ccKey),e=document.querySelector(`[data-cc-sub="${prefix}-${i.dataset.ccKey}"]`);if(e)e.textContent=m(Number(i.value||0)*d[2])})}
  function summary(x){data=x||data;if(!data)return;const d=Number(data.difference||0),cls=Math.abs(d)<.01?'match':d<0?'short':'over',txt=Math.abs(d)<.01?'MATCHED':d<0?'SHORT '+m(Math.abs(d)):'OVER '+m(d);$c('cashCounterSummary').innerHTML=`<div><small>Main Cash</small><strong>${m(data.mainCashTotal)}</strong></div><div><small>Change / Sukli</small><strong>${m(data.sukliTotal)}</strong></div><div><small>Physical Cash</small><strong>${m(data.physicalTotal)}</strong></div><div><small>Tracker Cash on Hand</small><strong>${m(data.trackerCashOnHand)}</strong></div><div class="cash-counter-status ${cls}"><small>Cash Check</small><strong>${txt}</strong></div>`}
- function load(){ $c('ccStatus').textContent='Loading…';google.script.run.withSuccessHandler(x=>{data=x;summary(x);$c('ccCountGrid').innerHTML=grid('count',x.pieces);countTotal();$c('ccStatus').textContent=x.initialized?'':'Count your physical cash and save it first.'}).withFailureHandler(e=>$c('ccStatus').textContent=e.message||'Could not load.').getCashCounterBySession(getSessionToken())}
- function open(){ $c('cashCounterModal').classList.add('show');load()} function close(){ $c('cashCounterModal').classList.remove('show')}
+ function load(){
+   $c('ccStatus').textContent='Loading…';
+   google.script.run.withSuccessHandler(x=>{
+     data=x;summary(x);
+     $c('ccCountGrid').innerHTML=grid('count',x.pieces||zero());
+     countTotal();
+     $c('ccStatus').textContent=x.initialized?'':'Enter the number of each bill and coin, then Save Cash Count.';
+   }).withFailureHandler(e=>{
+     if(!$c('ccCountGrid').children.length){
+       $c('ccCountGrid').innerHTML=grid('count',zero());
+       countTotal();
+     }
+     $c('ccStatus').textContent='You can enter your cash pieces now. Save after counting.';
+   }).getCashCounterBySession(getSessionToken());
+ }
+ function open(){
+   $c('cashCounterModal').classList.add('show');
+   // Always create editable Count Cash inputs immediately.
+   // The saved piece counts will replace these values after loading.
+   if(!$c('ccCountGrid').children.length){
+     $c('ccCountGrid').innerHTML=grid('count',zero());
+     countTotal();
+   }
+   load();
+ }
+ function close(){ $c('cashCounterModal').classList.remove('show')}
  function countTotal(){subs('count');$c('ccCountTotal').textContent=m(total(read('count')))}
  function exTotal(){subs('give');subs('receive');$c('ccExchangeTotal').textContent=m(total(read('give')))+' / '+m(total(read('receive')))}
  ['homeCashCounterBtn','walletCashCounterBtn'].forEach(id=>{const b=$c(id);if(b)b.onclick=open});$c('cashCounterClose').onclick=close;
