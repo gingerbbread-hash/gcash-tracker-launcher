@@ -1495,6 +1495,45 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
 }
 </style>
 
+
+<style id="wallet-logo-style">
+.wallet-name-line{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  min-width:0;
+}
+.wallet-logo{
+  width:18px;
+  height:18px;
+  object-fit:contain;
+  flex:0 0 18px;
+  border-radius:4px;
+}
+.home-balance-mini .wallet-name-line{
+  margin-bottom:3px;
+}
+.home-balance-mini .wallet-name-line small{
+  margin:0 !important;
+}
+.capital-balance .wallet-name-line{
+  margin-bottom:5px;
+}
+.capital-balance .wallet-name-line small{
+  margin:0 !important;
+}
+.cash-icon{
+  width:18px;
+  height:18px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size:15px;
+  line-height:1;
+  flex:0 0 18px;
+}
+</style>
+
 </head>
 <body>
 <main class="app">
@@ -1567,22 +1606,22 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
     </div>
     <div class="capital-grid capital-grid-three">
       <div class="capital-balance cash-balance">
-        <small>Cash Out Available</small>
+        <div class="wallet-name-line"><span class="cash-icon" aria-hidden="true">💵</span><small>Cash on Hand</small></div>
         <strong id="cashOutAvailable">₱0.00</strong>
         <span>Cash on Hand</span>
       </div>
       <div class="capital-balance saripay-balance">
-        <small>Saripay</small>
+        <div class="wallet-name-line"><img class="wallet-logo" src="https://saripay.com/favicon.ico" alt="" onerror="this.style.display='none'"><small>Saripay</small></div>
         <strong id="saripayAvailable">₱0.00</strong>
         <span>Cash Out Wallet</span>
       </div>
       <div class="capital-balance gcash-balance">
-        <small>GCash</small>
+        <div class="wallet-name-line"><img class="wallet-logo" src="https://gcash.com/favicon.ico" alt="" onerror="this.style.display='none'"><small>GCash</small></div>
         <strong id="cashInAvailable">₱0.00</strong>
         <span>GCash Balance</span>
       </div>
       <div class="capital-balance maya-balance">
-        <small>Maya</small>
+        <div class="wallet-name-line"><img class="wallet-logo" src="https://www.maya.ph/favicon.ico" alt="" onerror="this.style.display='none'"><small>Maya</small></div>
         <strong id="mayaAvailable">₱0.00</strong>
         <span>Maya Balance</span>
       </div>
