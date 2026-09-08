@@ -3275,6 +3275,15 @@ label[for="capitalSaripayInput"],
   function applyOptimisticTransaction(tx){
     history.unshift(tx);
 
+    // Make the newly recorded transaction immediately visible in Calendar History.
+    // This applies to both GCash and Maya Cash In/Cash Out.
+    const newTxDate = dateKey(tx);
+    if(newTxDate){
+      const parts = newTxDate.split('-').map(Number);
+      calMonth = new Date(parts[0], parts[1]-1, 1);
+      calSelected = newTxDate;
+    }
+
     if(capitalData && capitalData.initialized){
       capitalData.cashOnHand = Number(tx.newCash);
       capitalData.gcashBalance = Number(tx.newGcash);
@@ -3312,6 +3321,14 @@ label[for="capitalSaripayInput"],
         q.shift();
         savePendingTxQueue(q);
         txSyncBusy = false;
+
+        const syncedDate = dateKey(serverTx);
+        if(syncedDate){
+          const parts = syncedDate.split('-').map(Number);
+          calMonth = new Date(parts[0], parts[1]-1, 1);
+          calSelected = syncedDate;
+        }
+
         render();
         saveLocalTrackerCache();
 
