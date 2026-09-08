@@ -4105,18 +4105,18 @@ document.addEventListener('DOMContentLoaded', function(){
  function subs(prefix){document.querySelectorAll(`[data-cc-prefix="${prefix}"]`).forEach(i=>{const d=D.find(x=>x[0]===i.dataset.ccKey),e=document.querySelector(`[data-cc-sub="${prefix}-${i.dataset.ccKey}"]`);if(e)e.textContent=m(Number(i.value||0)*d[2])})}
  function summary(x){data=x||data;if(!data)return;const d=Number(data.difference||0),cls=Math.abs(d)<.01?'match':d<0?'short':'over',txt=Math.abs(d)<.01?'MATCHED':d<0?'SHORT '+m(Math.abs(d)):'OVER '+m(d);$c('cashCounterSummary').innerHTML=`<div><small>Main Cash</small><strong>${m(data.mainCashTotal)}</strong></div><div><small>Change / Sukli</small><strong>${m(data.sukliTotal)}</strong></div><div><small>Physical Cash</small><strong>${m(data.physicalTotal)}</strong></div><div><small>Tracker Cash on Hand</small><strong>${m(data.trackerCashOnHand)}</strong></div><div class="cash-counter-status ${cls}"><small>Cash Check</small><strong>${txt}</strong></div>`}
  function load(){
-   $c('ccStatus').textContent='Loading…';
+   $c('ccStatus').textContent='Loading saved count…';
+   const snapshot=JSON.stringify(read('count'));
    google.script.run.withSuccessHandler(x=>{
      data=x;summary(x);
-     $c('ccCountGrid').innerHTML=grid('count',x.pieces||zero());
-     countTotal();
-     $c('ccStatus').textContent=x.initialized?'':'Enter the number of each bill and coin, then Save Cash Count.';
-   }).withFailureHandler(e=>{
-     if(!$c('ccCountGrid').children.length){
-       $c('ccCountGrid').innerHTML=grid('count',zero());
+     // Only fill saved values if the user has not started typing meanwhile.
+     if(JSON.stringify(read('count'))===snapshot){
+       $c('ccCountGrid').innerHTML=grid('count',x.pieces||zero());
        countTotal();
      }
-     $c('ccStatus').textContent='You can enter your cash pieces now. Save after counting.';
+     $c('ccStatus').textContent=x.initialized?'Ready':'Enter the number of each bill and coin, then Save Cash Count.';
+   }).withFailureHandler(e=>{
+     $c('ccStatus').textContent=(e&&e.message)?e.message:'Could not load saved count.';
    }).getCashCounterBySession(getSessionToken());
  }
  function open(){
@@ -4135,7 +4135,15 @@ document.addEventListener('DOMContentLoaded', function(){
  ['homeCashCounterBtn','walletCashCounterBtn'].forEach(id=>{const b=$c(id);if(b)b.onclick=open});$c('cashCounterClose').onclick=close;
  document.querySelectorAll('[data-cc-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-cc-tab]').forEach(x=>x.classList.toggle('active',x===b));['count','exchange','history'].forEach(t=>$c('cc'+t[0].toUpperCase()+t.slice(1)+'View').classList.toggle('active',t===b.dataset.ccTab));if(b.dataset.ccTab==='exchange'){$c('ccGiveGrid').innerHTML=grid('give',zero());$c('ccReceiveGrid').innerHTML=grid('receive',zero());exTotal()}if(b.dataset.ccTab==='history')history()});
  document.addEventListener('input',e=>{if(e.target.matches('[data-cc-prefix="count"]'))countTotal();if(e.target.matches('[data-cc-prefix="give"],[data-cc-prefix="receive"]'))exTotal();if(e.target.matches('[data-cc-prefix="txrec"],[data-cc-prefix="txsukli"]'))txTotals()});
- $c('ccSaveCount').onclick=()=>{ $c('ccStatus').textContent='Saving…';google.script.run.withSuccessHandler(x=>{data=x;summary(x);$c('ccStatus').textContent='Cash count saved ✓'}).withFailureHandler(e=>$c('ccStatus').textContent=e.message||'Could not save.').saveCashCountBySession(getSessionToken(),read('count'),'Physical cash count')};
+ $c('ccSaveCount').onclick=()=>{
+   const btn=$c('ccSaveCount'), pieces=read('count');
+   btn.disabled=true;$c('ccStatus').textContent='Saving cash count…';
+   google.script.run.withSuccessHandler(x=>{
+     btn.disabled=false;data=x;summary(x);$c('ccStatus').textContent='Cash count saved ✓';
+   }).withFailureHandler(e=>{
+     btn.disabled=false;$c('ccStatus').textContent=(e&&e.message)?e.message:'Could not save cash count.';
+   }).saveCashCountBySession(getSessionToken(),pieces,'Physical cash count');
+ };
  $c('ccExchangeSave').onclick=()=>{const g=read('give'),r=read('receive');if(total(g)!==total(r)){$c('ccStatus').textContent='Given and received totals must match.';return}$c('ccStatus').textContent='Saving exchange…';google.script.run.withSuccessHandler(x=>{data=x;summary(x);$c('ccStatus').textContent='Exchange saved ✓'}).withFailureHandler(e=>$c('ccStatus').textContent=e.message||'Could not save exchange.').exchangeCashPiecesBySession(getSessionToken(),g,r,'Money exchange')};
  function history(){$c('ccHistoryList').innerHTML='<div class="empty">Loading…</div>';google.script.run.withSuccessHandler(rows=>$c('ccHistoryList').innerHTML=(rows||[]).length?rows.map(r=>`<div class="cc-history-item"><div class="cc-history-top"><span>${r.action}</span><span>${m(r.physicalTotal)}</span></div><div class="cc-history-sub">${r.date} • ${Math.abs(r.difference)<.01?'Matched':r.difference<0?'Short '+m(Math.abs(r.difference)):'Over '+m(r.difference)}</div></div>`).join(''):'<div class="empty">No cash counts yet.</div>').withFailureHandler(e=>$c('ccHistoryList').innerHTML='<div class="empty">'+(e.message||'Could not load history.')+'</div>').getCashCountHistoryBySession(getSessionToken())}
  window.offerCashPiecesForTransaction=function(tx){if(!tx)return;pendingTx=tx;const rec=Number(tx.cashReceived||0),suk=Number(tx.change||0);if(rec<=0&&suk<=0)return;$c('txReceivedGrid').innerHTML=grid('txrec',zero());$c('txSukliGrid').innerHTML=grid('txsukli',zero());$c('txPiecesInfo').innerHTML=`Transaction: <b>${tx.type} • ${tx.walletDestination||'GCash'}</b><br>Cash received: <b>${m(rec)}</b> &nbsp; Sukli: <b>${m(suk)}</b>`;$c('txPiecesStatus').textContent='';txTotals();setTimeout(()=>$c('txCashPiecesModal').classList.add('show'),150)};
