@@ -4117,7 +4117,7 @@ document.addEventListener('DOMContentLoaded', function(){
      $c('ccStatus').textContent=x.initialized?'Ready':'Enter the number of each bill and coin, then Save Cash Count.';
    }).withFailureHandler(e=>{
      $c('ccStatus').textContent=(e&&e.message)?e.message:'Could not load saved count.';
-   }).getCashCounterBySession(getSessionToken());
+   }).getCashCounterBySession(getSessionToken(),Number((capitalData&&capitalData.cashOnHand)||0));
  }
  function open(){
    $c('cashCounterModal').classList.add('show');
@@ -4149,7 +4149,7 @@ document.addEventListener('DOMContentLoaded', function(){
      btn.disabled=false;data=x;summary(x);$c('ccStatus').textContent='Cash count saved ✓';
    }).withFailureHandler(e=>{
      clearTimeout(saveTimer);btn.disabled=false;$c('ccStatus').textContent=(e&&e.message)?e.message:'Could not save cash count.';
-   }).saveCashCountBySession(getSessionToken(),pieces,'Physical cash count');
+   }).saveCashCountBySession(getSessionToken(),pieces,'Physical cash count',Number((capitalData&&capitalData.cashOnHand)||0));
  };
  $c('ccExchangeSave').onclick=()=>{const g=read('give'),r=read('receive');if(total(g)!==total(r)){$c('ccStatus').textContent='Given and received totals must match.';return}$c('ccStatus').textContent='Saving exchange…';google.script.run.withSuccessHandler(x=>{data=x;summary(x);$c('ccStatus').textContent='Exchange saved ✓'}).withFailureHandler(e=>$c('ccStatus').textContent=e.message||'Could not save exchange.').exchangeCashPiecesBySession(getSessionToken(),g,r,'Money exchange')};
  function history(){$c('ccHistoryList').innerHTML='<div class="empty">Loading…</div>';google.script.run.withSuccessHandler(rows=>$c('ccHistoryList').innerHTML=(rows||[]).length?rows.map(r=>`<div class="cc-history-item"><div class="cc-history-top"><span>${r.action}</span><span>${m(r.physicalTotal)}</span></div><div class="cc-history-sub">${r.date} • ${Math.abs(r.difference)<.01?'Matched':r.difference<0?'Short '+m(Math.abs(r.difference)):'Over '+m(r.difference)}</div></div>`).join(''):'<div class="empty">No cash counts yet.</div>').withFailureHandler(e=>$c('ccHistoryList').innerHTML='<div class="empty">'+(e.message||'Could not load history.')+'</div>').getCashCountHistoryBySession(getSessionToken())}
