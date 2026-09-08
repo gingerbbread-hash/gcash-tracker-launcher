@@ -1962,7 +1962,7 @@ label[for="capitalSaripayInput"],
   <div class="cash-counter-head"><h3>Cash Counter</h3><button id="cashCounterClose" class="cash-counter-close" type="button">×</button></div>
   <div id="cashCounterSummary" class="cash-counter-summary"></div>
   <div class="cash-counter-tabs"><button type="button" data-cc-tab="count" class="active">Count Cash</button><button type="button" data-cc-tab="exchange">Exchange Money</button><button type="button" data-cc-tab="history">History</button></div>
-  <div id="ccCountView" class="cash-counter-view active"><div id="ccCountGrid" class="denom-grid"></div><div class="cash-counter-total"><span>Physical Cash Total</span><strong id="ccCountTotal">₱0.00</strong></div><div class="cash-counter-actions"><button id="ccTestConnection" class="cc-secondary" type="button">Test Connection</button><button id="ccSaveCount" class="cc-primary" type="button">Save Cash Count</button></div></div>
+  <div id="ccCountView" class="cash-counter-view active"><div id="ccCountGrid" class="denom-grid"></div><div class="cash-counter-total"><span>Physical Cash Total</span><strong id="ccCountTotal">₱0.00</strong></div><div class="cash-counter-actions"><button id="ccSaveCount" class="cc-primary" type="button">Save Cash Count</button></div></div>
   <div id="ccExchangeView" class="cash-counter-view"><div class="exchange-cols"><div class="exchange-col"><h4>Give</h4><div id="ccGiveGrid" class="denom-grid"></div></div><div class="exchange-col"><h4>Receive</h4><div id="ccReceiveGrid" class="denom-grid"></div></div></div><div class="cash-counter-total"><span>Give / Receive</span><strong id="ccExchangeTotal">₱0 / ₱0</strong></div><div class="cash-counter-actions"><button id="ccExchangeSave" class="cc-primary" type="button">Save Exchange</button></div></div>
   <div id="ccHistoryView" class="cash-counter-view"><div id="ccHistoryList"></div></div>
   <div id="ccStatus" class="status"></div>
@@ -4104,20 +4104,20 @@ document.addEventListener('DOMContentLoaded', function(){
  const total=p=>D.reduce((n,d)=>n+Number(p[d[0]]||0)*d[2],0);
  function subs(prefix){document.querySelectorAll(`[data-cc-prefix="${prefix}"]`).forEach(i=>{const d=D.find(x=>x[0]===i.dataset.ccKey),e=document.querySelector(`[data-cc-sub="${prefix}-${i.dataset.ccKey}"]`);if(e)e.textContent=m(Number(i.value||0)*d[2])})}
  function summary(x){data=x||data;if(!data)return;const d=Number(data.difference||0),cls=Math.abs(d)<.01?'match':d<0?'short':'over',txt=Math.abs(d)<.01?'MATCHED':d<0?'SHORT '+m(Math.abs(d)):'OVER '+m(d);$c('cashCounterSummary').innerHTML=`<div><small>Main Cash</small><strong>${m(data.mainCashTotal)}</strong></div><div><small>Change / Sukli</small><strong>${m(data.sukliTotal)}</strong></div><div><small>Physical Cash</small><strong>${m(data.physicalTotal)}</strong></div><div><small>Tracker Cash on Hand</small><strong>${m(data.trackerCashOnHand)}</strong></div><div class="cash-counter-status ${cls}"><small>Cash Check</small><strong>${txt}</strong></div>`}
+ function ccApi(method,args){
+   return deviceReady.then(token=>jsonpRequest(method,args||[],{device:token}));
+ }
  function load(){
    $c('ccStatus').textContent='Loading saved count…';
    const snapshot=JSON.stringify(read('count'));
-   google.script.run.withSuccessHandler(x=>{
+   ccApi('getCashCounterBySession',[Number((capitalData&&capitalData.cashOnHand)||0)]).then(x=>{
      data=x;summary(x);
-     // Only fill saved values if the user has not started typing meanwhile.
      if(JSON.stringify(read('count'))===snapshot){
-       $c('ccCountGrid').innerHTML=grid('count',x.pieces||zero());
+       $c('ccCountGrid').innerHTML=grid('count',(x&&x.pieces)||zero());
        countTotal();
      }
-     $c('ccStatus').textContent=x.initialized?'Ready':'Enter the number of each bill and coin, then Save Cash Count.';
-   }).withFailureHandler(e=>{
-     $c('ccStatus').textContent=(e&&e.message)?e.message:'Could not load saved count.';
-   }).getCashCounterBySession(getSessionToken(),Number((capitalData&&capitalData.cashOnHand)||0));
+     $c('ccStatus').textContent=x&&x.initialized?'Ready':'Enter the number of each bill and coin, then Save Cash Count.';
+   }).catch(e=>$c('ccStatus').textContent=(e&&e.message)?e.message:'Could not load saved count.');
  }
  function open(){
    $c('cashCounterModal').classList.add('show');
@@ -4135,54 +4135,40 @@ document.addEventListener('DOMContentLoaded', function(){
  ['homeCashCounterBtn','walletCashCounterBtn'].forEach(id=>{const b=$c(id);if(b)b.onclick=open});$c('cashCounterClose').onclick=close;
  document.querySelectorAll('[data-cc-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-cc-tab]').forEach(x=>x.classList.toggle('active',x===b));['count','exchange','history'].forEach(t=>$c('cc'+t[0].toUpperCase()+t.slice(1)+'View').classList.toggle('active',t===b.dataset.ccTab));if(b.dataset.ccTab==='exchange'){$c('ccGiveGrid').innerHTML=grid('give',zero());$c('ccReceiveGrid').innerHTML=grid('receive',zero());exTotal()}if(b.dataset.ccTab==='history')history()});
  document.addEventListener('input',e=>{if(e.target.matches('[data-cc-prefix="count"]'))countTotal();if(e.target.matches('[data-cc-prefix="give"],[data-cc-prefix="receive"]'))exTotal();if(e.target.matches('[data-cc-prefix="txrec"],[data-cc-prefix="txsukli"]'))txTotals()});
- $c('ccTestConnection').onclick=()=>{
-   const btn=$c('ccTestConnection');
-   btn.disabled=true;
-   $c('ccStatus').textContent='Testing Cash Counter connection…';
-   const timer=setTimeout(()=>{
-     if(btn.disabled){
-       btn.disabled=false;
-       $c('ccStatus').textContent='TEST RESULT: No response after 15 seconds. The Cash Counter backend call is not returning.';
-     }
-   },15000);
-   try{
-     google.script.run
-       .withSuccessHandler(x=>{
-         clearTimeout(timer);btn.disabled=false;
-         $c('ccStatus').textContent='TEST RESULT: Connected ✓ Cash Counter backend responded.';
-       })
-       .withFailureHandler(e=>{
-         clearTimeout(timer);btn.disabled=false;
-         $c('ccStatus').textContent='TEST ERROR: '+((e&&e.message)?e.message:String(e||'Unknown error'));
-       })
-       .getCashCounterBySession(getSessionToken(),Number((capitalData&&capitalData.cashOnHand)||0));
-   }catch(e){
-     clearTimeout(timer);btn.disabled=false;
-     $c('ccStatus').textContent='TEST ERROR: '+(e&&e.message?e.message:String(e));
-   }
- };
  $c('ccSaveCount').onclick=()=>{
-   const btn=$c('ccSaveCount'), pieces=read('count');
+   const btn=$c('ccSaveCount'),pieces=read('count');
    btn.disabled=true;$c('ccStatus').textContent='Saving cash count…';
-   const saveTimer=setTimeout(()=>{
-     if(btn.disabled){
-       btn.disabled=false;
-       $c('ccStatus').textContent='Save is taking too long. Do not tap Save again. Check Cash Count History first.';
-     }
-   },30000);
-   google.script.run.withSuccessHandler(x=>{
-     clearTimeout(saveTimer);
+   ccApi('saveCashCountBySession',[pieces,'Physical cash count',Number((capitalData&&capitalData.cashOnHand)||0)]).then(x=>{
      btn.disabled=false;data=x;summary(x);$c('ccStatus').textContent='Cash count saved ✓';
-   }).withFailureHandler(e=>{
-     clearTimeout(saveTimer);btn.disabled=false;$c('ccStatus').textContent=(e&&e.message)?e.message:'Could not save cash count.';
-   }).saveCashCountBySession(getSessionToken(),pieces,'Physical cash count',Number((capitalData&&capitalData.cashOnHand)||0));
+   }).catch(e=>{btn.disabled=false;$c('ccStatus').textContent=(e&&e.message)?e.message:'Could not save cash count.'});
  };
- $c('ccExchangeSave').onclick=()=>{const g=read('give'),r=read('receive');if(total(g)!==total(r)){$c('ccStatus').textContent='Given and received totals must match.';return}$c('ccStatus').textContent='Saving exchange…';google.script.run.withSuccessHandler(x=>{data=x;summary(x);$c('ccStatus').textContent='Exchange saved ✓'}).withFailureHandler(e=>$c('ccStatus').textContent=e.message||'Could not save exchange.').exchangeCashPiecesBySession(getSessionToken(),g,r,'Money exchange')};
- function history(){$c('ccHistoryList').innerHTML='<div class="empty">Loading…</div>';google.script.run.withSuccessHandler(rows=>$c('ccHistoryList').innerHTML=(rows||[]).length?rows.map(r=>`<div class="cc-history-item"><div class="cc-history-top"><span>${r.action}</span><span>${m(r.physicalTotal)}</span></div><div class="cc-history-sub">${r.date} • ${Math.abs(r.difference)<.01?'Matched':r.difference<0?'Short '+m(Math.abs(r.difference)):'Over '+m(r.difference)}</div></div>`).join(''):'<div class="empty">No cash counts yet.</div>').withFailureHandler(e=>$c('ccHistoryList').innerHTML='<div class="empty">'+(e.message||'Could not load history.')+'</div>').getCashCountHistoryBySession(getSessionToken())}
+ $c('ccExchangeSave').onclick=()=>{
+   const g=read('give'),r=read('receive');
+   if(total(g)!==total(r)){$c('ccStatus').textContent='Given and received totals must match.';return}
+   $c('ccStatus').textContent='Saving exchange…';
+   ccApi('exchangeCashPiecesBySession',[g,r,'Money exchange',Number((capitalData&&capitalData.cashOnHand)||0)]).then(x=>{
+     data=x;summary(x);$c('ccStatus').textContent='Exchange saved ✓';
+   }).catch(e=>$c('ccStatus').textContent=(e&&e.message)?e.message:'Could not save exchange.');
+ };
+ function history(){
+   $c('ccHistoryList').innerHTML='<div class="empty">Loading…</div>';
+   ccApi('getCashCountHistoryBySession',[]).then(rows=>{
+     $c('ccHistoryList').innerHTML=(rows||[]).length?rows.map(r=>`<div class="cc-history-item"><div class="cc-history-top"><span>${r.action}</span><span>${m(r.physicalTotal)}</span></div><div class="cc-history-sub">${r.date} • ${Math.abs(r.difference)<.01?'Matched':r.difference<0?'Short '+m(Math.abs(r.difference)):'Over '+m(r.difference)}</div></div>`).join(''):'<div class="empty">No cash counts yet.</div>';
+   }).catch(e=>$c('ccHistoryList').innerHTML='<div class="empty">'+((e&&e.message)?e.message:'Could not load history.')+'</div>');
+ }
  window.offerCashPiecesForTransaction=function(tx){if(!tx)return;pendingTx=tx;const rec=Number(tx.cashReceived||0),suk=Number(tx.change||0);if(rec<=0&&suk<=0)return;$c('txReceivedGrid').innerHTML=grid('txrec',zero());$c('txSukliGrid').innerHTML=grid('txsukli',zero());$c('txPiecesInfo').innerHTML=`Transaction: <b>${tx.type} • ${tx.walletDestination||'GCash'}</b><br>Cash received: <b>${m(rec)}</b> &nbsp; Sukli: <b>${m(suk)}</b>`;$c('txPiecesStatus').textContent='';txTotals();setTimeout(()=>$c('txCashPiecesModal').classList.add('show'),150)};
  function txClose(){$c('txCashPiecesModal').classList.remove('show');pendingTx=null} function txTotals(){subs('txrec');subs('txsukli');$c('txPiecesTotals').textContent=m(total(read('txrec')))+' / '+m(total(read('txsukli')))}
  $c('txPiecesSkip').onclick=txClose;$c('txPiecesSkipX').onclick=txClose;
- $c('txPiecesSave').onclick=()=>{if(!pendingTx)return;const r=read('txrec'),s=read('txsukli'),nr=Number(pendingTx.cashReceived||0),ns=Number(pendingTx.change||0);if(total(r)!==nr){$c('txPiecesStatus').textContent='Cash Received pieces must total '+m(nr)+'.';return}if(total(s)!==ns){$c('txPiecesStatus').textContent='Sukli pieces must total '+m(ns)+'.';return}$c('txPiecesStatus').textContent='Updating pieces…';google.script.run.withSuccessHandler(txClose).withFailureHandler(e=>$c('txPiecesStatus').textContent=e.message||'Could not update pieces.').applyTransactionCashPiecesBySession(getSessionToken(),pendingTx.id,r,s)};
+ $c('txPiecesSave').onclick=()=>{
+   if(!pendingTx)return;
+   const r=read('txrec'),sp=read('txsukli'),nr=Number(pendingTx.cashReceived||0),ns=Number(pendingTx.change||0);
+   if(total(r)!==nr){$c('txPiecesStatus').textContent='Cash Received pieces must total '+m(nr)+'.';return}
+   if(total(sp)!==ns){$c('txPiecesStatus').textContent='Sukli pieces must total '+m(ns)+'.';return}
+   $c('txPiecesStatus').textContent='Updating pieces…';
+   ccApi('applyTransactionCashPiecesBySession',[pendingTx.id,r,sp,Number((capitalData&&capitalData.cashOnHand)||0)]).then(txClose)
+     .catch(e=>$c('txPiecesStatus').textContent=(e&&e.message)?e.message:'Could not update pieces.');
+ };
+
 })();
 </script>
 
