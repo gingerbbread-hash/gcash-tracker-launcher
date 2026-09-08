@@ -1962,7 +1962,7 @@ label[for="capitalSaripayInput"],
   <div class="cash-counter-head"><h3>Cash Counter</h3><button id="cashCounterClose" class="cash-counter-close" type="button">×</button></div>
   <div id="cashCounterSummary" class="cash-counter-summary"></div>
   <div class="cash-counter-tabs"><button type="button" data-cc-tab="count" class="active">Count Cash</button><button type="button" data-cc-tab="exchange">Exchange Money</button><button type="button" data-cc-tab="history">History</button></div>
-  <div id="ccCountView" class="cash-counter-view active"><div id="ccCountGrid" class="denom-grid"></div><div class="cash-counter-total"><span>Physical Cash Total</span><strong id="ccCountTotal">₱0.00</strong></div><div class="cash-counter-actions"><button id="ccSaveCount" class="cc-primary" type="button">Save Cash Count</button></div></div>
+  <div id="ccCountView" class="cash-counter-view active"><div id="ccCountGrid" class="denom-grid"></div><div class="cash-counter-total"><span>Physical Cash Total</span><strong id="ccCountTotal">₱0.00</strong></div><div class="cash-counter-actions"><button id="ccTestConnection" class="cc-secondary" type="button">Test Connection</button><button id="ccSaveCount" class="cc-primary" type="button">Save Cash Count</button></div></div>
   <div id="ccExchangeView" class="cash-counter-view"><div class="exchange-cols"><div class="exchange-col"><h4>Give</h4><div id="ccGiveGrid" class="denom-grid"></div></div><div class="exchange-col"><h4>Receive</h4><div id="ccReceiveGrid" class="denom-grid"></div></div></div><div class="cash-counter-total"><span>Give / Receive</span><strong id="ccExchangeTotal">₱0 / ₱0</strong></div><div class="cash-counter-actions"><button id="ccExchangeSave" class="cc-primary" type="button">Save Exchange</button></div></div>
   <div id="ccHistoryView" class="cash-counter-view"><div id="ccHistoryList"></div></div>
   <div id="ccStatus" class="status"></div>
@@ -4135,6 +4135,32 @@ document.addEventListener('DOMContentLoaded', function(){
  ['homeCashCounterBtn','walletCashCounterBtn'].forEach(id=>{const b=$c(id);if(b)b.onclick=open});$c('cashCounterClose').onclick=close;
  document.querySelectorAll('[data-cc-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-cc-tab]').forEach(x=>x.classList.toggle('active',x===b));['count','exchange','history'].forEach(t=>$c('cc'+t[0].toUpperCase()+t.slice(1)+'View').classList.toggle('active',t===b.dataset.ccTab));if(b.dataset.ccTab==='exchange'){$c('ccGiveGrid').innerHTML=grid('give',zero());$c('ccReceiveGrid').innerHTML=grid('receive',zero());exTotal()}if(b.dataset.ccTab==='history')history()});
  document.addEventListener('input',e=>{if(e.target.matches('[data-cc-prefix="count"]'))countTotal();if(e.target.matches('[data-cc-prefix="give"],[data-cc-prefix="receive"]'))exTotal();if(e.target.matches('[data-cc-prefix="txrec"],[data-cc-prefix="txsukli"]'))txTotals()});
+ $c('ccTestConnection').onclick=()=>{
+   const btn=$c('ccTestConnection');
+   btn.disabled=true;
+   $c('ccStatus').textContent='Testing Cash Counter connection…';
+   const timer=setTimeout(()=>{
+     if(btn.disabled){
+       btn.disabled=false;
+       $c('ccStatus').textContent='TEST RESULT: No response after 15 seconds. The Cash Counter backend call is not returning.';
+     }
+   },15000);
+   try{
+     google.script.run
+       .withSuccessHandler(x=>{
+         clearTimeout(timer);btn.disabled=false;
+         $c('ccStatus').textContent='TEST RESULT: Connected ✓ Cash Counter backend responded.';
+       })
+       .withFailureHandler(e=>{
+         clearTimeout(timer);btn.disabled=false;
+         $c('ccStatus').textContent='TEST ERROR: '+((e&&e.message)?e.message:String(e||'Unknown error'));
+       })
+       .getCashCounterBySession(getSessionToken(),Number((capitalData&&capitalData.cashOnHand)||0));
+   }catch(e){
+     clearTimeout(timer);btn.disabled=false;
+     $c('ccStatus').textContent='TEST ERROR: '+(e&&e.message?e.message:String(e));
+   }
+ };
  $c('ccSaveCount').onclick=()=>{
    const btn=$c('ccSaveCount'), pieces=read('count');
    btn.disabled=true;$c('ccStatus').textContent='Saving cash count…';
