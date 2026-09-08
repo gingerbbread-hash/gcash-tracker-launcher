@@ -1545,6 +1545,47 @@ label[for="capitalSaripayInput"],
 }
 </style>
 
+
+<style id="gcash-maya-cash-layout-final">
+/* HOME */
+#homeBalanceStrip{
+  display:grid !important;
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  gap:8px !important;
+}
+#homeBalanceStrip .home-wallet-gcash,
+#homeBalanceStrip .home-wallet-maya{
+  grid-column:auto !important;
+}
+#homeBalanceStrip .home-wallet-cash{
+  grid-column:1 / -1 !important;
+  background:#fff7ed !important;
+  border-color:#fed7aa !important;
+}
+#homeBalanceStrip .home-wallet-cash small,
+#homeBalanceStrip .home-wallet-cash strong{
+  color:#c2410c !important;
+}
+
+/* WALLETS */
+.capital-grid.capital-grid-three{
+  display:grid !important;
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  gap:10px !important;
+}
+.capital-grid.capital-grid-three .cash-balance{
+  grid-column:1 / -1 !important;
+  background:#fff7ed !important;
+  border-color:#fed7aa !important;
+  color:#c2410c !important;
+}
+.capital-grid.capital-grid-three .cash-balance small,
+.capital-grid.capital-grid-three .cash-balance strong,
+.capital-grid.capital-grid-three .cash-balance span{
+  color:#c2410c !important;
+}
+</style>
+
 </head>
 <body>
 <main class="app">
@@ -3119,6 +3160,45 @@ label[for="capitalSaripayInput"],
   forceHomeWalletLayoutV2();
   setTimeout(forceHomeWalletLayoutV2,100);
   setTimeout(forceHomeWalletLayoutV2,800);
+
+
+  function forceFinalWalletOrder(){
+    // Home: GCash | Maya, then Cash wide.
+    const hg=document.getElementById('homeGcashBalance')?.closest('.home-balance-mini');
+    const hm=document.getElementById('homeMayaBalance')?.closest('.home-balance-mini');
+    const hc=document.getElementById('homeCashBalance')?.closest('.home-balance-mini');
+    const homeGrid=hg?.parentElement;
+    if(homeGrid){
+      homeGrid.style.setProperty('display','grid','important');
+      homeGrid.style.setProperty('grid-template-columns','repeat(2,minmax(0,1fr))','important');
+      [hg,hm,hc].forEach(x=>{if(x) homeGrid.appendChild(x);});
+      if(hc){
+        hc.style.setProperty('grid-column','1 / -1','important');
+        hc.style.setProperty('background','#fff7ed','important');
+        hc.style.setProperty('border-color','#fed7aa','important');
+      }
+    }
+
+    // Wallets: GCash | Maya, then Cash on Hand wide.
+    const wg=document.getElementById('cashInAvailable')?.closest('.capital-balance');
+    const wm=document.getElementById('mayaAvailable')?.closest('.capital-balance');
+    const wc=document.getElementById('cashOutAvailable')?.closest('.capital-balance');
+    const walletGrid=wg?.parentElement;
+    if(walletGrid){
+      walletGrid.style.setProperty('display','grid','important');
+      walletGrid.style.setProperty('grid-template-columns','repeat(2,minmax(0,1fr))','important');
+      [wg,wm,wc].forEach(x=>{if(x) walletGrid.appendChild(x);});
+      if(wc){
+        wc.style.setProperty('grid-column','1 / -1','important');
+        wc.style.setProperty('background','#fff7ed','important');
+        wc.style.setProperty('border-color','#fed7aa','important');
+        wc.style.setProperty('color','#c2410c','important');
+      }
+    }
+  }
+  forceFinalWalletOrder();
+  setTimeout(forceFinalWalletOrder,100);
+  setTimeout(forceFinalWalletOrder,800);
 
   preview();
     if(noExactCashMode) cashReceived.focus();
