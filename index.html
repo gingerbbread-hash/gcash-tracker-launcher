@@ -4138,10 +4138,17 @@ document.addEventListener('DOMContentLoaded', function(){
  $c('ccSaveCount').onclick=()=>{
    const btn=$c('ccSaveCount'), pieces=read('count');
    btn.disabled=true;$c('ccStatus').textContent='Saving cash count…';
+   const saveTimer=setTimeout(()=>{
+     if(btn.disabled){
+       btn.disabled=false;
+       $c('ccStatus').textContent='Save is taking too long. Do not tap Save again. Check Cash Count History first.';
+     }
+   },30000);
    google.script.run.withSuccessHandler(x=>{
+     clearTimeout(saveTimer);
      btn.disabled=false;data=x;summary(x);$c('ccStatus').textContent='Cash count saved ✓';
    }).withFailureHandler(e=>{
-     btn.disabled=false;$c('ccStatus').textContent=(e&&e.message)?e.message:'Could not save cash count.';
+     clearTimeout(saveTimer);btn.disabled=false;$c('ccStatus').textContent=(e&&e.message)?e.message:'Could not save cash count.';
    }).saveCashCountBySession(getSessionToken(),pieces,'Physical cash count');
  };
  $c('ccExchangeSave').onclick=()=>{const g=read('give'),r=read('receive');if(total(g)!==total(r)){$c('ccStatus').textContent='Given and received totals must match.';return}$c('ccStatus').textContent='Saving exchange…';google.script.run.withSuccessHandler(x=>{data=x;summary(x);$c('ccStatus').textContent='Exchange saved ✓'}).withFailureHandler(e=>$c('ccStatus').textContent=e.message||'Could not save exchange.').exchangeCashPiecesBySession(getSessionToken(),g,r,'Money exchange')};
