@@ -1722,6 +1722,14 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
       <button type="button" id="confirmCashOut" class="type-choice cashout-choice">Cash Out</button>
     </div>
 
+    <div id="cashInWalletStep" class="cashout-wallet-step">
+      <div class="cashout-wallet-title">Which wallet will be used for this Cash In?</div>
+      <div class="cashout-wallet-actions">
+        <button type="button" id="cashInFromGcash" class="cashout-wallet-choice wallet-gcash">GCash</button>
+        <button type="button" id="cashInFromMaya" class="cashout-wallet-choice" style="background:#ecfdf3;color:#067647;border-color:#abefc6">Maya</button>
+      </div>
+    </div>
+
     <div id="cashOutWalletStep" class="cashout-wallet-step">
       <div class="cashout-wallet-title">Where does this Cash Out go?</div>
       <div class="cashout-wallet-actions">
@@ -2042,6 +2050,9 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
   const feeLocationStep = $('feeLocationStep');
   const feeToGcash = $('feeToGcash');
   const feeToCash = $('feeToCash');
+  const cashInWalletStep = $('cashInWalletStep');
+  const cashInFromGcash = $('cashInFromGcash');
+  const cashInFromMaya = $('cashInFromMaya');
   const cashOutWalletStep = $('cashOutWalletStep');
   const cashOutToGcash = $('cashOutToGcash');
   const cashOutToSaripay = $('cashOutToSaripay');
@@ -2221,7 +2232,8 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
     let rows='';
     if(tx.type==='Cash In'){
       rows+=balanceMoveHtml('Cash on Hand',tx.previousCash,tx.newCash);
-      rows+=balanceMoveHtml('GCash',tx.previousGcash,tx.newGcash);
+      if((tx.walletDestination||'GCash')==='Maya') rows+=balanceMoveHtml('Maya',tx.previousMaya,tx.newMaya);
+      else rows+=balanceMoveHtml('GCash',tx.previousGcash,tx.newGcash);
     }else if(tx.type==='Cash Out'){
       rows+=balanceMoveHtml('Cash on Hand',tx.previousCash,tx.newCash);
       if((tx.walletDestination||'GCash')==='Saripay') rows+=balanceMoveHtml('Saripay',tx.previousSaripay,tx.newSaripay);
@@ -2237,7 +2249,6 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
     return rows?`<div class="balance-moves">${rows}</div>`:'';
   }
   function transactionWalletLabel(tx){
-    if(tx.type==='Cash In') return 'GCash';
     return tx.walletDestination || 'GCash';
   }
 
@@ -3120,6 +3131,7 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
     typeModal.style.display='none';
     typeModal.setAttribute('aria-hidden','true');
     if(typeChoiceActions) typeChoiceActions.style.display='grid';
+    if(cashInWalletStep) cashInWalletStep.classList.remove('show');
     if(cashOutWalletStep) cashOutWalletStep.classList.remove('show');
     if(feeLocationStep) feeLocationStep.classList.remove('show');
     selectedCashOutWallet='';
@@ -3150,15 +3162,18 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
 
     const beforeCash = Number((capitalData && capitalData.cashOnHand) || 0);
     const beforeGcash = Number((capitalData && capitalData.gcashBalance) || 0);
+    const beforeMaya = Number((capitalData && capitalData.mayaBalance) || 0);
     const beforeSaripay = Number((capitalData && capitalData.saripayBalance) || 0);
 
     let afterCash = beforeCash;
     let afterGcash = beforeGcash;
+    let afterMaya = beforeMaya;
     let afterSaripay = beforeSaripay;
 
     if(payload.type === 'Cash In'){
       afterCash += txTotal;
-      afterGcash -= txAmount;
+      if(payload.walletDestination === 'Maya') afterMaya -= txAmount;
+      else afterGcash -= txAmount;
     }else{
       afterCash -= txAmount;
       if(payload.walletDestination === 'Saripay') afterSaripay += txAmount;
@@ -3185,9 +3200,10 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
       change: changeValue,
       chargeMode: payload.chargeMode,
       feeLocation: payload.feeLocation || '',
-      walletDestination: payload.type === 'Cash In' ? 'GCash' : payload.walletDestination,
+      walletDestination: payload.walletDestination || 'GCash',
       previousCash: beforeCash, newCash: afterCash,
       previousGcash: beforeGcash, newGcash: afterGcash,
+      previousMaya: beforeMaya, newMaya: afterMaya,
       previousSaripay: beforeSaripay, newSaripay: afterSaripay,
       _pendingSync: true
     };
@@ -3199,6 +3215,7 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
     if(capitalData && capitalData.initialized){
       capitalData.cashOnHand = Number(tx.newCash);
       capitalData.gcashBalance = Number(tx.newGcash);
+      capitalData.mayaBalance = Number(tx.newMaya ?? capitalData.mayaBalance ?? 0);
       capitalData.saripayBalance = Number(tx.newSaripay);
       capitalData.grossFees = Number(capitalData.grossFees || 0) + Number(tx.fee || 0);
       capitalData.netEarnings = Number(capitalData.netEarnings || 0) + Number(tx.fee || 0);
@@ -3373,7 +3390,23 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
   });
 
   confirmCashIn.addEventListener('click',()=>{
-    if(pendingPayload) pendingPayload.feeLocation='';
+    if(!pendingPayload) return;
+    pendingPayload.type='Cash In';
+    pendingPayload.feeLocation='';
+    pendingPayload.walletDestination='';
+    if(typeChoiceActions) typeChoiceActions.style.display='none';
+    if(cashInWalletStep) cashInWalletStep.classList.add('show');
+  });
+
+  cashInFromGcash.addEventListener('click',()=>{
+    if(!pendingPayload) return;
+    pendingPayload.walletDestination='GCash';
+    savePendingTransaction('Cash In');
+  });
+
+  cashInFromMaya.addEventListener('click',()=>{
+    if(!pendingPayload) return;
+    pendingPayload.walletDestination='Maya';
     savePendingTransaction('Cash In');
   });
 
