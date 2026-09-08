@@ -1586,6 +1586,22 @@ label[for="capitalSaripayInput"],
 }
 </style>
 
+
+<style id="professional-history-v1">
+.pro-balance{margin-top:12px;padding-top:11px;border-top:1px solid #edf0f3}
+.pro-balance-title{margin-bottom:7px;font-size:10px;font-weight:800;letter-spacing:.07em;color:#8a94a3}
+.pro-final-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:5px 0;font-size:13px;color:#596273}
+.pro-final-row strong{color:#182230;font-size:14px;font-weight:850;font-variant-numeric:tabular-nums}
+.pro-detail-toggle{width:100%;margin-top:7px;padding:9px 0 2px;border:0;border-top:1px solid #f1f3f5;background:transparent;color:#475467;text-align:left;font:inherit;font-size:12px;font-weight:750;cursor:pointer}
+.pro-detail-toggle span{float:right;font-size:16px}
+.pro-detail-panel{display:none;margin-top:8px;padding:9px 10px;border-radius:10px;background:#f8fafc}
+.pro-detail-panel.show{display:block}
+.pro-detail-title{margin-bottom:6px;font-size:9px;font-weight:850;letter-spacing:.07em;color:#98a2b3}
+.pro-detail-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:4px 0;font-size:11px;color:#667085}
+.pro-detail-row strong{color:#344054;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums}
+.pro-detail-row strong b{padding:0 3px;color:#98a2b3;font-weight:600}
+</style>
+
 </head>
 <body>
 <main class="app">
@@ -2332,21 +2348,35 @@ label[for="capitalSaripayInput"],
     </div>`;
   }
   function transactionBalanceHtml(tx){
-    let rows='';
-    if(tx.type==='Cash In'){
-      rows+=balanceMoveHtml('Cash on Hand',tx.previousCash,tx.newCash);
-      if((tx.walletDestination||'GCash')==='Maya') rows+=balanceMoveHtml('Maya',tx.previousMaya,tx.newMaya);
-      else rows+=balanceMoveHtml('GCash',tx.previousGcash,tx.newGcash);
-    }else if(tx.type==='Cash Out'){
-      rows+=balanceMoveHtml('Cash on Hand',tx.previousCash,tx.newCash);
-      if((tx.walletDestination||'GCash')==='Saripay') rows+=balanceMoveHtml('SariPay',tx.previousSaripay,tx.newSaripay);
-      else if((tx.walletDestination||'GCash')==='Maya') rows+=balanceMoveHtml('Maya',tx.previousMaya,tx.newMaya);
-      else rows+=balanceMoveHtml('GCash',tx.previousGcash,tx.newGcash);
-      // If the fee was received in a different wallet, show that affected wallet too.
-      if(tx.feeLocation==='Saripay' && (tx.walletDestination||'GCash')!=='Saripay') rows+=balanceMoveHtml('Saripay',tx.previousSaripay,tx.newSaripay);
-      if(tx.feeLocation==='GCash' && (tx.walletDestination||'GCash')!=='GCash') rows+=balanceMoveHtml('GCash',tx.previousGcash,tx.newGcash);
-    }
-    return rows?`<div class="balance-moves">${rows}</div>`:'';
+    const wallet=(tx.walletDestination||'GCash');
+    let walletName='GCash', before=tx.previousGcash, after=tx.newGcash;
+    if(wallet==='Maya'){ walletName='Maya'; before=tx.previousMaya; after=tx.newMaya; }
+    else if(wallet==='Saripay'){ walletName='SariPay'; before=tx.previousSaripay; after=tx.newSaripay; }
+
+    const valid=v=>v!==null && v!==undefined && v!=='';
+    const finalRow=(label,value)=>valid(value)
+      ? `<div class="pro-final-row"><span>${label}</span><strong>${money(value)}</strong></div>` : '';
+    const detailRow=(label,a,b)=>valid(a)&&valid(b)
+      ? `<div class="pro-detail-row"><span>${label}</span><strong>${money(a)} <b>→</b> ${money(b)}</strong></div>` : '';
+
+    const id='txd_'+String(tx.id||Math.random()).replace(/[^a-zA-Z0-9_-]/g,'');
+    return `<div class="pro-balance">
+      <div class="pro-balance-title">BALANCE AFTER TRANSACTION</div>
+      ${finalRow(walletName,after)}
+      ${finalRow('Cash on Hand',tx.newCash)}
+      <button type="button" class="pro-detail-toggle" onclick="toggleTxBalanceDetails('${id}',this)">View details <span>›</span></button>
+      <div id="${id}" class="pro-detail-panel">
+        <div class="pro-detail-title">BEFORE → AFTER</div>
+        ${detailRow(walletName,before,after)}
+        ${detailRow('Cash on Hand',tx.previousCash,tx.newCash)}
+      </div>
+    </div>`;
+  }
+  function toggleTxBalanceDetails(id,btn){
+    const panel=document.getElementById(id);
+    if(!panel)return;
+    const open=panel.classList.toggle('show');
+    btn.innerHTML=open?'Hide details <span>⌄</span>':'View details <span>›</span>';
   }
   function transferBalanceHtml(t){
     const rows=balanceMoveHtml('Saripay',t.previousSaripay,t.newSaripay)+balanceMoveHtml('GCash',t.previousGcash,t.newGcash);
@@ -2381,7 +2411,7 @@ label[for="capitalSaripayInput"],
           <div class="history-tx-meta">${escapeHtml(tx.date||'')}</div>
         </div>
       </div>
-      ${transactionBalanceHtml(tx)?`<div class="history-balance-title">BALANCE MOVEMENT</div>${transactionBalanceHtml(tx)}`:''}
+      ${transactionBalanceHtml(tx)}
       <div class="history-tx-actions"><button class="link-btn" type="button" data-cal-remove="${escapeHtml(tx.id)}">Remove</button></div>
     </div>`).join('');
     const exhtml=exps.length?`<div class="cal-exp"><strong>Expenses: ${money(et)}</strong>${exps.map(x=>`<div>${escapeHtml(x.expense||'Expense')}: -${money(x.amount)}</div>`).join('')}</div>`:'';
