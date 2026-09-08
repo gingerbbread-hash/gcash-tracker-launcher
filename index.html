@@ -1693,6 +1693,31 @@ label[for="capitalSaripayInput"],
 }
 </style>
 
+
+<style id="history-logo-centered-final">
+.history-tx-card.history-wallet-gcash::after,
+.history-tx-card.history-wallet-maya::after{
+  left:50% !important;
+  right:auto !important;
+  top:50% !important;
+  bottom:auto !important;
+  transform:translate(-50%,-50%) !important;
+  width:135px !important;
+  height:82px !important;
+  background-position:center center !important;
+  background-size:contain !important;
+  background-repeat:no-repeat !important;
+  pointer-events:none !important;
+}
+.history-tx-card.history-wallet-gcash::after{opacity:.09 !important}
+.history-tx-card.history-wallet-maya::after{opacity:.10 !important}
+.history-tx-card.history-wallet-gcash > *,
+.history-tx-card.history-wallet-maya > *{
+  position:relative !important;
+  z-index:2 !important;
+}
+</style>
+
 </head>
 <body>
 <main class="app">
