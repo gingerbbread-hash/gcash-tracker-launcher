@@ -1518,6 +1518,33 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
 }
 </style>
 
+
+<style id="remove-saripay-for-good">
+/* SariPay removed from all current-use screens. Legacy sheet/history data is preserved. */
+#homeBalanceStrip .home-balance-mini:has(#homeSaripayBalance),
+.capital-balance:has(#saripayAvailable),
+#saripayTransferBtn,
+#saripayTransferModal,
+label[for="capitalSaripayInput"],
+#capitalSaripayInput{
+  display:none !important;
+}
+
+/* Current active wallets: Cash, GCash, Maya */
+#homeBalanceStrip{
+  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+}
+.capital-grid.capital-grid-three{
+  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+}
+@media(max-width:700px){
+  #homeBalanceStrip,
+  .capital-grid.capital-grid-three{
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  }
+}
+</style>
+
 </head>
 <body>
 <main class="app">
@@ -1769,7 +1796,7 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
       <div class="cashout-wallet-title">Where does this Cash Out go?</div>
       <div class="cashout-wallet-actions">
         <button type="button" id="cashOutToGcash" class="cashout-wallet-choice wallet-gcash">GCash</button>
-        <button type="button" id="cashOutToSaripay" class="cashout-wallet-choice wallet-saripay">Saripay</button>
+        <button type="button" id="cashOutToMaya" class="cashout-wallet-choice" style="background:#ecfdf3;color:#067647;border-color:#abefc6">Maya</button>
       </div>
     </div>
 
@@ -2090,7 +2117,7 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
   const cashInFromMaya = $('cashInFromMaya');
   const cashOutWalletStep = $('cashOutWalletStep');
   const cashOutToGcash = $('cashOutToGcash');
-  const cashOutToSaripay = $('cashOutToSaripay');
+  const cashOutToMaya = $('cashOutToMaya');
   let selectedCashOutWallet = '';
   const adjustCapitalBtn = $('adjustCapitalBtn');
   const capitalModal = $('capitalModal');
@@ -2271,7 +2298,8 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
       else rows+=balanceMoveHtml('GCash',tx.previousGcash,tx.newGcash);
     }else if(tx.type==='Cash Out'){
       rows+=balanceMoveHtml('Cash on Hand',tx.previousCash,tx.newCash);
-      if((tx.walletDestination||'GCash')==='Saripay') rows+=balanceMoveHtml('Saripay',tx.previousSaripay,tx.newSaripay);
+      if((tx.walletDestination||'GCash')==='Saripay') rows+=balanceMoveHtml('SariPay',tx.previousSaripay,tx.newSaripay);
+      else if((tx.walletDestination||'GCash')==='Maya') rows+=balanceMoveHtml('Maya',tx.previousMaya,tx.newMaya);
       else rows+=balanceMoveHtml('GCash',tx.previousGcash,tx.newGcash);
       // If the fee was received in a different wallet, show that affected wallet too.
       if(tx.feeLocation==='Saripay' && (tx.walletDestination||'GCash')!=='Saripay') rows+=balanceMoveHtml('Saripay',tx.previousSaripay,tx.newSaripay);
@@ -2456,7 +2484,7 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
     const cash = Number(capitalCashInput.value);
     const gcash = Number(capitalGcashInput.value);
     const maya=Number(capitalMayaInput.value);
-    const saripay = Number(capitalSaripayInput.value);
+    const saripay = Number((capitalData && capitalData.saripayBalance) || 0);
 
     if(!isFinite(cash) || cash < 0 || !isFinite(gcash) || gcash < 0 || !isFinite(maya) || maya < 0 || !isFinite(saripay) || saripay < 0){
       capitalModalStatus.textContent='Enter valid balances.';
@@ -3211,11 +3239,11 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
       else afterGcash -= txAmount;
     }else{
       afterCash -= txAmount;
-      if(payload.walletDestination === 'Saripay') afterSaripay += txAmount;
+      if(payload.walletDestination === 'Maya') afterMaya += txAmount;
       else afterGcash += txAmount;
 
       if(payload.feeLocation === 'Cash on Hand') afterCash += feeValue;
-      else if(payload.feeLocation === 'Saripay') afterSaripay += feeValue;
+      else if(payload.feeLocation === 'Maya') afterMaya += feeValue;
       else afterGcash += feeValue;
     }
 
@@ -3462,12 +3490,12 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
     cashOutWalletStep.classList.remove('show');
     feeToGcash.textContent = wallet;
     feeToGcash.classList.toggle('gcash', wallet === 'GCash');
-    feeToGcash.classList.toggle('cash', wallet === 'Saripay');
+    feeToGcash.classList.toggle('cash', wallet === 'Maya');
     feeLocationStep.classList.add('show');
   }
 
   cashOutToGcash.addEventListener('click',()=>chooseCashOutWallet('GCash'));
-  cashOutToSaripay.addEventListener('click',()=>chooseCashOutWallet('Saripay'));
+  cashOutToMaya.addEventListener('click',()=>chooseCashOutWallet('Maya'));
 
   feeToGcash.addEventListener('click',()=>{
     if(!pendingPayload || !selectedCashOutWallet) return;
