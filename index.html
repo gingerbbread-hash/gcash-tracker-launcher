@@ -1602,6 +1602,23 @@ label[for="capitalSaripayInput"],
 .pro-detail-row strong b{padding:0 3px;color:#98a2b3;font-weight:600}
 </style>
 
+
+<style id="simple-transaction-history-final">
+.pro-balance,.history-balance-title,.history-balance-row{display:none!important}
+.history-wallet-gcash,.history-wallet-maya{position:relative!important;overflow:hidden!important}
+.history-wallet-gcash>*,
+.history-wallet-maya>*{position:relative;z-index:2}
+.history-wallet-gcash::after,
+.history-wallet-maya::after{
+ position:absolute;z-index:1;right:14px;top:50%;
+ transform:translateY(-50%) rotate(-8deg);
+ font-size:38px;font-weight:950;letter-spacing:-.05em;line-height:1;
+ pointer-events:none;user-select:none;white-space:nowrap
+}
+.history-wallet-gcash::after{content:"GCash";color:rgba(0,102,255,.065)}
+.history-wallet-maya::after{content:"Maya";color:rgba(0,177,79,.075)}
+</style>
+
 </head>
 <body>
 <main class="app">
@@ -2411,7 +2428,7 @@ label[for="capitalSaripayInput"],
           <div class="history-tx-meta">${escapeHtml(tx.date||'')}</div>
         </div>
       </div>
-      ${transactionBalanceHtml(tx)}
+
       <div class="history-tx-actions"><button class="link-btn" type="button" data-cal-remove="${escapeHtml(tx.id)}">Remove</button></div>
     </div>`).join('');
     const exhtml=exps.length?`<div class="cal-exp"><strong>Expenses: ${money(et)}</strong>${exps.map(x=>`<div>${escapeHtml(x.expense||'Expense')}: -${money(x.amount)}</div>`).join('')}</div>`:'';
