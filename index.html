@@ -3851,5 +3851,50 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 </script>
 
+
+<script id="wallet-order-final-override">
+(function(){
+  function finalWalletOrder(){
+    // HOME: GCash | Maya, then Cash wide
+    const hg=document.getElementById('homeGcashBalance')?.closest('.home-balance-mini');
+    const hm=document.getElementById('homeMayaBalance')?.closest('.home-balance-mini');
+    const hc=document.getElementById('homeCashBalance')?.closest('.home-balance-mini');
+    const home=hg && hg.parentElement;
+    if(home){
+      home.style.setProperty('display','grid','important');
+      home.style.setProperty('grid-template-columns','repeat(2,minmax(0,1fr))','important');
+      hg.style.setProperty('order','1','important');
+      hm.style.setProperty('order','2','important');
+      hc.style.setProperty('order','3','important');
+      hc.style.setProperty('grid-column','1 / -1','important');
+    }
+
+    // WALLETS: GCash | Maya, then Cash on Hand wide
+    const wg=document.getElementById('cashInAvailable')?.closest('.capital-balance');
+    const wm=document.getElementById('mayaAvailable')?.closest('.capital-balance');
+    const wc=document.getElementById('cashOutAvailable')?.closest('.capital-balance');
+    const wallets=wg && wg.parentElement;
+    if(wallets){
+      wallets.style.setProperty('display','grid','important');
+      wallets.style.setProperty('grid-template-columns','repeat(2,minmax(0,1fr))','important');
+      wg.style.setProperty('order','1','important');
+      wm.style.setProperty('order','2','important');
+      wc.style.setProperty('order','3','important');
+      wc.style.setProperty('grid-column','1 / -1','important');
+    }
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded', finalWalletOrder);
+  }else{
+    finalWalletOrder();
+  }
+  window.addEventListener('load', finalWalletOrder);
+  setTimeout(finalWalletOrder,250);
+  setTimeout(finalWalletOrder,1000);
+  setTimeout(finalWalletOrder,2500);
+})();
+</script>
+
 </body>
 </html>
