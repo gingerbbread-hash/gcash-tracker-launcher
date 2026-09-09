@@ -4410,11 +4410,15 @@ window.CASH_COUNTER_URL = 'https://script.google.com/macros/s/AKfycbxvG-9yAjMFBT
   if (!btn) return;
 
   btn.addEventListener('click', function () {
-    if (!CASH_COUNTER_URL || CASH_COUNTER_URL.includes('https://script.google.com/macros/s/AKfycbxvG-9yAjMFBTwuNYFzGAeNjo8S9wX24mCYYJSZfg66SKVab3VhyBMEPBv2_HVaCNMndg/exec')) {
-      if (status) status.textContent = 'Add your Cash Counter /exec URL first.';
+    const url = String(window.CASH_COUNTER_URL || '').trim();
+
+    if (!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec(?:\?.*)?$/.test(url)) {
+      if (status) status.textContent = 'Cash Counter URL is not valid.';
       return;
     }
-    window.open(window.CASH_COUNTER_URL, '_blank', 'noopener');
+
+    if (status) status.textContent = '';
+    window.open(url, '_blank', 'noopener');
   });
 })();
 </script>
