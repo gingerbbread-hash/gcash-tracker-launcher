@@ -1775,6 +1775,33 @@ label[for="capitalSaripayInput"],
       <p class="note" style="margin:0 0 10px">
         Count your physical bills and coins.
       </p>
+
+      <div id="cashCounterLatestCard" style="
+        border:1px solid #e4e7ec;
+        border-radius:12px;
+        padding:11px;
+        margin-bottom:10px;
+        background:#f9fafb;
+      ">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <span style="font-size:12px;font-weight:800;color:#667085">Latest Cash Check</span>
+          <span id="cashCounterLatestBadge" style="
+            padding:5px 9px;
+            border-radius:999px;
+            font-size:11px;
+            font-weight:900;
+            background:#eef2f6;
+            color:#344054;
+          ">Loading…</span>
+        </div>
+        <div id="cashCounterLatestDetails" style="
+          margin-top:8px;
+          font-size:12px;
+          color:#475467;
+          line-height:1.55;
+        ">Checking latest cash count…</div>
+      </div>
+
       <button id="openCashCounterBtn" class="btn btn-secondary" type="button">
         Open Cash Counter
       </button>
@@ -4053,6 +4080,96 @@ document.addEventListener('DOMContentLoaded', function(){
 })();
 </script>
 
+
+
+<script id="cash-counter-latest-status-script">
+(function(){
+  const badge = document.getElementById('cashCounterLatestBadge');
+  const details = document.getElementById('cashCounterLatestDetails');
+
+  function money(v){
+    return '₱' + Number(v || 0).toLocaleString('en-PH', {
+      minimumFractionDigits:2,
+      maximumFractionDigits:2
+    });
+  }
+
+  function paint(data){
+    if(!badge || !details) return;
+
+    if(!data || !data.available){
+      badge.textContent = 'NO COUNT';
+      badge.style.background = '#eef2f6';
+      badge.style.color = '#344054';
+      details.textContent = 'No saved cash count yet.';
+      return;
+    }
+
+    const status = String(data.status || 'MATCHED').toUpperCase();
+    badge.textContent = status;
+
+    if(status === 'MATCHED'){
+      badge.style.background = '#ecfdf3';
+      badge.style.color = '#027a48';
+    }else if(status === 'SHORT'){
+      badge.style.background = '#fef3f2';
+      badge.style.color = '#b42318';
+    }else{
+      badge.style.background = '#fffaeb';
+      badge.style.color = '#b54708';
+    }
+
+    let extra = '';
+    const diff = Number(data.difference || 0);
+    if(Math.abs(diff) > 0.01){
+      extra = `<br>Difference: <strong>${diff < 0 ? '-' : '+'}${money(Math.abs(diff))}</strong>`;
+    }
+
+    details.innerHTML =
+      `Physical Cash: <strong>${money(data.physicalCash)}</strong><br>` +
+      `Tracker Cash: <strong>${money(data.trackerCashOnHand)}</strong>` +
+      extra +
+      (data.date ? `<br>Checked: ${data.date}` : '');
+  }
+
+  function loadCashCounterLatestStatus(){
+    if(!window.google || !google.script || !google.script.run) return;
+
+    if(badge) badge.textContent = 'Loading…';
+    if(details) details.textContent = 'Checking latest cash count…';
+
+    google.script.run
+      .withSuccessHandler(paint)
+      .withFailureHandler(function(err){
+        if(badge){
+          badge.textContent = 'UNAVAILABLE';
+          badge.style.background = '#eef2f6';
+          badge.style.color = '#344054';
+        }
+        if(details){
+          details.textContent = (err && err.message)
+            ? err.message
+            : 'Could not read Cash Counter status.';
+        }
+      })
+      .getCashCounterLatestStatusBySession('LOCAL_NO_LOGIN');
+  }
+
+  window.loadCashCounterLatestStatus = loadCashCounterLatestStatus;
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', loadCashCounterLatestStatus, {once:true});
+  }else{
+    loadCashCounterLatestStatus();
+  }
+
+  // Refresh whenever Wallets is opened.
+  document.addEventListener('click', function(e){
+    const btn = e.target.closest('[data-main-tab="wallets"]');
+    if(btn) setTimeout(loadCashCounterLatestStatus, 100);
+  });
+})();
+</script>
 
 <script id="cash-counter-shortcut-script">
 const CASH_COUNTER_URL = 'https://script.google.com/macros/s/AKfycbxvG-9yAjMFBTwuNYFzGAeNjo8S9wX24mCYYJSZfg66SKVab3VhyBMEPBv2_HVaCNMndg/exec';
