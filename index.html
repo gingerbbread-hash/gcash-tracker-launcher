@@ -1161,17 +1161,149 @@ body.app-locked #historyToggle{
   #pairingStatus{min-height:18px;margin-top:8px;font-size:12px;text-align:center;color:#667085}
 
 
-.cash-pieces-offer{position:fixed;inset:0;background:rgba(15,23,42,.48);z-index:10020;display:none;align-items:center;justify-content:center;padding:16px}
+
+.cash-pieces-offer{
+  position:fixed;inset:0;background:rgba(15,23,42,.48);z-index:10020;
+  display:none;align-items:center;justify-content:center;padding:16px
+}
 .cash-pieces-offer.show{display:flex}
-.cash-pieces-offer-card{width:min(390px,100%);background:#fff;border-radius:18px;padding:16px;box-shadow:0 24px 60px rgba(15,23,42,.24)}
+.cash-pieces-offer-card{
+  width:min(390px,100%);background:#fff;border-radius:18px;padding:16px;
+  box-shadow:0 24px 60px rgba(15,23,42,.24)
+}
 .cash-pieces-offer-title{font-size:18px;font-weight:950;color:#101828}
 .cash-pieces-offer-note{margin-top:6px;color:#667085;font-size:12px;line-height:1.45}
-.cash-pieces-offer-summary{margin-top:12px;padding:10px;background:#f8fafc;border-radius:11px;font-size:12px;color:#475467;line-height:1.6}
+.cash-pieces-offer-summary{
+  margin-top:12px;padding:10px;background:#f8fafc;border-radius:11px;
+  font-size:12px;color:#475467;line-height:1.6
+}
 .cash-pieces-offer-summary strong{color:#101828}
 .cash-pieces-offer-actions{display:grid;grid-template-columns:1fr 1.35fr;gap:8px;margin-top:13px}
 .cash-pieces-offer-actions button{height:46px;border:0;border-radius:11px;font-size:13px;font-weight:900}
 .cash-pieces-skip{background:#eef2f6;color:#344054}
 .cash-pieces-open{background:#172033;color:#fff}
+
+/* In-app Record Cash Pieces */
+.cash-pieces-modal{
+  position:fixed;inset:0;z-index:14000;display:none;
+  background:rgba(15,23,42,.56);padding:10px;
+  align-items:flex-start;justify-content:center;overflow-y:auto;
+  -webkit-overflow-scrolling:touch
+}
+.cash-pieces-modal.show{display:flex}
+.cash-pieces-card{
+  width:min(520px,100%);margin:8px auto calc(18px + env(safe-area-inset-bottom,0px));
+  background:#f5f8fc;border-radius:18px;overflow:hidden;
+  box-shadow:0 24px 70px rgba(15,23,42,.28)
+}
+.cash-pieces-head{
+  position:sticky;top:0;z-index:3;background:#0b5ed7;color:#fff;
+  padding:13px 14px 11px
+}
+.cash-pieces-head-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.cash-pieces-title{font-size:19px;font-weight:950;line-height:1.1}
+.cash-pieces-subtitle{margin-top:4px;font-size:11px;line-height:1.35;opacity:.92}
+.cash-pieces-x{
+  width:34px;height:34px;min-width:34px;border:0;border-radius:50%;
+  background:rgba(255,255,255,.18);color:#fff;font-size:20px;font-weight:900
+}
+.cash-pieces-body{padding:10px}
+.cash-pieces-summary{
+  display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:9px
+}
+.cash-pieces-summary-box{
+  background:#fff;border:1px solid #d9e5f5;border-radius:11px;padding:8px
+}
+.cash-pieces-summary-box small{display:block;font-size:9px;color:#667085;font-weight:900}
+.cash-pieces-summary-box strong{display:block;margin-top:2px;font-size:14px;color:#172033}
+.cash-pieces-summary-box.expected{grid-column:1/-1;background:#eef6ff}
+.cash-pieces-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.cash-pieces-tab{
+  min-height:42px;border:1px solid #d9e5f5;border-radius:10px;background:#fff;
+  color:#475467;font-size:12px;font-weight:900
+}
+.cash-pieces-tab.active{background:#172033;color:#fff;border-color:#172033}
+.cash-pieces-section-note{
+  margin-bottom:8px;padding:8px 9px;background:#fff;border:1px solid #e4e7ec;
+  border-radius:10px;font-size:10px;line-height:1.35;color:#667085
+}
+.cash-pieces-grid{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:7px
+}
+.cash-piece-card{
+  min-width:0;overflow:hidden;background:#fff;border:1px solid #e4e7ec;
+  border-radius:12px
+}
+.cash-piece-title{
+  min-height:34px;display:flex;align-items:center;justify-content:center;
+  padding:6px 3px;text-align:center;background:#eaf3ff;
+  color:#172033;font-size:12px;font-weight:950
+}
+.cash-piece-card:nth-child(2n) .cash-piece-title{background:#fff4cf}
+.cash-piece-card:nth-child(3n) .cash-piece-title{background:#e7f8ee}
+.cash-piece-card:nth-child(4n) .cash-piece-title{background:#f1e8ff}
+.cash-piece-photo{
+  height:66px;display:flex;align-items:center;justify-content:center;padding:4px;background:#fff
+}
+.cash-piece-photo img{max-width:100%;max-height:58px;object-fit:contain;display:block}
+.cash-piece-photo.coin img{width:56px;height:56px;object-fit:contain}
+.cash-piece-controls{
+  display:grid;grid-template-columns:40px minmax(0,1fr) 40px;
+  gap:5px;padding:6px;background:#f8fafc
+}
+.cash-piece-controls button{
+  width:40px;height:39px;border:0;border-radius:9px;
+  color:#fff;font-size:22px;font-weight:950;padding:0
+}
+.cash-piece-minus{background:#dc2626}
+.cash-piece-plus{background:#0b5ed7}
+.cash-piece-controls input{
+  width:100%;min-width:0;height:39px;min-height:39px;padding:0 3px;
+  border:1px solid #d0d5dd;border-radius:9px;background:#fff;
+  text-align:center;font-size:16px!important;font-weight:900
+}
+.cash-piece-subtotal{
+  padding:0 6px 7px;text-align:center;background:#f8fafc;
+  font-size:10px;color:#475467;font-weight:800
+}
+.cash-pieces-live{
+  margin-top:9px;border-radius:11px;padding:10px;background:#fff;
+  border:1px solid #d9e5f5
+}
+.cash-pieces-live-row{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  font-size:11px;color:#475467;margin:3px 0
+}
+.cash-pieces-live-row strong{font-size:13px;color:#172033}
+.cash-pieces-match{
+  margin-top:8px;padding:9px;border-radius:10px;text-align:center;
+  font-size:12px;font-weight:950
+}
+.cash-pieces-match.ok{background:#ecfdf3;color:#067647}
+.cash-pieces-match.bad{background:#fef3f2;color:#b42318}
+.cash-pieces-actions{
+  position:sticky;bottom:0;display:grid;grid-template-columns:.85fr 1.3fr;
+  gap:7px;margin-top:9px;padding:9px 0 0;background:#f5f8fc
+}
+.cash-pieces-actions button{
+  height:46px;border:0;border-radius:10px;font-size:12px;font-weight:900
+}
+#cashPiecesCancel{background:#eef2f6;color:#344054}
+#cashPiecesSave{background:#0b5ed7;color:#fff}
+#cashPiecesSave:disabled{opacity:.5}
+#cashPiecesStatus{min-height:16px;margin-top:6px;font-size:10px;text-align:center}
+@media(max-width:380px){
+  .cash-pieces-modal{padding:6px}
+  .cash-pieces-body{padding:7px}
+  .cash-pieces-grid{gap:5px}
+  .cash-piece-title{font-size:11px}
+  .cash-piece-photo{height:60px}
+  .cash-piece-photo img{max-height:52px}
+  .cash-piece-controls{grid-template-columns:36px minmax(0,1fr) 36px;gap:4px;padding:5px}
+  .cash-piece-controls button{width:36px;height:37px}
+  .cash-piece-controls input{height:37px;min-height:37px}
+}
+
 
 </style>
 
@@ -2004,11 +2136,66 @@ label[for="capitalSaripayInput"],
 <div id="cashPiecesOffer" class="cash-pieces-offer" aria-hidden="true">
   <div class="cash-pieces-offer-card">
     <div class="cash-pieces-offer-title">Record Cash Pieces?</div>
-    <div class="cash-pieces-offer-note">Optional. Record the actual bills and coins received for this Cash In so your Cash Counter stays updated.</div>
+    <div id="cashPiecesOfferNote" class="cash-pieces-offer-note">
+      Optional. Record the actual Philippine bills and coins that moved so your Cash Counter stays accurate.
+    </div>
     <div id="cashPiecesOfferSummary" class="cash-pieces-offer-summary"></div>
     <div class="cash-pieces-offer-actions">
       <button id="cashPiecesSkip" class="cash-pieces-skip" type="button">Skip</button>
       <button id="cashPiecesOpen" class="cash-pieces-open" type="button">Record Cash Pieces</button>
+    </div>
+  </div>
+</div>
+
+<div id="cashPiecesModal" class="cash-pieces-modal" aria-hidden="true">
+  <div class="cash-pieces-card">
+    <div class="cash-pieces-head">
+      <div class="cash-pieces-head-row">
+        <div>
+          <div id="cashPiecesTitle" class="cash-pieces-title">Record Cash Pieces</div>
+          <div id="cashPiecesSubtitle" class="cash-pieces-subtitle"></div>
+        </div>
+        <button id="cashPiecesX" class="cash-pieces-x" type="button" aria-label="Close">×</button>
+      </div>
+    </div>
+
+    <div class="cash-pieces-body">
+      <div class="cash-pieces-summary">
+        <div class="cash-pieces-summary-box">
+          <small>Transaction</small>
+          <strong id="cashPiecesTxType">Cash In</strong>
+        </div>
+        <div class="cash-pieces-summary-box">
+          <small>Amount</small>
+          <strong id="cashPiecesTxAmount">₱0.00</strong>
+        </div>
+        <div class="cash-pieces-summary-box expected">
+          <small>Expected Cash on Hand Change</small>
+          <strong id="cashPiecesExpected">₱0.00</strong>
+        </div>
+      </div>
+
+      <div class="cash-pieces-tabs">
+        <button id="cashPiecesReceivedTab" class="cash-pieces-tab active" type="button">Money Received</button>
+        <button id="cashPiecesGivenTab" class="cash-pieces-tab" type="button">Money Given</button>
+      </div>
+
+      <div id="cashPiecesSectionNote" class="cash-pieces-section-note"></div>
+      <div id="cashPiecesGrid" class="cash-pieces-grid"></div>
+
+      <div class="cash-pieces-live">
+        <div class="cash-pieces-live-row"><span>Money Received</span><strong id="cashPiecesReceivedTotal">₱0.00</strong></div>
+        <div class="cash-pieces-live-row"><span>Money Given</span><strong id="cashPiecesGivenTotal">₱0.00</strong></div>
+        <div class="cash-pieces-live-row"><span>Net Cash Movement</span><strong id="cashPiecesNetTotal">₱0.00</strong></div>
+        <div id="cashPiecesMatch" class="cash-pieces-match bad">Enter the actual bills and coins.</div>
+      </div>
+
+      <div id="cashPiecesStatus"></div>
+
+      <div class="cash-pieces-actions">
+        <button id="cashPiecesCancel" type="button">Cancel</button>
+        <button id="cashPiecesSave" type="button">Save Cash Pieces</button>
+      </div>
     </div>
   </div>
 </div>
@@ -3492,6 +3679,7 @@ label[for="capitalSaripayInput"],
 
   const TX_QUEUE_KEY = 'gcash_tracker_pending_tx_v1';
   let txSyncBusy = false;
+  const cashPiecesPromptIds = new Set();
 
   function loadPendingTxQueue(){
     try{
@@ -3622,6 +3810,12 @@ label[for="capitalSaripayInput"],
         render();
         saveLocalTrackerCache();
 
+        // Only offer piece recording after this exact transaction exists in Google Sheets.
+        if(cashPiecesPromptIds.has(String(serverTx.id||''))){
+          cashPiecesPromptIds.delete(String(serverTx.id||''));
+          setTimeout(()=>showCashPiecesOffer(serverTx),120);
+        }
+
         if(q.length){
           setTimeout(processPendingTxQueue, 50);
         }else{
@@ -3700,65 +3894,293 @@ label[for="capitalSaripayInput"],
       saveLocalTrackerCache();
     }
   }
+  let cashPiecesPendingTx = null;
+  let cashPiecesMode = 'received';
 
+  const CASH_PIECE_DENOMS = [
+    {key:'1000',label:'₱1,000',value:1000,url:'https://www.bsp.gov.ph/Coins%20and%20Notes/Polymer/1000banknote.png',kind:'bill'},
+    {key:'500',label:'₱500',value:500,url:'https://www.bsp.gov.ph/Coins%20and%20Notes/Polymer/500banknote.png',kind:'bill'},
+    {key:'200',label:'₱200',value:200,url:'https://upload.wikimedia.org/wikipedia/commons/3/32/NDS_obverse_200_Philippine_peso_bill.jpg',kind:'bill'},
+    {key:'100',label:'₱100',value:100,url:'https://www.bsp.gov.ph/Coins%20and%20Notes/Polymer/100banknote.png',kind:'bill'},
+    {key:'50',label:'₱50',value:50,url:'https://www.bsp.gov.ph/Coins%20and%20Notes/Polymer/50banknote.png',kind:'bill'},
+    {key:'20b',label:'₱20 Bill',value:20,url:'https://upload.wikimedia.org/wikipedia/commons/c/cd/NDS_obverse_20_Philippine_peso_bill.jpg',kind:'bill'},
+    {key:'20c',label:'₱20 Coin',value:20,url:'https://upload.wikimedia.org/wikipedia/commons/1/15/Font_20_peso_Coin_Philippines.png',kind:'coin'},
+    {key:'10',label:'₱10',value:10,url:'https://upload.wikimedia.org/wikipedia/commons/8/8b/NGC_PHP_10_piso.jpg',kind:'coin'},
+    {key:'5',label:'₱5',value:5,url:'https://upload.wikimedia.org/wikipedia/commons/9/96/PhilippinesNewGen5PesoObverse.png',kind:'coin'},
+    {key:'1',label:'₱1',value:1,url:'https://upload.wikimedia.org/wikipedia/commons/4/43/1_philippinischer_Peso_2018.jpg',kind:'coin'}
+  ];
 
-  let cashPiecesPendingTx=null;
+  let cashPiecesReceived = {};
+  let cashPiecesGiven = {};
+
+  function zeroCashPieces(){
+    const x={};
+    CASH_PIECE_DENOMS.forEach(d=>x[d.key]=0);
+    return x;
+  }
+
+  function pieceTotal(obj){
+    return CASH_PIECE_DENOMS.reduce(
+      (sum,d)=>sum+(Math.max(0,Math.floor(Number(obj[d.key]||0)))*d.value),0
+    );
+  }
+
+  function expectedCashMovement(tx){
+    if(tx && tx.previousCash !== null && tx.previousCash !== undefined &&
+       tx.newCash !== null && tx.newCash !== undefined){
+      return Number(tx.newCash||0)-Number(tx.previousCash||0);
+    }
+
+    if(!tx) return 0;
+    if(tx.type==='Cash In') return Number(tx.total||0);
+
+    let n = -Number(tx.amount||0);
+    if(String(tx.feeLocation||'')==='Cash on Hand') n += Number(tx.fee||0);
+    return n;
+  }
 
   function showCashPiecesOffer(tx){
-    if(!tx || tx.type!=='Cash In') return;
+    if(!tx || (tx.type!=='Cash In' && tx.type!=='Cash Out')) return;
     cashPiecesPendingTx=tx;
 
-    const received=Number(tx.cashReceived||0)>0 ? Number(tx.cashReceived) : Number(tx.total||0);
-    const change=Number(tx.change||0);
-    const net=Number(tx.total||0);
-
+    const expected=expectedCashMovement(tx);
     const box=document.getElementById('cashPiecesOffer');
     const summary=document.getElementById('cashPiecesOfferSummary');
+    const note=document.getElementById('cashPiecesOfferNote');
     if(!box || !summary) return;
 
+    if(note){
+      note.textContent = tx.type==='Cash In'
+        ? 'Record the actual bills and coins received and any change you gave.'
+        : 'Record the actual cash you gave the customer and any cash fee you received.';
+    }
+
     summary.innerHTML=
-      `Cash received: <strong>${money(received)}</strong><br>`+
-      `Sukli: <strong>${money(change)}</strong><br>`+
-      `Net Cash In: <strong>${money(net)}</strong>`;
+      `Type: <strong>${tx.type}</strong><br>`+
+      `Transaction amount: <strong>${money(Number(tx.amount||tx.total||0))}</strong><br>`+
+      `Expected Cash on Hand change: <strong>${expected>=0?'+':''}${money(expected)}</strong>`;
 
     box.classList.add('show');
     box.setAttribute('aria-hidden','false');
   }
 
-  function closeCashPiecesOffer(){
+  function closeCashPiecesOffer(clearTx=true){
     const box=document.getElementById('cashPiecesOffer');
     if(box){
       box.classList.remove('show');
       box.setAttribute('aria-hidden','true');
     }
-    cashPiecesPendingTx=null;
+    if(clearTx) cashPiecesPendingTx=null;
   }
 
-  const cashPiecesSkip=document.getElementById('cashPiecesSkip');
-  const cashPiecesOpen=document.getElementById('cashPiecesOpen');
+  function renderCashPiecesGrid(){
+    const grid=document.getElementById('cashPiecesGrid');
+    if(!grid) return;
 
-  if(cashPiecesSkip) cashPiecesSkip.addEventListener('click',closeCashPiecesOffer);
+    const data = cashPiecesMode==='received' ? cashPiecesReceived : cashPiecesGiven;
 
-  if(cashPiecesOpen) cashPiecesOpen.addEventListener('click',()=>{
+    grid.innerHTML=CASH_PIECE_DENOMS.map(d=>{
+      const qty=Math.max(0,Math.floor(Number(data[d.key]||0)));
+      return `
+        <div class="cash-piece-card">
+          <div class="cash-piece-title">${d.label}</div>
+          <div class="cash-piece-photo ${d.kind}">
+            <img src="${d.url}" alt="Philippine ${d.label}" loading="lazy">
+          </div>
+          <div class="cash-piece-controls">
+            <button type="button" class="cash-piece-minus" data-piece-key="${d.key}">−</button>
+            <input type="number" inputmode="numeric" min="0" step="1"
+                   data-piece-input="${d.key}" value="${qty}">
+            <button type="button" class="cash-piece-plus" data-piece-key="${d.key}">+</button>
+          </div>
+          <div class="cash-piece-subtotal">Subtotal: ${money(qty*d.value)}</div>
+        </div>`;
+    }).join('');
+
+    updateCashPiecesTotals();
+  }
+
+  function updateCashPiecesTotals(){
+    const receivedTotal=pieceTotal(cashPiecesReceived);
+    const givenTotal=pieceTotal(cashPiecesGiven);
+    const net=receivedTotal-givenTotal;
+    const expected=expectedCashMovement(cashPiecesPendingTx);
+
+    const a=document.getElementById('cashPiecesReceivedTotal');
+    const b=document.getElementById('cashPiecesGivenTotal');
+    const c=document.getElementById('cashPiecesNetTotal');
+    const match=document.getElementById('cashPiecesMatch');
+    const save=document.getElementById('cashPiecesSave');
+
+    if(a) a.textContent=money(receivedTotal);
+    if(b) b.textContent=money(givenTotal);
+    if(c) c.textContent=(net>=0?'+':'')+money(net);
+
+    const ok=Math.abs(net-expected)<0.01;
+    if(match){
+      match.className='cash-pieces-match '+(ok?'ok':'bad');
+      if(ok){
+        match.textContent='MATCHED. Cash pieces equal the transaction.';
+      }else{
+        const diff=expected-net;
+        match.textContent=`Not matched. ${diff>0?'Need +':'Need '}${money(diff)} more net cash movement.`;
+      }
+    }
+    if(save) save.disabled=!ok;
+  }
+
+  function updateCashPiecesSectionText(){
+    const note=document.getElementById('cashPiecesSectionNote');
+    if(!note || !cashPiecesPendingTx) return;
+
+    if(cashPiecesMode==='received'){
+      note.textContent = cashPiecesPendingTx.type==='Cash In'
+        ? 'Money Received: enter the bills and coins the customer handed to you.'
+        : 'Money Received: enter only cash received from the customer, such as a fee paid into Cash on Hand.';
+    }else{
+      note.textContent = cashPiecesPendingTx.type==='Cash In'
+        ? 'Money Given: enter the bills and coins you gave back as change.'
+        : 'Money Given: enter the bills and coins you handed to the customer for the Cash Out.';
+    }
+  }
+
+  function openCashPiecesRecorder(){
     const tx=cashPiecesPendingTx;
     if(!tx) return;
 
-    const base=window.CASH_COUNTER_URL || '';
-    if(!base || !/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec(?:\?.*)?$/.test(base)){
-      alert('Add your Cash Counter /exec URL first.');
-      return;
+    closeCashPiecesOffer(false);
+
+    cashPiecesReceived=zeroCashPieces();
+    cashPiecesGiven=zeroCashPieces();
+    cashPiecesMode='received';
+
+    const modal=document.getElementById('cashPiecesModal');
+    const title=document.getElementById('cashPiecesTitle');
+    const subtitle=document.getElementById('cashPiecesSubtitle');
+    const txType=document.getElementById('cashPiecesTxType');
+    const txAmount=document.getElementById('cashPiecesTxAmount');
+    const expected=document.getElementById('cashPiecesExpected');
+    const recTab=document.getElementById('cashPiecesReceivedTab');
+    const givTab=document.getElementById('cashPiecesGivenTab');
+    const stat=document.getElementById('cashPiecesStatus');
+
+    if(title) title.textContent='Record Cash Pieces';
+    if(subtitle) subtitle.textContent='Use the actual Philippine bills and coins that physically moved.';
+    if(txType) txType.textContent=tx.type;
+    if(txAmount) txAmount.textContent=money(Number(tx.amount||tx.total||0));
+
+    const exp=expectedCashMovement(tx);
+    if(expected) expected.textContent=(exp>=0?'+':'')+money(exp);
+
+    if(recTab) recTab.classList.add('active');
+    if(givTab) givTab.classList.remove('active');
+    if(stat) stat.textContent='';
+
+    updateCashPiecesSectionText();
+    renderCashPiecesGrid();
+
+    if(modal){
+      modal.classList.add('show');
+      modal.setAttribute('aria-hidden','false');
+      modal.scrollTop=0;
     }
+  }
 
-    const received=Number(tx.cashReceived||0)>0 ? Number(tx.cashReceived) : Number(tx.total||0);
-    const url=new URL(base);
-    url.searchParams.set('mode','cashin-pieces');
-    url.searchParams.set('txId',String(tx.id||''));
-    url.searchParams.set('received',String(received));
-    url.searchParams.set('change',String(Number(tx.change||0)));
-    url.searchParams.set('net',String(Number(tx.total||0)));
+  function closeCashPiecesRecorder(){
+    const modal=document.getElementById('cashPiecesModal');
+    if(modal){
+      modal.classList.remove('show');
+      modal.setAttribute('aria-hidden','true');
+    }
+    cashPiecesPendingTx=null;
+  }
 
-    window.open(url.toString(),'_blank','noopener');
-    closeCashPiecesOffer();
+  document.getElementById('cashPiecesSkip')?.addEventListener('click',()=>closeCashPiecesOffer(true));
+  document.getElementById('cashPiecesOpen')?.addEventListener('click',openCashPiecesRecorder);
+  document.getElementById('cashPiecesX')?.addEventListener('click',closeCashPiecesRecorder);
+  document.getElementById('cashPiecesCancel')?.addEventListener('click',closeCashPiecesRecorder);
+
+  document.getElementById('cashPiecesReceivedTab')?.addEventListener('click',()=>{
+    cashPiecesMode='received';
+    document.getElementById('cashPiecesReceivedTab')?.classList.add('active');
+    document.getElementById('cashPiecesGivenTab')?.classList.remove('active');
+    updateCashPiecesSectionText();
+    renderCashPiecesGrid();
+  });
+
+  document.getElementById('cashPiecesGivenTab')?.addEventListener('click',()=>{
+    cashPiecesMode='given';
+    document.getElementById('cashPiecesGivenTab')?.classList.add('active');
+    document.getElementById('cashPiecesReceivedTab')?.classList.remove('active');
+    updateCashPiecesSectionText();
+    renderCashPiecesGrid();
+  });
+
+  document.getElementById('cashPiecesGrid')?.addEventListener('click',e=>{
+    const plus=e.target.closest('.cash-piece-plus');
+    const minus=e.target.closest('.cash-piece-minus');
+    const btn=plus||minus;
+    if(!btn) return;
+
+    const key=btn.dataset.pieceKey;
+    const data=cashPiecesMode==='received' ? cashPiecesReceived : cashPiecesGiven;
+    let n=Math.max(0,Math.floor(Number(data[key]||0)));
+    n=plus ? n+1 : Math.max(0,n-1);
+    data[key]=n;
+    renderCashPiecesGrid();
+  });
+
+  document.getElementById('cashPiecesGrid')?.addEventListener('change',e=>{
+    const input=e.target.closest('[data-piece-input]');
+    if(!input) return;
+    const key=input.dataset.pieceInput;
+    const data=cashPiecesMode==='received' ? cashPiecesReceived : cashPiecesGiven;
+    data[key]=Math.max(0,Math.floor(Number(input.value||0)));
+    renderCashPiecesGrid();
+  });
+
+  document.getElementById('cashPiecesSave')?.addEventListener('click',()=>{
+    const tx=cashPiecesPendingTx;
+    if(!tx) return;
+
+    const save=document.getElementById('cashPiecesSave');
+    const stat=document.getElementById('cashPiecesStatus');
+
+    save.disabled=true;
+    save.textContent='Saving…';
+    if(stat){stat.textContent='Saving Cash Counter pieces…';stat.className='';}
+
+    google.script.run
+      .withSuccessHandler(result=>{
+        save.textContent='Save Cash Pieces';
+        if(stat){
+          stat.textContent=`Saved. Cash Counter is ${result && result.status ? result.status : 'updated'}.`;
+          stat.className='ok';
+        }
+
+        if(typeof window.loadCashCounterLatestStatus==='function'){
+          setTimeout(window.loadCashCounterLatestStatus,100);
+        }
+
+        setTimeout(closeCashPiecesRecorder,650);
+      })
+      .withFailureHandler(err=>{
+        save.textContent='Save Cash Pieces';
+        save.disabled=false;
+        if(stat){
+          stat.textContent=(err && err.message) ? err.message : 'Could not save Cash Counter pieces.';
+          stat.className='err';
+        }
+        updateCashPiecesTotals();
+      })
+      .recordTransactionCashPiecesBySession(
+        getSessionToken(),
+        {
+          transactionId:String(tx.id||''),
+          received:{...cashPiecesReceived},
+          given:{...cashPiecesGiven}
+        }
+      );
   });
 
   function savePendingTransaction(type){
@@ -3789,10 +4211,9 @@ label[for="capitalSaripayInput"],
     status.className='status ok';
     setTransactionSaving(false);
 
-    // Optional physical-piece recording. This does not block transaction sync.
-    if(optimisticTx.type==='Cash In'){
-      setTimeout(()=>showCashPiecesOffer(optimisticTx),120);
-    }
+    // Remember this newly recorded transaction.
+    // The Cash Pieces offer appears only after Google Sheets confirms the transaction exists.
+    cashPiecesPromptIds.add(String(optimisticTx.id||''));
 
     // Google Sheets sync happens after the customer-facing save is already complete.
     setTimeout(processPendingTxQueue, 0);
