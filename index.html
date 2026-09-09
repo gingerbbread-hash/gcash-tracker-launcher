@@ -3632,6 +3632,17 @@ label[for="capitalSaripayInput"],
       .withFailureHandler(err=>{
         txSyncBusy = false;
         const msg=(err && err.message) || 'Google Sheets sync delayed.';
+
+        if(msg.toLowerCase().includes('cancelled before sync')){
+          const remaining = loadPendingTxQueue().filter(
+            x => String(x.clientTransactionId || '') !== String(payload.clientTransactionId || '')
+          );
+          savePendingTxQueue(remaining);
+          showSync('Deleted transaction will not sync.', true);
+          setTimeout(processPendingTxQueue, 50);
+          return;
+        }
+
         showSync(msg + ' Transaction is safe on this device and will retry.');
         // Keep the queue intact. Retry later without creating duplicates.
         setTimeout(processPendingTxQueue, 15000);
@@ -3940,9 +3951,20 @@ label[for="capitalSaripayInput"],
           render();
           saveLocalTrackerCache();
         }else{
+          // If this transaction was still waiting for Google Sheets sync,
+          // remove it from the phone queue too so it cannot come back later.
+          const remaining = loadPendingTxQueue().filter(
+            x => String(x.clientTransactionId || '') !== String(id)
+          );
+          savePendingTxQueue(remaining);
+
           history = history.filter(x => String(x.id) !== String(id));
           render();
           loadCapital();
+
+          if(typeof window.loadCashCounterLatestStatus === 'function'){
+            setTimeout(window.loadCashCounterLatestStatus, 250);
+          }
         }
 
         deleteTxYes.disabled = false;
@@ -3965,10 +3987,24 @@ label[for="capitalSaripayInput"],
   clearBtn.addEventListener('click', () => {
     if(!unlocked || !history.length) return;
     if(!confirm('Clear ALL synced transaction history on every device?')) return;
+
+    const pendingIds = loadPendingTxQueue()
+      .map(x => String(x.clientTransactionId || ''))
+      .filter(Boolean);
+
     google.script.run
-      .withSuccessHandler(() => { history=[]; render(); loadCapital(); })
+      .withSuccessHandler(() => {
+        savePendingTxQueue([]);
+        history=[];
+        render();
+        loadCapital();
+
+        if(typeof window.loadCashCounterLatestStatus === 'function'){
+          setTimeout(window.loadCashCounterLatestStatus, 250);
+        }
+      })
       .withFailureHandler(err => alert(err.message || 'Could not clear history.'))
-      .clearTransactionsBySession(getSessionToken());
+      .clearTransactionsBySession(getSessionToken(), pendingIds);
   });
 
   // Restore the account from durable browser storage.
