@@ -2173,6 +2173,10 @@ label[for="capitalSaripayInput"],
           <small>Expected Cash on Hand Change</small>
           <strong id="cashPiecesExpected">₱0.00</strong>
         </div>
+        <div class="cash-pieces-summary-box expected" id="cashPiecesFeeHintBox">
+          <small>Fee Behavior</small>
+          <strong id="cashPiecesFeeHint">Included in cash movement</strong>
+        </div>
       </div>
 
       <div class="cash-pieces-tabs">
@@ -3932,10 +3936,18 @@ label[for="capitalSaripayInput"],
     }
 
     if(!tx) return 0;
-    if(tx.type==='Cash In') return Number(tx.total||0);
 
+    if(tx.type==='Cash In'){
+      // Cash on Hand increases by the full amount actually due from the customer.
+      return Number(tx.total||0);
+    }
+
+    // Cash Out: principal leaves Cash on Hand.
+    // Only add the fee back if that fee was actually received in Cash on Hand.
     let n = -Number(tx.amount||0);
-    if(String(tx.feeLocation||'')==='Cash on Hand') n += Number(tx.fee||0);
+    if(String(tx.feeLocation||'')==='Cash on Hand'){
+      n += Number(tx.fee||0);
+    }
     return n;
   }
 
@@ -3950,15 +3962,29 @@ label[for="capitalSaripayInput"],
     if(!box || !summary) return;
 
     if(note){
-      note.textContent = tx.type==='Cash In'
-        ? 'Record the actual bills and coins received and any change you gave.'
-        : 'Record the actual cash you gave the customer and any cash fee you received.';
+      if(tx.type==='Cash In'){
+        note.textContent='Record the actual bills and coins the customer gave you and any change you returned.';
+      }else if(String(tx.feeLocation||'')==='Cash on Hand'){
+        note.textContent='Record the cash you gave the customer and the service fee received in Cash on Hand.';
+      }else{
+        note.textContent='Record the actual bills and coins you handed to the customer. The fee stayed in the selected wallet.';
+      }
+    }
+
+    let extra='';
+    if(tx.type==='Cash In'){
+      extra=`<br>Wallet used: <strong>${escapeHtml(tx.walletDestination||'GCash')}</strong>`;
+    }else{
+      extra=
+        `<br>Cash Out wallet: <strong>${escapeHtml(tx.walletDestination||'GCash')}</strong>`+
+        `<br>Fee location: <strong>${escapeHtml(tx.feeLocation||tx.walletDestination||'GCash')}</strong>`;
     }
 
     summary.innerHTML=
       `Type: <strong>${tx.type}</strong><br>`+
       `Transaction amount: <strong>${money(Number(tx.amount||tx.total||0))}</strong><br>`+
-      `Expected Cash on Hand change: <strong>${expected>=0?'+':''}${money(expected)}</strong>`;
+      `Expected Cash on Hand change: <strong>${expected>=0?'+':''}${money(expected)}</strong>`+
+      extra;
 
     box.classList.add('show');
     box.setAttribute('aria-hidden','false');
@@ -4033,14 +4059,22 @@ label[for="capitalSaripayInput"],
     const note=document.getElementById('cashPiecesSectionNote');
     if(!note || !cashPiecesPendingTx) return;
 
+    const tx=cashPiecesPendingTx;
+
     if(cashPiecesMode==='received'){
-      note.textContent = cashPiecesPendingTx.type==='Cash In'
-        ? 'Money Received: enter the bills and coins the customer handed to you.'
-        : 'Money Received: enter only cash received from the customer, such as a fee paid into Cash on Hand.';
+      if(tx.type==='Cash In'){
+        note.textContent='Money Received: enter the bills and coins the customer physically handed to you.';
+      }else if(String(tx.feeLocation||'')==='Cash on Hand'){
+        note.textContent='Money Received: enter only the cash service fee physically paid into Cash on Hand. If no separate cash fee was handed to you, leave this at 0.';
+      }else{
+        note.textContent='Money Received: normally leave this at 0 because the Cash Out fee stayed in the selected wallet.';
+      }
     }else{
-      note.textContent = cashPiecesPendingTx.type==='Cash In'
-        ? 'Money Given: enter the bills and coins you gave back as change.'
-        : 'Money Given: enter the bills and coins you handed to the customer for the Cash Out.';
+      if(tx.type==='Cash In'){
+        note.textContent='Money Given: enter the bills and coins you returned to the customer as change.';
+      }else{
+        note.textContent='Money Given: enter the actual bills and coins you handed to the customer for the Cash Out.';
+      }
     }
   }
 
@@ -4052,7 +4086,7 @@ label[for="capitalSaripayInput"],
 
     cashPiecesReceived=zeroCashPieces();
     cashPiecesGiven=zeroCashPieces();
-    cashPiecesMode='received';
+    cashPiecesMode = tx.type==='Cash Out' ? 'given' : 'received';
 
     const modal=document.getElementById('cashPiecesModal');
     const title=document.getElementById('cashPiecesTitle');
@@ -4072,8 +4106,19 @@ label[for="capitalSaripayInput"],
     const exp=expectedCashMovement(tx);
     if(expected) expected.textContent=(exp>=0?'+':'')+money(exp);
 
-    if(recTab) recTab.classList.add('active');
-    if(givTab) givTab.classList.remove('active');
+    const feeHint=document.getElementById('cashPiecesFeeHint');
+    if(feeHint){
+      if(tx.type==='Cash In'){
+        feeHint.textContent='Cash In fee is included in the cash received total.';
+      }else if(String(tx.feeLocation||'')==='Cash on Hand'){
+        feeHint.textContent='Cash Out fee must appear under Money Received.';
+      }else{
+        feeHint.textContent='Cash Out fee stays in '+String(tx.feeLocation||tx.walletDestination||'the selected wallet')+' and is not physical cash.';
+      }
+    }
+
+    if(recTab) recTab.classList.toggle('active', cashPiecesMode==='received');
+    if(givTab) givTab.classList.toggle('active', cashPiecesMode==='given');
     if(stat) stat.textContent='';
 
     updateCashPiecesSectionText();
@@ -4212,8 +4257,10 @@ label[for="capitalSaripayInput"],
     setTransactionSaving(false);
 
     // Remember this newly recorded transaction.
-    // The Cash Pieces offer appears only after Google Sheets confirms the transaction exists.
-    cashPiecesPromptIds.add(String(optimisticTx.id||''));
+    // Offer Cash Pieces for BOTH Cash In and Cash Out after Google Sheets confirms it exists.
+    if(optimisticTx.type==='Cash In' || optimisticTx.type==='Cash Out'){
+      cashPiecesPromptIds.add(String(optimisticTx.id||''));
+    }
 
     // Google Sheets sync happens after the customer-facing save is already complete.
     setTimeout(processPendingTxQueue, 0);
