@@ -3733,7 +3733,7 @@ label[for="capitalSaripayInput"],
     if(!tx) return;
 
     const base=window.CASH_COUNTER_URL || '';
-    if(!base || base.includes('https://script.google.com/macros/s/AKfycbxvG-9yAjMFBTwuNYFzGAeNjo8S9wX24mCYYJSZfg66SKVab3VhyBMEPBv2_HVaCNMndg/exec')){
+    if(!base || !/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec(?:\?.*)?$/.test(base)){
       alert('Add your Cash Counter /exec URL first.');
       return;
     }
