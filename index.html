@@ -3709,8 +3709,113 @@ label[for="capitalSaripayInput"],
   }
 
   const TX_QUEUE_KEY = 'gcash_tracker_pending_tx_v1';
+  const CASH_PIECES_QUEUE_KEY = 'gcash_tracker_pending_cash_pieces_v1';
   let txSyncBusy = false;
+  let cashPiecesSyncBusy = false;
   const cashPiecesPromptIds = new Set();
+
+  function loadPendingCashPiecesQueue(){
+    try{
+      const q = JSON.parse(localStorage.getItem(CASH_PIECES_QUEUE_KEY) || '[]');
+      return Array.isArray(q) ? q : [];
+    }catch(e){ return []; }
+  }
+
+  function savePendingCashPiecesQueue(q){
+    try{
+      localStorage.setItem(CASH_PIECES_QUEUE_KEY, JSON.stringify(q || []));
+    }catch(e){}
+  }
+
+  function queueCashPieces(payload){
+    if(!payload || !payload.transactionId) return;
+    const q = loadPendingCashPiecesQueue();
+    const id = String(payload.transactionId || '');
+
+    const idx = q.findIndex(x => String(x.transactionId || '') === id);
+    if(idx >= 0) q[idx] = payload;
+    else q.push(payload);
+
+    savePendingCashPiecesQueue(q);
+  }
+
+  function removeQueuedCashPieces(transactionId){
+    const id = String(transactionId || '');
+    const q = loadPendingCashPiecesQueue().filter(
+      x => String(x.transactionId || '') !== id
+    );
+    savePendingCashPiecesQueue(q);
+  }
+
+  function isTransactionStillPending(transactionId){
+    const id = String(transactionId || '');
+    return loadPendingTxQueue().some(
+      x => String(x.clientTransactionId || '') === id
+    );
+  }
+
+  function processPendingCashPiecesQueue(transactionId){
+    if(cashPiecesSyncBusy || !unlocked) return;
+
+    const all = loadPendingCashPiecesQueue();
+    if(!all.length) return;
+
+    let idx = 0;
+    if(transactionId){
+      idx = all.findIndex(
+        x => String(x.transactionId || '') === String(transactionId || '')
+      );
+      if(idx < 0) return;
+    }
+
+    const payload = all[idx];
+
+    // The backend can only save denominations after the parent transaction
+    // already exists in Google Sheets.
+    if(isTransactionStillPending(payload.transactionId)) return;
+
+    cashPiecesSyncBusy = true;
+
+    google.script.run
+      .withSuccessHandler(result=>{
+        const latest = loadPendingCashPiecesQueue().filter(
+          x => String(x.transactionId || '') !== String(payload.transactionId || '')
+        );
+        savePendingCashPiecesQueue(latest);
+        cashPiecesSyncBusy = false;
+
+        if(typeof window.loadCashCounterLatestStatus === 'function'){
+          setTimeout(window.loadCashCounterLatestStatus, 100);
+        }
+
+        // Continue with another queued Cash Pieces record if there is one.
+        setTimeout(()=>processPendingCashPiecesQueue(), 50);
+      })
+      .withFailureHandler(err=>{
+        cashPiecesSyncBusy = false;
+
+        const msg = String((err && err.message) || '');
+        // If the transaction is not on the server yet, keep the Cash Pieces safely queued.
+        if(
+          msg.toLowerCase().includes('transaction not found') ||
+          msg.toLowerCase().includes('not found')
+        ){
+          setTimeout(()=>processPendingCashPiecesQueue(payload.transactionId), 2500);
+          return;
+        }
+
+        // Keep it queued and retry later for temporary connection failures.
+        setTimeout(()=>processPendingCashPiecesQueue(payload.transactionId), 10000);
+      })
+      .recordTransactionCashPiecesBySession(
+        getSessionToken(),
+        {
+          transactionId:String(payload.transactionId || ''),
+          received:{...(payload.received || {})},
+          given:{...(payload.given || {})}
+        }
+      );
+  }
 
   function loadPendingTxQueue(){
     try{
@@ -3841,11 +3946,10 @@ label[for="capitalSaripayInput"],
         render();
         saveLocalTrackerCache();
 
-        // Only offer piece recording after this exact transaction exists in Google Sheets.
-        if(cashPiecesPromptIds.has(String(serverTx.id||''))){
-          cashPiecesPromptIds.delete(String(serverTx.id||''));
-          setTimeout(()=>showCashPiecesOffer(serverTx),120);
-        }
+        // If Cash Pieces were already entered while this transaction was syncing,
+        // send them now that the parent transaction exists in Google Sheets.
+        cashPiecesPromptIds.delete(String(serverTx.id||''));
+        setTimeout(()=>processPendingCashPiecesQueue(serverTx.id), 20);
 
         if(q.length){
           setTimeout(processPendingTxQueue, 50);
@@ -3886,6 +3990,7 @@ label[for="capitalSaripayInput"],
     });
     render();
     setTimeout(processPendingTxQueue, 300);
+    setTimeout(processPendingCashPiecesQueue, 700);
   }
 
   function setTransactionSaving(on){
@@ -4177,41 +4282,49 @@ label[for="capitalSaripayInput"],
     const save=document.getElementById('cashPiecesSave');
     const stat=document.getElementById('cashPiecesStatus');
 
+    const piecePayload={
+      transactionId:String(tx.id||''),
+      received:{...cashPiecesReceived},
+      given:{...cashPiecesGiven}
+    };
+
     save.disabled=true;
+
+    // Save immediately on this device first.
+    queueCashPieces(piecePayload);
+
+    if(isTransactionStillPending(tx.id) || tx._pendingSync){
+      save.textContent='Saved';
+      if(stat){
+        stat.textContent='Cash pieces saved on this phone. Syncing automatically…';
+        stat.className='ok';
+      }
+
+      // Do not wait for Google Sheets. Close immediately and let background sync finish.
+      setTimeout(()=>{
+        closeCashPiecesRecorder();
+        processPendingCashPiecesQueue(piecePayload.transactionId);
+      },350);
+      return;
+    }
+
     save.textContent='Saving…';
-    if(stat){stat.textContent='Saving Cash Counter pieces…';stat.className='';}
+    if(stat){
+      stat.textContent='Saving Cash Counter pieces…';
+      stat.className='';
+    }
 
-    google.script.run
-      .withSuccessHandler(result=>{
-        save.textContent='Save Cash Pieces';
-        if(stat){
-          stat.textContent=`Saved. Cash Counter is ${result && result.status ? result.status : 'updated'}.`;
-          stat.className='ok';
-        }
+    processPendingCashPiecesQueue(piecePayload.transactionId);
 
-        if(typeof window.loadCashCounterLatestStatus==='function'){
-          setTimeout(window.loadCashCounterLatestStatus,100);
-        }
-
-        setTimeout(closeCashPiecesRecorder,650);
-      })
-      .withFailureHandler(err=>{
-        save.textContent='Save Cash Pieces';
-        save.disabled=false;
-        if(stat){
-          stat.textContent=(err && err.message) ? err.message : 'Could not save Cash Counter pieces.';
-          stat.className='err';
-        }
-        updateCashPiecesTotals();
-      })
-      .recordTransactionCashPiecesBySession(
-        getSessionToken(),
-        {
-          transactionId:String(tx.id||''),
-          received:{...cashPiecesReceived},
-          given:{...cashPiecesGiven}
-        }
-      );
+    // Close quickly. The queued record remains safe if the connection is slow.
+    setTimeout(()=>{
+      if(stat){
+        stat.textContent='Cash pieces saved. Syncing automatically…';
+        stat.className='ok';
+      }
+      save.textContent='Saved';
+      setTimeout(closeCashPiecesRecorder,250);
+    },250);
   });
 
   function savePendingTransaction(type){
@@ -4242,11 +4355,12 @@ label[for="capitalSaripayInput"],
     status.className='status ok';
     setTransactionSaving(false);
 
-    // Remember this newly recorded transaction.
-    // The Cash Pieces offer appears only after Google Sheets confirms the transaction exists.
+    // Show Cash Pieces immediately. Do not wait for Google Sheets.
+    // The pieces can be entered while the transaction syncs in the background.
     cashPiecesPromptIds.add(String(optimisticTx.id||''));
+    setTimeout(()=>showCashPiecesOffer(optimisticTx), 40);
 
-    // Google Sheets sync happens after the customer-facing save is already complete.
+    // Google Sheets sync happens quietly in the background.
     setTimeout(processPendingTxQueue, 0);
   }
 
@@ -4412,6 +4526,7 @@ label[for="capitalSaripayInput"],
             x => String(x.clientTransactionId || '') !== String(id)
           );
           savePendingTxQueue(remaining);
+          removeQueuedCashPieces(id);
 
           history = history.filter(x => String(x.id) !== String(id));
           render();
@@ -4450,6 +4565,7 @@ label[for="capitalSaripayInput"],
     google.script.run
       .withSuccessHandler(() => {
         savePendingTxQueue([]);
+        savePendingCashPiecesQueue([]);
         history=[];
         render();
         loadCapital();
