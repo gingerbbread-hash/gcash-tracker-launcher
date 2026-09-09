@@ -4351,17 +4351,6 @@ label[for="capitalSaripayInput"],
   deleteTxModal.addEventListener('click', e=>{
     if(e.target === deleteTxModal) closeDeleteTxModal();
   });
-catch(err){
-        lastErr=err;
-        if(attempt<3){
-          await new Promise(r=>setTimeout(r,attempt*700));
-        }
-      }
-    }
-
-    throw lastErr || new Error('Could not reverse Cash Counter pieces.');
-  }
-
   deleteTxYes.addEventListener('click', ()=>{
     const id = pendingDeleteTxId;
     const kind = pendingDeleteKind;
