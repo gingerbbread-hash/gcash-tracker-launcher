@@ -1863,6 +1863,37 @@ label[for="capitalSaripayInput"],
 }
 </style>
 
+
+<style id="cash-pieces-bottom-nav-fix">
+/* Keep Cash Pieces action buttons fully above the fixed Home / Wallets / History bar */
+.cash-pieces-modal{
+  padding-bottom:calc(var(--bottom-nav-h,70px) + 18px + env(safe-area-inset-bottom,0px)) !important;
+  scroll-padding-bottom:calc(var(--bottom-nav-h,70px) + 90px + env(safe-area-inset-bottom,0px)) !important;
+}
+
+.cash-pieces-card{
+  margin-bottom:calc(var(--bottom-nav-h,70px) + 18px + env(safe-area-inset-bottom,0px)) !important;
+}
+
+.cash-pieces-body{
+  padding-bottom:calc(var(--bottom-nav-h,70px) + 20px + env(safe-area-inset-bottom,0px)) !important;
+}
+
+.cash-pieces-actions{
+  position:sticky !important;
+  bottom:calc(var(--bottom-nav-h,70px) + env(safe-area-inset-bottom,0px)) !important;
+  z-index:5 !important;
+  padding:10px 0 8px !important;
+  background:#f5f8fc !important;
+}
+
+@media(max-width:480px){
+  .cash-pieces-actions{
+    bottom:calc(var(--bottom-nav-h,66px) + env(safe-area-inset-bottom,0px)) !important;
+  }
+}
+</style>
+
 </head>
 <body>
 <main class="app">
