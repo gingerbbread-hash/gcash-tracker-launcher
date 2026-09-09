@@ -1770,6 +1770,17 @@ label[for="capitalSaripayInput"],
   <section id="tabWalletsPage" class="app-tab-page">
     <div id="walletsTabMount"></div>
 
+    <section class="card" id="cashCounterShortcutCard" style="margin-top:12px">
+      <h2 class="section-title" style="margin-bottom:6px">Cash Counter</h2>
+      <p class="note" style="margin:0 0 10px">
+        Count your physical bills and coins.
+      </p>
+      <button id="openCashCounterBtn" class="btn btn-secondary" type="button">
+        Open Cash Counter
+      </button>
+      <div id="cashCounterShortcutStatus" class="status"></div>
+    </section>
+
     <section class="card" id="bloggerPairingCard" style="margin-top:12px">
       <h2 class="section-title" style="margin-bottom:6px">Device Pairing</h2>
       <p class="note" style="margin:0 0 10px">
@@ -4039,6 +4050,25 @@ document.addEventListener('DOMContentLoaded', function(){
   setTimeout(finalWalletOrder,250);
   setTimeout(finalWalletOrder,1000);
   setTimeout(finalWalletOrder,2500);
+})();
+</script>
+
+
+<script id="cash-counter-shortcut-script">
+const CASH_COUNTER_URL = 'https://script.google.com/macros/s/AKfycbxvG-9yAjMFBTwuNYFzGAeNjo8S9wX24mCYYJSZfg66SKVab3VhyBMEPBv2_HVaCNMndg/exec';
+
+(function () {
+  const btn = document.getElementById('openCashCounterBtn');
+  const status = document.getElementById('cashCounterShortcutStatus');
+  if (!btn) return;
+
+  btn.addEventListener('click', function () {
+    if (!CASH_COUNTER_URL || CASH_COUNTER_URL.includes('PASTE_CASH_COUNTER_EXEC_URL_HERE')) {
+      if (status) status.textContent = 'Add your Cash Counter /exec URL first.';
+      return;
+    }
+    window.open(CASH_COUNTER_URL, '_blank', 'noopener');
+  });
 })();
 </script>
 
