@@ -1340,6 +1340,36 @@ body.app-locked #historyToggle{
       .today-metric strong{font-size:13px}
     }
 
+
+    .home-wallet-check{
+      background:#f8fafc !important;
+      border:1px solid #e4e7ec !important;
+      color:#344054 !important;
+    }
+    .home-wallet-check strong{
+      color:#344054 !important;
+      font-size:16px !important;
+      line-height:1.05 !important;
+    }
+    .home-wallet-check .home-check-note{
+      display:block;
+      margin-top:4px;
+      font-size:9px;
+      line-height:1.2;
+      color:#667085;
+      font-weight:700;
+    }
+    .home-wallet-check.matched{
+      background:#ecfdf3 !important;
+      border-color:#b7e4c7 !important;
+    }
+    .home-wallet-check.matched strong{color:#137333 !important}
+    .home-wallet-check.warn{
+      background:#fff1f2 !important;
+      border-color:#fecdd3 !important;
+    }
+    .home-wallet-check.warn strong{color:#b42318 !important}
+
 </style>
 
 <style>
@@ -2043,6 +2073,11 @@ label[for="capitalSaripayInput"],
         <div class="wallet-name-line"><img class="wallet-logo" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect x='6' y='14' width='52' height='36' rx='6' fill='%23118a43'/><rect x='11' y='19' width='42' height='26' rx='4' fill='%23ffffff'/><circle cx='32' cy='32' r='8' fill='%23118a43'/><path d='M14 24c5 0 8-3 8-5h20c0 2 3 5 8 5v16c-5 0-8 3-8 5H22c0-2-3-5-8-5V24z' fill='none' stroke='%23118a43' stroke-width='2'/></svg>" alt=""><small>Cash on Hand</small></div>
         <strong id="homeCashBalance">₱0.00</strong>
       </div>
+      <div class="home-balance-mini home-wallet-check" id="homeBalanceCheck">
+        <div class="wallet-name-line"><small>Cash Balance Check</small></div>
+        <strong id="homeBalanceCheckValue">CHECKING</strong>
+        <span id="homeBalanceCheckNote" class="home-check-note">Comparing Cash Counter with Cash on Hand.</span>
+      </div>
       <div class="home-balance-mini saripay home-wallet-saripay">
         <div class="wallet-name-line"><img class="wallet-logo" src="https://saripay.com/favicon.ico" alt="SariPay"><small>Saripay</small></div>
         <strong id="homeSaripayBalance">₱0.00</strong>
@@ -2066,13 +2101,6 @@ label[for="capitalSaripayInput"],
         <div class="today-metric"><small>Cash Out</small><strong id="todayCashOut">₱0.00</strong></div>
         <div class="today-metric"><small>Fees Earned</small><strong id="todayFees">₱0.00</strong></div>
         <div class="today-metric"><small>Transactions</small><strong id="todayTxCount">0</strong></div>
-      </div>
-      <div class="balance-check no-count" id="homeBalanceCheck">
-        <div class="balance-check-top">
-          <span class="balance-check-title">Cash Balance Check</span>
-          <span class="balance-check-value" id="homeBalanceCheckValue">CHECKING</span>
-        </div>
-        <div class="balance-check-note" id="homeBalanceCheckNote">Comparing Cash Counter with Cash on Hand.</div>
       </div>
     </section>
     <div id="homeTabMount"></div>
@@ -5188,10 +5216,11 @@ document.addEventListener('DOMContentLoaded', function(){
 <script id="wallet-order-final-override">
 (function(){
   function finalWalletOrder(){
-    // HOME: GCash | Maya, then Cash wide
+    // HOME: GCash | Maya, then Cash on Hand | Cash Balance Check
     const hg=document.getElementById('homeGcashBalance')?.closest('.home-balance-mini');
     const hm=document.getElementById('homeMayaBalance')?.closest('.home-balance-mini');
     const hc=document.getElementById('homeCashBalance')?.closest('.home-balance-mini');
+    const hb=document.getElementById('homeBalanceCheck');
     const home=hg && hg.parentElement;
     if(home){
       home.style.setProperty('display','grid','important');
@@ -5199,7 +5228,11 @@ document.addEventListener('DOMContentLoaded', function(){
       hg.style.setProperty('order','1','important');
       hm.style.setProperty('order','2','important');
       hc.style.setProperty('order','3','important');
-      hc.style.setProperty('grid-column','1 / -1','important');
+      hc.style.setProperty('grid-column','auto','important');
+      if(hb){
+        hb.style.setProperty('order','4','important');
+        hb.style.setProperty('grid-column','auto','important');
+      }
     }
 
     // WALLETS: GCash | Maya, then Cash on Hand | Transfer Money
@@ -5463,8 +5496,9 @@ window.CASH_COUNTER_URL = 'https://script.google.com/macros/s/AKfycbxvG-9yAjMFBT
     const note=document.getElementById('homeBalanceCheckNote');
     if(!badge||!card||!value||!note)return;
     const s=String(badge.textContent||'').trim().toUpperCase();
-    card.classList.remove('warn','no-count');
+    card.classList.remove('warn','matched');
     if(s==='MATCHED'){
+      card.classList.add('matched');
       value.textContent='BALANCES OK';
       note.textContent=details?.textContent || 'Cash Counter matches Cash on Hand.';
     }else if(s==='SHORT'||s==='OVER'){
@@ -5472,7 +5506,6 @@ window.CASH_COUNTER_URL = 'https://script.google.com/macros/s/AKfycbxvG-9yAjMFBT
       value.textContent=s;
       note.textContent=details?.textContent || 'Cash Counter and Cash on Hand have a difference.';
     }else{
-      card.classList.add('no-count');
       value.textContent=s || 'NO COUNT';
       note.textContent=details?.textContent || 'Open Cash Counter to check physical cash.';
     }
