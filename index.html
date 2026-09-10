@@ -2074,8 +2074,9 @@ label[for="capitalSaripayInput"],
 .cash-counter-frame{
   display:block;
   width:100%;
-  height:calc(100vh - var(--bottom-nav-h,70px) - env(safe-area-inset-bottom,0px));
-  min-height:620px;
+  height:900px;
+  min-height:700px;
+  overflow:hidden;
   border:0;
   background:#f4f7fb;
 }
@@ -2083,8 +2084,8 @@ label[for="capitalSaripayInput"],
   .bottom-tab-btn{font-size:10px !important}
   .bottom-tab-btn .tab-icon{font-size:18px !important}
   .cash-counter-frame{
-    height:calc(100dvh - var(--bottom-nav-h,66px) - env(safe-area-inset-bottom,0px));
-    min-height:560px;
+    height:900px;
+    min-height:650px;
   }
 }
 </style>
@@ -5579,6 +5580,21 @@ document.addEventListener('DOMContentLoaded', function(){
     const frame=document.getElementById('cashCounterFrame');
     if(frame && !frame.getAttribute('src')){
       frame.setAttribute('src', frame.dataset.src || '');
+    }
+  });
+})();
+</script>
+
+
+<script id="cash-counter-auto-height-script">
+(function(){
+  window.addEventListener('message', function(e){
+    const d=e && e.data;
+    if(!d || d.type!=='GCASH_CASH_COUNTER_HEIGHT') return;
+    const frame=document.getElementById('cashCounterFrame');
+    const h=Number(d.height||0);
+    if(frame && isFinite(h) && h>500){
+      frame.style.height=Math.ceil(h + 12) + 'px';
     }
   });
 })();
