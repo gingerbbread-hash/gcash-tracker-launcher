@@ -1370,6 +1370,30 @@ body.app-locked #historyToggle{
     }
     .home-wallet-check.warn strong{color:#b42318 !important}
 
+
+    .tx-confirm-strip{
+      border-width:2px !important;
+      padding:11px 12px !important;
+      font-size:12px !important;
+    }
+    .tx-confirm-main{font-size:13px;font-weight:900;line-height:1.35}
+    .tx-confirm-change{margin-top:7px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:7px;border-top:1px solid #d6e4ff}
+    .tx-confirm-change span{font-size:11px;font-weight:850;color:#475467}
+    .tx-confirm-change strong{font-size:22px !important;color:#7a1fa2 !important;line-height:1}
+    .overall-money-check{margin-top:8px;border:1px solid #d0d5dd;border-radius:12px;padding:10px;background:#f8fafc}
+    .overall-money-check.ok{background:#ecfdf3;border-color:#b7e4c7}
+    .overall-money-check.warn{background:#fff1f2;border-color:#fecdd3}
+    .overall-money-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .overall-money-head span{font-size:11px;font-weight:950;color:#344054}
+    .overall-money-head strong{font-size:11px;color:#667085}
+    .overall-money-check.ok .overall-money-head strong{color:#137333}
+    .overall-money-check.warn .overall-money-head strong{color:#b42318}
+    .overall-money-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px}
+    .overall-money-grid>div{background:#fff;border:1px solid #e4e7ec;border-radius:10px;padding:8px 5px;text-align:center;min-width:0}
+    .overall-money-grid small{display:block;font-size:8px;line-height:1.2;color:#667085;font-weight:850}
+    .overall-money-grid strong{display:block;margin-top:4px;font-size:12px;overflow:hidden;text-overflow:ellipsis}
+    .overall-money-note{margin-top:6px;font-size:9px;color:#667085;line-height:1.3}
+
 </style>
 
 <style>
@@ -2213,6 +2237,19 @@ label[for="capitalSaripayInput"],
 
     <div class="wallet-health-note" id="walletHealthNote">
       Move Money between Cash on Hand, GCash, and Maya does not change Current Capital or Earnings.
+    </div>
+
+    <div class="overall-money-check" id="overallMoneyCheck">
+      <div class="overall-money-head">
+        <span>Overall Money Check</span>
+        <strong id="overallMoneyStatus">CHECKING</strong>
+      </div>
+      <div class="overall-money-grid">
+        <div><small>Actual Wallet Total</small><strong id="actualWalletTotal">₱0.00</strong></div>
+        <div><small>Expected Total Money</small><strong id="overallExpectedTotal">₱0.00</strong></div>
+        <div><small>Difference</small><strong id="overallMoneyDifference">₱0.00</strong></div>
+      </div>
+      <div class="overall-money-note">GCash + Maya + Cash on Hand compared with Expected Total Money.</div>
     </div>
 
     <div class="capital-action-grid">
@@ -5463,19 +5500,57 @@ window.CASH_COUNTER_URL = 'https://script.google.com/macros/s/AKfycbxvG-9yAjMFBT
     const box=document.getElementById('txConfirmStrip');
     const amount=document.getElementById('amount');
     const cash=document.getElementById('cashReceived');
-    const fee=document.getElementById('fee');
-    const total=document.getElementById('total');
-    const change=document.getElementById('change');
+    const feeEl=document.getElementById('fee');
+    const totalEl=document.getElementById('total');
+    const changeEl=document.getElementById('change');
+    const typeEl=document.getElementById('txType');
     if(!box || !amount) return;
     const a=Number(amount.value||0);
     if(!(a>0)){box.classList.remove('show');box.innerHTML='';return}
-    const typeEl=document.getElementById('transactionType');
-    const type=typeEl ? typeEl.value : 'Transaction';
-    const f=fee ? fee.textContent : '';
-    const t=total ? total.textContent : '';
-    const c=change ? change.textContent : '';
-    box.innerHTML='<strong>'+String(type||'Transaction')+'</strong> · Amount '+peso(a)+(f?' · Fee '+f:'')+(t?' · Total '+t:'')+(Number(cash?.value||0)>0 && c?' · Change '+c:'');
+    const type=(typeEl && typeEl.value) ? typeEl.value : 'Transaction';
+    const feeText=feeEl ? feeEl.textContent : '₱0.00';
+    const totalText=totalEl ? totalEl.textContent : peso(a);
+    const changeText=changeEl ? changeEl.textContent : '₱0.00';
+    const cashValue=Number(cash?.value||0);
+    let main='<strong>'+type+'</strong> · Amount '+peso(a)+' · Fee '+feeText+' · Total '+totalText;
+    if(cashValue>0) main='Customer cash '+peso(cashValue)+' → '+main;
+    box.innerHTML='<div class="tx-confirm-main">'+main+'</div>'+
+      '<div class="tx-confirm-change"><span>CHANGE</span><strong>'+changeText+'</strong></div>';
     box.classList.add('show');
+  }
+
+  function refreshOverallMoneyCheck(){
+    const card=document.getElementById('overallMoneyCheck');
+    const actualEl=document.getElementById('actualWalletTotal');
+    const expectedEl=document.getElementById('overallExpectedTotal');
+    const diffEl=document.getElementById('overallMoneyDifference');
+    const statusEl=document.getElementById('overallMoneyStatus');
+    if(!card||!actualEl||!expectedEl||!diffEl||!statusEl)return;
+    let cash=0,gcash=0,maya=0,expected=0,ready=false;
+    try{
+      if(typeof capitalData!=='undefined' && capitalData && capitalData.initialized){
+        cash=Number(capitalData.cashOnHand||0);
+        gcash=Number(capitalData.gcashBalance||0);
+        maya=Number(capitalData.mayaBalance||0);
+        expected=Number(capitalData.expectedTotalMoney ?? ((capitalData.currentCapital ?? capitalData.totalCapital ?? capitalData.baseCapital ?? 0)+(capitalData.availableEarnings ?? capitalData.netEarnings ?? 0)));
+        ready=true;
+      }
+    }catch(e){}
+    const actual=cash+gcash+maya;
+    const diff=actual-expected;
+    actualEl.textContent=peso(actual);
+    expectedEl.textContent=peso(expected);
+    diffEl.textContent=(diff<0?'-':'')+peso(Math.abs(diff));
+    card.classList.remove('ok','warn');
+    if(!ready){
+      statusEl.textContent='CHECKING';
+    }else if(Math.abs(diff)<0.005){
+      card.classList.add('ok');
+      statusEl.textContent='BALANCED ✓';
+    }else{
+      card.classList.add('warn');
+      statusEl.textContent=diff>0?'OVER '+peso(diff):'SHORT '+peso(Math.abs(diff));
+    }
   }
 
   function flashSaved(){
@@ -5540,13 +5615,22 @@ window.CASH_COUNTER_URL = 'https://script.google.com/macros/s/AKfycbxvG-9yAjMFBT
   }
 
   document.addEventListener('DOMContentLoaded',()=>{
-    refreshToday(); refreshConfirm(); mirrorCashCheck(); addHistorySummary(); refreshHistorySummary();
+    refreshToday(); refreshConfirm(); mirrorCashCheck(); refreshOverallMoneyCheck(); addHistorySummary(); refreshHistorySummary();
     ['amount','cashReceived'].forEach(id=>document.getElementById(id)?.addEventListener('input',()=>setTimeout(refreshConfirm,0)));
+    ['fee','total','change'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el)new MutationObserver(refreshConfirm).observe(el,{subtree:true,childList:true,characterData:true});
+    });
     document.getElementById('deductBtn')?.addEventListener('click',()=>setTimeout(refreshConfirm,0));
     document.getElementById('recordBtn')?.addEventListener('click',()=>setTimeout(refreshConfirm,0));
 
     const cc=document.getElementById('cashCounterLatestCard');
     if(cc)new MutationObserver(mirrorCashCheck).observe(cc,{subtree:true,childList:true,characterData:true});
+
+    ['cashOutAvailable','cashInAvailable','mayaAvailable','expectedTotalMoney'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el)new MutationObserver(()=>refreshOverallMoneyCheck()).observe(el,{subtree:true,childList:true,characterData:true});
+    });
 
     const hist=document.getElementById('historySection');
     if(hist)new MutationObserver(()=>{refreshToday();refreshHistorySummary()}).observe(hist,{subtree:true,childList:true});
@@ -5559,7 +5643,7 @@ window.CASH_COUNTER_URL = 'https://script.google.com/macros/s/AKfycbxvG-9yAjMFBT
       refreshToday();
     }).observe(sync,{subtree:true,childList:true,characterData:true});
 
-    setInterval(()=>{refreshToday();mirrorCashCheck();refreshHistorySummary()},5000);
+    setInterval(()=>{refreshToday();mirrorCashCheck();refreshOverallMoneyCheck();refreshConfirm();refreshHistorySummary()},3000);
   });
 })();
 </script>
