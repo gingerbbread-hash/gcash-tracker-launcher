@@ -2422,7 +2422,8 @@ label[for="capitalSaripayInput"],
     <select id="transferToWallet" class="select"><option>Cash on Hand</option><option>GCash</option><option selected>Maya</option></select>
     <label class="label" for="mayaTransferAmount" style="margin-top:10px">Transfer Amount</label>
     <input id="mayaTransferAmount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00">
-    <div class="note" style="margin-top:8px">No fee. No expense. Earnings are not affected.</div>
+    <div id="moveMoneyPreview" class="transfer-preview" style="margin-top:10px"></div>
+    <div class="note" style="margin-top:8px">No fee. No expense. Earnings are not affected. If Cash on Hand is involved, you must record the exact bills and coins before the transfer is completed.</div>
     <div id="mayaTransferStatus" class="status"></div>
     <div class="capital-modal-actions"><button type="button" id="cancelMayaTransferBtn" class="btn btn-secondary">Cancel</button><button type="button" id="saveMayaTransferBtn" class="btn btn-primary">Transfer</button></div>
   </div>
@@ -3329,13 +3330,52 @@ label[for="capitalSaripayInput"],
 
   function renderMayaTransfers(){mayaTransferHistoryList.innerHTML='';mayaTransferHistoryEmpty.style.display=mayaTransfers.length?'none':'block';mayaTransfers.forEach(t=>{const item=document.createElement('div');item.className='maya-transfer-item';let balances=`GCash: ${money(t.previousGcash)} → ${money(t.newGcash)} · Maya: ${money(t.previousMaya)} → ${money(t.newMaya)}`;if(t.previousCash!==null&&t.previousCash!==undefined)balances=`Cash: ${money(t.previousCash)} → ${money(t.newCash)} · `+balances;item.innerHTML=`<div class="maya-transfer-top"><span>${escapeHtml(t.fromWallet)} → ${escapeHtml(t.toWallet)}</span><span>${money(t.amount)}</span></div><div class="maya-transfer-meta">${escapeHtml(t.date||'')}</div><div class="maya-transfer-meta">${balances}</div><div style="text-align:right"><button type="button" class="link-btn" data-remove-maya-transfer="${escapeHtml(t.id)}">Remove</button></div>`;mayaTransferHistoryList.appendChild(item);});}
   function loadMayaTransfers(){if(!unlocked)return;google.script.run.withSuccessHandler(d=>{mayaTransfers=d||[];renderMayaTransfers();renderCapitalActivity();}).withFailureHandler(()=>{}).getMayaTransfersBySession(getSessionToken());}
-  mayaTransferBtn.addEventListener('click',()=>{mayaTransferAmount.value='';mayaTransferStatus.textContent='';transferFromWallet.value='GCash';transferToWallet.value='Maya';mayaTransferModal.classList.add('show');mayaTransferModal.style.display='flex';});
+  function moveMoneyBalances(){
+    return {
+      'Cash on Hand':Number((capitalData&&capitalData.cashOnHand)||0),
+      'GCash':Number((capitalData&&capitalData.gcashBalance)||0),
+      'Maya':Number((capitalData&&capitalData.mayaBalance)||0)
+    };
+  }
+  function updateMoveMoneyPreview(){
+    const box=document.getElementById('moveMoneyPreview');
+    if(!box)return;
+    const amount=Number(mayaTransferAmount.value||0),fromWallet=transferFromWallet.value,toWallet=transferToWallet.value,b=moveMoneyBalances();
+    if(fromWallet===toWallet||!isFinite(amount)||amount<=0){box.innerHTML='Choose two wallets and enter an amount to see the balance preview.';return;}
+    const afterFrom=b[fromWallet]-amount, afterTo=b[toWallet]+amount;
+    const cashNote=(fromWallet==='Cash on Hand'||toWallet==='Cash on Hand')
+      ? '<br><strong>Cash Counter:</strong> exact bills/coins required before saving.'
+      : '<br><strong>Cash Counter:</strong> no change.';
+    box.innerHTML=`${escapeHtml(fromWallet)}: <strong>${money(b[fromWallet])} → ${money(afterFrom)}</strong><br>${escapeHtml(toWallet)}: <strong>${money(b[toWallet])} → ${money(afterTo)}</strong>${cashNote}`;
+  }
+  function openMoveMoneyCashPiecesDraft(amount,fromWallet,toWallet){
+    const b=moveMoneyBalances();
+    const newCash=b['Cash on Hand']+(toWallet==='Cash on Hand'?amount:0)-(fromWallet==='Cash on Hand'?amount:0);
+    cashPiecesPendingTx={
+      id:'MOVE_DRAFT_'+Date.now(), type:'Move Money', amount, fromWallet, toWallet,
+      previousCash:b['Cash on Hand'], newCash, _walletTransferDraft:true
+    };
+    mayaTransferModal.classList.remove('show');
+    mayaTransferModal.style.display='none';
+    openCashPiecesRecorder();
+  }
+  mayaTransferBtn.addEventListener('click',()=>{mayaTransferAmount.value='';mayaTransferStatus.textContent='';transferFromWallet.value='GCash';transferToWallet.value='Maya';mayaTransferModal.classList.add('show');mayaTransferModal.style.display='flex';updateMoveMoneyPreview();});
   cancelMayaTransferBtn.addEventListener('click',()=>{mayaTransferModal.classList.remove('show');mayaTransferModal.style.display='none';});
-  transferFromWallet.addEventListener('change',()=>{if(transferToWallet.value===transferFromWallet.value){transferToWallet.value=['Cash on Hand','GCash','Maya'].find(x=>x!==transferFromWallet.value);}});
-  transferToWallet.addEventListener('change',()=>{if(transferToWallet.value===transferFromWallet.value){mayaTransferStatus.textContent='Choose a different destination wallet.';mayaTransferStatus.className='status err';}else mayaTransferStatus.textContent='';});
+  transferFromWallet.addEventListener('change',()=>{if(transferToWallet.value===transferFromWallet.value){transferToWallet.value=['Cash on Hand','GCash','Maya'].find(x=>x!==transferFromWallet.value);}mayaTransferStatus.textContent='';updateMoveMoneyPreview();});
+  transferToWallet.addEventListener('change',()=>{if(transferToWallet.value===transferFromWallet.value){mayaTransferStatus.textContent='Choose a different destination wallet.';mayaTransferStatus.className='status err';}else mayaTransferStatus.textContent='';updateMoveMoneyPreview();});
+  mayaTransferAmount.addEventListener('input',updateMoveMoneyPreview);
   mayaTransferHistoryToggle.addEventListener('click',()=>{const o=mayaTransferHistorySection.style.display==='none';mayaTransferHistorySection.style.display=o?'block':'none';mayaTransferHistoryToggle.textContent=o?'Hide Transfer History':'View Transfer History';if(o)loadMayaTransfers();});
-  saveMayaTransferBtn.addEventListener('click',()=>{const amount=Number(mayaTransferAmount.value),fromWallet=transferFromWallet.value,toWallet=transferToWallet.value;if(fromWallet===toWallet){mayaTransferStatus.textContent='Choose two different wallets.';mayaTransferStatus.className='status err';return;}if(!isFinite(amount)||amount<=0){mayaTransferStatus.textContent='Enter a valid transfer amount.';mayaTransferStatus.className='status err';return;}saveMayaTransferBtn.disabled=true;mayaTransferStatus.textContent='Transferring…';google.script.run.withSuccessHandler(d=>{saveMayaTransferBtn.disabled=false;if(d&&d.transfer)mayaTransfers.unshift(d.transfer);if(d&&d.capital)renderCapital(d.capital);renderMayaTransfers();renderCapitalActivity();saveLocalTrackerCache();cancelMayaTransferBtn.click();}).withFailureHandler(e=>{saveMayaTransferBtn.disabled=false;mayaTransferStatus.textContent=(e&&e.message)||'Could not transfer funds.';mayaTransferStatus.className='status err';}).addMayaTransferBySession(getSessionToken(),{amount,fromWallet,toWallet});});
-  mayaTransferHistoryList.addEventListener('click',e=>{const b=e.target.closest('[data-remove-maya-transfer]');if(!b)return;const id=b.getAttribute('data-remove-maya-transfer');if(!confirm('Remove this wallet transfer?'))return;google.script.run.withSuccessHandler(d=>{mayaTransfers=(d&&d.transfers)||mayaTransfers.filter(x=>String(x.id)!==String(id));if(d&&d.capital)renderCapital(d.capital);renderMayaTransfers();renderCapitalActivity();saveLocalTrackerCache();}).withFailureHandler(e=>alert((e&&e.message)||'Could not remove transfer.')).deleteMayaTransferBySession(getSessionToken(),id);});
+  saveMayaTransferBtn.addEventListener('click',()=>{
+    const amount=Number(mayaTransferAmount.value),fromWallet=transferFromWallet.value,toWallet=transferToWallet.value;
+    if(fromWallet===toWallet){mayaTransferStatus.textContent='Choose two different wallets.';mayaTransferStatus.className='status err';return;}
+    if(!isFinite(amount)||amount<=0){mayaTransferStatus.textContent='Enter a valid transfer amount.';mayaTransferStatus.className='status err';return;}
+    const b=moveMoneyBalances();
+    if(amount>b[fromWallet]+0.001){mayaTransferStatus.textContent='Not enough '+fromWallet+' balance.';mayaTransferStatus.className='status err';return;}
+    if(fromWallet==='Cash on Hand'||toWallet==='Cash on Hand'){openMoveMoneyCashPiecesDraft(amount,fromWallet,toWallet);return;}
+    saveMayaTransferBtn.disabled=true;mayaTransferStatus.textContent='Transferring…';
+    google.script.run.withSuccessHandler(d=>{saveMayaTransferBtn.disabled=false;if(d&&d.transfer)mayaTransfers.unshift(d.transfer);if(d&&d.capital)renderCapital(d.capital);renderMayaTransfers();renderCapitalActivity();saveLocalTrackerCache();cancelMayaTransferBtn.click();}).withFailureHandler(e=>{saveMayaTransferBtn.disabled=false;mayaTransferStatus.textContent=(e&&e.message)||'Could not transfer funds.';mayaTransferStatus.className='status err';}).addMayaTransferBySession(getSessionToken(),{amount,fromWallet,toWallet});
+  });
+  mayaTransferHistoryList.addEventListener('click',e=>{const b=e.target.closest('[data-remove-maya-transfer]');if(!b)return;const id=b.getAttribute('data-remove-maya-transfer');if(!confirm('Reverse this wallet transfer? Linked Cash Counter pieces will also be reversed.'))return;google.script.run.withSuccessHandler(d=>{mayaTransfers=(d&&d.transfers)||mayaTransfers.filter(x=>String(x.id)!==String(id));if(d&&d.capital)renderCapital(d.capital);renderMayaTransfers();renderCapitalActivity();saveLocalTrackerCache();if(typeof window.loadCashCounterLatestStatus==='function')setTimeout(window.loadCashCounterLatestStatus,100);}).withFailureHandler(e=>alert((e&&e.message)||'Could not reverse transfer.')).deleteMayaTransferBySession(getSessionToken(),id);});
 
   function updateSaripayTransferPreview(){
     const amount = Number(saripayTransferAmount.value || 0);
@@ -4384,7 +4424,7 @@ label[for="capitalSaripayInput"],
   }
 
   function showCashPiecesOffer(tx){
-    if(!tx || (tx.type!=='Cash In' && tx.type!=='Cash Out')) return;
+    if(!tx || (tx.type!=='Cash In' && tx.type!=='Cash Out' && tx.type!=='Move Money')) return;
     cashPiecesPendingTx=tx;
 
     const expected=expectedCashMovement(tx);
@@ -4394,9 +4434,13 @@ label[for="capitalSaripayInput"],
     if(!box || !summary) return;
 
     if(note){
-      note.textContent = tx.type==='Cash In'
-        ? 'Record the actual bills and coins received and any change you gave.'
-        : 'Record the actual cash you gave the customer and any cash fee you received.';
+      note.textContent = tx.type==='Move Money'
+        ? (tx.fromWallet==='Cash on Hand'
+            ? 'Select the exact physical bills and coins you are removing from Cash on Hand.'
+            : 'Select the exact physical bills and coins you are adding to Cash on Hand.')
+        : tx.type==='Cash In'
+          ? 'Record the actual bills and coins received and any change you gave.'
+          : 'Record the actual cash you gave the customer and any cash fee you received.';
     }
 
     summary.innerHTML=
@@ -4464,7 +4508,7 @@ label[for="capitalSaripayInput"],
     if(match){
       match.className='cash-pieces-match '+(ok?'ok':'bad');
       if(ok){
-        match.textContent='MATCHED. Cash pieces equal the transaction.';
+        match.textContent=cashPiecesPendingTx&&cashPiecesPendingTx.type==='Move Money'?'MATCHED. Cash pieces equal the transfer amount.':'MATCHED. Cash pieces equal the transaction.';
       }else{
         const diff=expected-net;
         match.textContent=`Not matched. ${diff>0?'Need +':'Need '}${money(diff)} more net cash movement.`;
@@ -4477,7 +4521,10 @@ label[for="capitalSaripayInput"],
     const note=document.getElementById('cashPiecesSectionNote');
     if(!note || !cashPiecesPendingTx) return;
 
-    if(cashPiecesMode==='received'){
+    if(cashPiecesPendingTx.type==='Move Money'){
+      if(cashPiecesMode==='received') note.textContent='Cash Added: enter the exact bills and coins physically added to Cash on Hand.';
+      else note.textContent='Cash Removed: enter the exact bills and coins physically removed from Cash on Hand.';
+    }else if(cashPiecesMode==='received'){
       note.textContent = cashPiecesPendingTx.type==='Cash In'
         ? 'Money Received: enter the bills and coins the customer handed to you.'
         : 'Money Received: enter only cash received from the customer, such as a fee paid into Cash on Hand.';
@@ -4496,7 +4543,7 @@ label[for="capitalSaripayInput"],
 
     cashPiecesReceived=zeroCashPieces();
     cashPiecesGiven=zeroCashPieces();
-    cashPiecesMode='received';
+    cashPiecesMode=(tx.type==='Move Money' && tx.fromWallet==='Cash on Hand') ? 'given' : 'received';
 
     const modal=document.getElementById('cashPiecesModal');
     const title=document.getElementById('cashPiecesTitle');
@@ -4508,16 +4555,26 @@ label[for="capitalSaripayInput"],
     const givTab=document.getElementById('cashPiecesGivenTab');
     const stat=document.getElementById('cashPiecesStatus');
 
-    if(title) title.textContent='Record Cash Pieces';
-    if(subtitle) subtitle.textContent='Use the actual Philippine bills and coins that physically moved.';
-    if(txType) txType.textContent=tx.type;
+    if(title) title.textContent=tx.type==='Move Money'?'Cash Counter for Move Money':'Record Cash Pieces';
+    if(subtitle) subtitle.textContent=tx.type==='Move Money'
+      ? `${tx.fromWallet} → ${tx.toWallet}. Select the exact cash denominations.`
+      : 'Use the actual Philippine bills and coins that physically moved.';
+    if(txType) txType.textContent=tx.type==='Move Money'?`${tx.fromWallet} → ${tx.toWallet}`:tx.type;
     if(txAmount) txAmount.textContent=money(Number(tx.amount||tx.total||0));
 
     const exp=expectedCashMovement(tx);
     if(expected) expected.textContent=(exp>=0?'+':'')+money(exp);
 
-    if(recTab) recTab.classList.add('active');
-    if(givTab) givTab.classList.remove('active');
+    if(recTab){
+      recTab.textContent=tx.type==='Move Money'?'Cash Added':'Money Received';
+      recTab.classList.toggle('active',cashPiecesMode==='received');
+      recTab.style.display=(tx.type==='Move Money'&&tx.fromWallet==='Cash on Hand')?'none':'';
+    }
+    if(givTab){
+      givTab.textContent=tx.type==='Move Money'?'Cash Removed':'Money Given';
+      givTab.classList.toggle('active',cashPiecesMode==='given');
+      givTab.style.display=(tx.type==='Move Money'&&tx.toWallet==='Cash on Hand')?'none':'';
+    }
     if(stat) stat.textContent='';
 
     updateCashPiecesSectionText();
@@ -4597,6 +4654,29 @@ label[for="capitalSaripayInput"],
     };
 
     save.disabled=true;
+
+    if(tx._walletTransferDraft){
+      save.textContent='Transferring…';
+      if(stat){stat.textContent='Saving transfer and Cash Counter together…';stat.className='';}
+      google.script.run
+        .withSuccessHandler(d=>{
+          save.disabled=false; save.textContent='Save Cash Pieces';
+          if(d&&d.transfer) mayaTransfers.unshift(d.transfer);
+          if(d&&d.capital) renderCapital(d.capital);
+          renderMayaTransfers(); renderCapitalActivity(); saveLocalTrackerCache();
+          if(typeof window.loadCashCounterLatestStatus==='function')setTimeout(window.loadCashCounterLatestStatus,100);
+          closeCashPiecesRecorder();
+        })
+        .withFailureHandler(e=>{
+          save.disabled=false; save.textContent='Save Cash Pieces';
+          if(stat){stat.textContent=(e&&e.message)||'Could not save transfer and Cash Counter.';stat.className='err';}
+        })
+        .addMayaTransferWithCashPiecesBySession(getSessionToken(),{
+          amount:Number(tx.amount||0), fromWallet:tx.fromWallet, toWallet:tx.toWallet,
+          received:{...cashPiecesReceived}, given:{...cashPiecesGiven}
+        });
+      return;
+    }
 
     // Save immediately on this device first.
     queueCashPieces(piecePayload);
