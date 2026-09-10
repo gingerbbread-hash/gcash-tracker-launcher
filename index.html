@@ -5370,7 +5370,7 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 
 <script id="cash-counter-shortcut-script">
-window.CASH_COUNTER_URL = 'https://script.google.com/macros/s/AKfycbxvG-9yAjMFBTwuNYFzGAeNjo8S9wX24mCYYJSZfg66SKVab3VhyBMEPBv2_HVaCNMndg/exec';
+window.CASH_COUNTER_URL = <?!= JSON.stringify(ScriptApp.getService().getUrl() + '?page=cashcounter') ?>;
 
 (function () {
   const btn = document.getElementById('openCashCounterBtn');
