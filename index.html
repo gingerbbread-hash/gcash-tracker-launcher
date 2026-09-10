@@ -2081,10 +2081,11 @@ label[for="capitalSaripayInput"],
         <span>Maya Balance</span>
       </div>
     </div>
-    <button type="button" id="mayaTransferBtn" class="maya-transfer-btn">Transfer GCash ↔ Maya</button>
-    <button type="button" id="mayaTransferHistoryToggle" class="expense-history-toggle">View Maya Transfer History</button>
+    <button type="button" id="mayaTransferBtn" class="maya-transfer-btn">Transfer Money</button>
+    <div class="note" style="margin-top:5px">Cash on Hand, GCash, or Maya. No fee and no effect on capital or earnings.</div>
+    <button type="button" id="mayaTransferHistoryToggle" class="expense-history-toggle">View Transfer History</button>
     <div id="mayaTransferHistorySection" class="maya-transfer-history" style="display:none">
-      <div id="mayaTransferHistoryEmpty" class="history-empty">No GCash / Maya transfers yet.</div><div id="mayaTransferHistoryList"></div>
+      <div id="mayaTransferHistoryEmpty" class="history-empty">No wallet transfers yet.</div><div id="mayaTransferHistoryList"></div>
     </div>
     <button type="button" id="saripayTransferBtn" class="saripay-transfer-btn">Transfer Saripay → GCash</button>
     <div class="capital-summary-row capital-summary-three">
@@ -2390,12 +2391,13 @@ label[for="capitalSaripayInput"],
 
 <div id="mayaTransferModal" class="capital-modal" aria-hidden="true">
   <div class="capital-modal-card" role="dialog" aria-modal="true">
-    <div class="capital-modal-title">GCash / Maya Transfer</div>
-    <div class="toggle-group" style="margin-bottom:12px">
-      <button type="button" id="mayaDirGcashToMaya" class="toggle-btn active">GCash → Maya</button>
-      <button type="button" id="mayaDirMayaToGcash" class="toggle-btn">Maya → GCash</button>
-    </div>
-    <label class="label" for="mayaTransferAmount">Transfer Amount</label>
+    <div class="capital-modal-title">Transfer Money</div>
+    <div class="capital-modal-help">Move your own business money between Cash on Hand, GCash, and Maya.</div>
+    <label class="label" for="transferFromWallet">From</label>
+    <select id="transferFromWallet" class="select"><option>Cash on Hand</option><option selected>GCash</option><option>Maya</option></select>
+    <label class="label" for="transferToWallet" style="margin-top:10px">To</label>
+    <select id="transferToWallet" class="select"><option>Cash on Hand</option><option>GCash</option><option selected>Maya</option></select>
+    <label class="label" for="mayaTransferAmount" style="margin-top:10px">Transfer Amount</label>
     <input id="mayaTransferAmount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00">
     <div class="note" style="margin-top:8px">No fee. No expense. Earnings are not affected.</div>
     <div id="mayaTransferStatus" class="status"></div>
@@ -2683,9 +2685,9 @@ label[for="capitalSaripayInput"],
   const cashInAvailable = $('cashInAvailable');
   const mayaAvailable=$('mayaAvailable'), homeMayaBalance=$('homeMayaBalance'), capitalMayaInput=$('capitalMayaInput');
   const mayaTransferBtn=$('mayaTransferBtn'), mayaTransferModal=$('mayaTransferModal'), mayaTransferAmount=$('mayaTransferAmount'), mayaTransferStatus=$('mayaTransferStatus');
-  const mayaDirGcashToMaya=$('mayaDirGcashToMaya'), mayaDirMayaToGcash=$('mayaDirMayaToGcash'), cancelMayaTransferBtn=$('cancelMayaTransferBtn'), saveMayaTransferBtn=$('saveMayaTransferBtn');
+  const transferFromWallet=$('transferFromWallet'), transferToWallet=$('transferToWallet'), cancelMayaTransferBtn=$('cancelMayaTransferBtn'), saveMayaTransferBtn=$('saveMayaTransferBtn');
   const mayaTransferHistoryToggle=$('mayaTransferHistoryToggle'), mayaTransferHistorySection=$('mayaTransferHistorySection'), mayaTransferHistoryEmpty=$('mayaTransferHistoryEmpty'), mayaTransferHistoryList=$('mayaTransferHistoryList');
-  let mayaTransferDirection='GCashToMaya', mayaTransfers=[];
+  let mayaTransfers=[];
   let capitalMovements=[];
   const availableEarningsEl=$('availableEarnings'), withdrawnEarningsEl=$('withdrawnEarnings');
   const addCapitalActionBtn=$('addCapitalActionBtn'), withdrawCapitalActionBtn=$('withdrawCapitalActionBtn'), withdrawEarningsActionBtn=$('withdrawEarningsActionBtn');
@@ -3294,15 +3296,15 @@ label[for="capitalSaripayInput"],
     expensePaidGcash.classList.toggle('active', expensePaidFrom === 'GCash');
   }
 
-  function setMayaTransferDirection(d){mayaTransferDirection=d==='MayaToGCash'?'MayaToGCash':'GCashToMaya';mayaDirGcashToMaya.classList.toggle('active',mayaTransferDirection==='GCashToMaya');mayaDirMayaToGcash.classList.toggle('active',mayaTransferDirection==='MayaToGCash');}
-  function renderMayaTransfers(){mayaTransferHistoryList.innerHTML='';mayaTransferHistoryEmpty.style.display=mayaTransfers.length?'none':'block';mayaTransfers.forEach(t=>{const item=document.createElement('div');item.className='maya-transfer-item';item.innerHTML=`<div class="maya-transfer-top"><span>${escapeHtml(t.fromWallet)} → ${escapeHtml(t.toWallet)}</span><span>${money(t.amount)}</span></div><div class="maya-transfer-meta">${escapeHtml(t.date||'')}</div><div class="maya-transfer-meta">GCash: ${money(t.previousGcash)} → ${money(t.newGcash)} · Maya: ${money(t.previousMaya)} → ${money(t.newMaya)}</div><div style="text-align:right"><button type="button" class="link-btn" data-remove-maya-transfer="${escapeHtml(t.id)}">Remove</button></div>`;mayaTransferHistoryList.appendChild(item);});}
+  function renderMayaTransfers(){mayaTransferHistoryList.innerHTML='';mayaTransferHistoryEmpty.style.display=mayaTransfers.length?'none':'block';mayaTransfers.forEach(t=>{const item=document.createElement('div');item.className='maya-transfer-item';let balances=`GCash: ${money(t.previousGcash)} → ${money(t.newGcash)} · Maya: ${money(t.previousMaya)} → ${money(t.newMaya)}`;if(t.previousCash!==null&&t.previousCash!==undefined)balances=`Cash: ${money(t.previousCash)} → ${money(t.newCash)} · `+balances;item.innerHTML=`<div class="maya-transfer-top"><span>${escapeHtml(t.fromWallet)} → ${escapeHtml(t.toWallet)}</span><span>${money(t.amount)}</span></div><div class="maya-transfer-meta">${escapeHtml(t.date||'')}</div><div class="maya-transfer-meta">${balances}</div><div style="text-align:right"><button type="button" class="link-btn" data-remove-maya-transfer="${escapeHtml(t.id)}">Remove</button></div>`;mayaTransferHistoryList.appendChild(item);});}
   function loadMayaTransfers(){if(!unlocked)return;google.script.run.withSuccessHandler(d=>{mayaTransfers=d||[];renderMayaTransfers();}).withFailureHandler(()=>{}).getMayaTransfersBySession(getSessionToken());}
-  mayaTransferBtn.addEventListener('click',()=>{mayaTransferAmount.value='';mayaTransferStatus.textContent='';setMayaTransferDirection('GCashToMaya');mayaTransferModal.classList.add('show');mayaTransferModal.style.display='flex';});
+  mayaTransferBtn.addEventListener('click',()=>{mayaTransferAmount.value='';mayaTransferStatus.textContent='';transferFromWallet.value='GCash';transferToWallet.value='Maya';mayaTransferModal.classList.add('show');mayaTransferModal.style.display='flex';});
   cancelMayaTransferBtn.addEventListener('click',()=>{mayaTransferModal.classList.remove('show');mayaTransferModal.style.display='none';});
-  mayaDirGcashToMaya.addEventListener('click',()=>setMayaTransferDirection('GCashToMaya'));mayaDirMayaToGcash.addEventListener('click',()=>setMayaTransferDirection('MayaToGCash'));
-  mayaTransferHistoryToggle.addEventListener('click',()=>{const o=mayaTransferHistorySection.style.display==='none';mayaTransferHistorySection.style.display=o?'block':'none';mayaTransferHistoryToggle.textContent=o?'Hide Maya Transfer History':'View Maya Transfer History';if(o)loadMayaTransfers();});
-  saveMayaTransferBtn.addEventListener('click',()=>{const amount=Number(mayaTransferAmount.value);if(!isFinite(amount)||amount<=0){mayaTransferStatus.textContent='Enter a valid transfer amount.';mayaTransferStatus.className='status err';return;}saveMayaTransferBtn.disabled=true;mayaTransferStatus.textContent='Transferring…';google.script.run.withSuccessHandler(d=>{saveMayaTransferBtn.disabled=false;if(d&&d.transfer)mayaTransfers.unshift(d.transfer);if(d&&d.capital)renderCapital(d.capital);renderMayaTransfers();saveLocalTrackerCache();cancelMayaTransferBtn.click();}).withFailureHandler(e=>{saveMayaTransferBtn.disabled=false;mayaTransferStatus.textContent=(e&&e.message)||'Could not transfer funds.';mayaTransferStatus.className='status err';}).addMayaTransferBySession(getSessionToken(),{amount,direction:mayaTransferDirection});});
-  mayaTransferHistoryList.addEventListener('click',e=>{const b=e.target.closest('[data-remove-maya-transfer]');if(!b)return;const id=b.getAttribute('data-remove-maya-transfer');if(!confirm('Remove this GCash / Maya transfer?'))return;google.script.run.withSuccessHandler(d=>{mayaTransfers=(d&&d.transfers)||mayaTransfers.filter(x=>String(x.id)!==String(id));if(d&&d.capital)renderCapital(d.capital);renderMayaTransfers();saveLocalTrackerCache();}).withFailureHandler(e=>alert((e&&e.message)||'Could not remove transfer.')).deleteMayaTransferBySession(getSessionToken(),id);});
+  transferFromWallet.addEventListener('change',()=>{if(transferToWallet.value===transferFromWallet.value){transferToWallet.value=['Cash on Hand','GCash','Maya'].find(x=>x!==transferFromWallet.value);}});
+  transferToWallet.addEventListener('change',()=>{if(transferToWallet.value===transferFromWallet.value){mayaTransferStatus.textContent='Choose a different destination wallet.';mayaTransferStatus.className='status err';}else mayaTransferStatus.textContent='';});
+  mayaTransferHistoryToggle.addEventListener('click',()=>{const o=mayaTransferHistorySection.style.display==='none';mayaTransferHistorySection.style.display=o?'block':'none';mayaTransferHistoryToggle.textContent=o?'Hide Transfer History':'View Transfer History';if(o)loadMayaTransfers();});
+  saveMayaTransferBtn.addEventListener('click',()=>{const amount=Number(mayaTransferAmount.value),fromWallet=transferFromWallet.value,toWallet=transferToWallet.value;if(fromWallet===toWallet){mayaTransferStatus.textContent='Choose two different wallets.';mayaTransferStatus.className='status err';return;}if(!isFinite(amount)||amount<=0){mayaTransferStatus.textContent='Enter a valid transfer amount.';mayaTransferStatus.className='status err';return;}saveMayaTransferBtn.disabled=true;mayaTransferStatus.textContent='Transferring…';google.script.run.withSuccessHandler(d=>{saveMayaTransferBtn.disabled=false;if(d&&d.transfer)mayaTransfers.unshift(d.transfer);if(d&&d.capital)renderCapital(d.capital);renderMayaTransfers();saveLocalTrackerCache();cancelMayaTransferBtn.click();}).withFailureHandler(e=>{saveMayaTransferBtn.disabled=false;mayaTransferStatus.textContent=(e&&e.message)||'Could not transfer funds.';mayaTransferStatus.className='status err';}).addMayaTransferBySession(getSessionToken(),{amount,fromWallet,toWallet});});
+  mayaTransferHistoryList.addEventListener('click',e=>{const b=e.target.closest('[data-remove-maya-transfer]');if(!b)return;const id=b.getAttribute('data-remove-maya-transfer');if(!confirm('Remove this wallet transfer?'))return;google.script.run.withSuccessHandler(d=>{mayaTransfers=(d&&d.transfers)||mayaTransfers.filter(x=>String(x.id)!==String(id));if(d&&d.capital)renderCapital(d.capital);renderMayaTransfers();saveLocalTrackerCache();}).withFailureHandler(e=>alert((e&&e.message)||'Could not remove transfer.')).deleteMayaTransferBySession(getSessionToken(),id);});
 
   function updateSaripayTransferPreview(){
     const amount = Number(saripayTransferAmount.value || 0);
