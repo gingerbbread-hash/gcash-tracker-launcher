@@ -1305,6 +1305,41 @@ body.app-locked #historyToggle{
 }
 
 
+
+    /* 2026-09 Home / Wallets / History usability upgrade */
+    .today-dashboard{margin-bottom:10px}
+    .today-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+    .today-title{font-size:15px;font-weight:950}
+    .today-date{font-size:10px;color:var(--muted);font-weight:800}
+    .today-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+    .today-metric{min-width:0;border:1px solid var(--border);background:#fff;border-radius:12px;padding:9px 6px;text-align:center}
+    .today-metric small{display:block;font-size:9px;color:var(--muted);font-weight:850;line-height:1.15}
+    .today-metric strong{display:block;margin-top:4px;font-size:14px;line-height:1.1;overflow:hidden;text-overflow:ellipsis}
+    .balance-check{margin-top:8px;border:1px solid #b7e4c7;background:#ecfdf3;border-radius:12px;padding:9px 10px}
+    .balance-check.warn{border-color:#f5c2c7;background:#fff1f2}
+    .balance-check.no-count{border-color:#e4e7ec;background:#f8fafc}
+    .balance-check-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+    .balance-check-title{font-size:11px;font-weight:950}
+    .balance-check-value{font-size:11px;font-weight:950;color:#137333}
+    .balance-check.warn .balance-check-value{color:#b42318}
+    .balance-check.no-count .balance-check-value{color:#667085}
+    .balance-check-note{margin-top:3px;font-size:9px;color:#667085;line-height:1.3}
+    .tx-confirm-strip{display:none;margin:0 0 8px;border:1px solid #bfd8ff;background:#f4f8ff;border-radius:12px;padding:9px 10px;font-size:11px;line-height:1.4}
+    .tx-confirm-strip.show{display:block}
+    .tx-confirm-strip strong{color:#073b8c}
+    .saved-flash{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(18px);z-index:25000;opacity:0;pointer-events:none;transition:.2s ease;background:#101828;color:#fff;border-radius:999px;padding:10px 15px;font-size:12px;font-weight:900;box-shadow:0 10px 30px rgba(16,24,40,.24);white-space:nowrap}
+    .saved-flash.show{opacity:1;transform:translateX(-50%) translateY(0)}
+    .wallet-health-note{margin:8px 0 0;padding:8px 10px;border-radius:11px;background:#f8fafc;border:1px solid var(--border);font-size:10px;color:#667085;line-height:1.4}
+    .history-day-summary{display:none;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:8px 0}
+    .history-day-summary.show{display:grid}
+    .history-day-summary>div{border:1px solid var(--border);border-radius:11px;padding:8px 5px;background:#f8fafc;text-align:center;min-width:0}
+    .history-day-summary small{display:block;font-size:8px;color:var(--muted);font-weight:850}
+    .history-day-summary strong{display:block;margin-top:3px;font-size:12px;overflow:hidden;text-overflow:ellipsis}
+    @media(max-width:390px){
+      .today-grid,.history-day-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .today-metric strong{font-size:13px}
+    }
+
 </style>
 
 <style>
@@ -2021,6 +2056,25 @@ label[for="capitalSaripayInput"],
         <strong id="homeMayaBalance">₱0.00</strong>
       </div>
     </div>
+    <section class="card today-dashboard" id="todayDashboard">
+      <div class="today-head">
+        <div class="today-title">Today</div>
+        <div class="today-date" id="todayDashboardDate"></div>
+      </div>
+      <div class="today-grid">
+        <div class="today-metric"><small>Cash In</small><strong id="todayCashIn">₱0.00</strong></div>
+        <div class="today-metric"><small>Cash Out</small><strong id="todayCashOut">₱0.00</strong></div>
+        <div class="today-metric"><small>Fees Earned</small><strong id="todayFees">₱0.00</strong></div>
+        <div class="today-metric"><small>Transactions</small><strong id="todayTxCount">0</strong></div>
+      </div>
+      <div class="balance-check no-count" id="homeBalanceCheck">
+        <div class="balance-check-top">
+          <span class="balance-check-title">Cash Balance Check</span>
+          <span class="balance-check-value" id="homeBalanceCheckValue">CHECKING</span>
+        </div>
+        <div class="balance-check-note" id="homeBalanceCheckNote">Comparing Cash Counter with Cash on Hand.</div>
+      </div>
+    </section>
     <div id="homeTabMount"></div>
   </section>
 
@@ -2129,6 +2183,10 @@ label[for="capitalSaripayInput"],
       <div><span>Expected Total Money</span><strong id="expectedTotalMoney">₱0.00</strong></div>
     </div>
 
+    <div class="wallet-health-note" id="walletHealthNote">
+      Move Money between Cash on Hand, GCash, and Maya does not change Current Capital or Earnings.
+    </div>
+
     <div class="capital-action-grid">
       <button type="button" id="addCapitalActionBtn" class="capital-action-btn add">Add Capital</button>
       <button type="button" id="withdrawCapitalActionBtn" class="capital-action-btn withdraw-capital">Withdraw Capital</button>
@@ -2202,7 +2260,8 @@ label[for="capitalSaripayInput"],
       </select>
       <div class="field-gap"></div>
       <div id="status" class="status"></div>
-      <div class="transaction-action-row">
+      <div id="txConfirmStrip" class="tx-confirm-strip"></div>
+<div class="transaction-action-row">
         <button type="button" id="deductToggleBtn" class="action-deduct">Deduct Fee</button>
         <button class="action-record" type="submit">Record Transaction</button>
         <button class="action-clear" id="clearInputsBtn" type="button">Clear</button>
@@ -5328,5 +5387,149 @@ window.CASH_COUNTER_URL = 'https://script.google.com/macros/s/AKfycbxvG-9yAjMFBT
   setTimeout(applyWalletColors,500);
 })();
 </script>
+<div id="savedFlash" class="saved-flash">Saved</div>
+
+<script id="usability-upgrade-202609">
+(function(){
+  const peso = v => '₱' + Number(v || 0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const localKey = d => {
+    const x = d instanceof Date ? d : new Date(d);
+    if(isNaN(x)) return '';
+    return [x.getFullYear(),String(x.getMonth()+1).padStart(2,'0'),String(x.getDate()).padStart(2,'0')].join('-');
+  };
+  const todayKey = () => localKey(new Date());
+
+  function allTransactions(){
+    try { return Array.isArray(window.history) ? window.history : (typeof history !== 'undefined' && Array.isArray(history) ? history : []); }
+    catch(e){ return []; }
+  }
+
+  function refreshToday(){
+    let list=[];
+    try{
+      if(typeof history !== 'undefined' && Array.isArray(history)) list=history;
+    }catch(e){}
+    const today=todayKey();
+    const rows=list.filter(x=>{
+      const raw=x.timestamp || x.date;
+      return localKey(raw)===today;
+    });
+    let ci=0,co=0,fees=0;
+    rows.forEach(x=>{
+      if(String(x.type)==='Cash In') ci += Number(x.amount||0);
+      if(String(x.type)==='Cash Out') co += Number(x.amount||0);
+      fees += Number(x.fee||0);
+    });
+    const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val};
+    set('todayCashIn',peso(ci)); set('todayCashOut',peso(co)); set('todayFees',peso(fees)); set('todayTxCount',String(rows.length));
+    const dateEl=document.getElementById('todayDashboardDate');
+    if(dateEl) dateEl.textContent=new Intl.DateTimeFormat('en-PH',{month:'short',day:'numeric',year:'numeric'}).format(new Date());
+  }
+
+  function refreshConfirm(){
+    const box=document.getElementById('txConfirmStrip');
+    const amount=document.getElementById('amount');
+    const cash=document.getElementById('cashReceived');
+    const fee=document.getElementById('fee');
+    const total=document.getElementById('total');
+    const change=document.getElementById('change');
+    if(!box || !amount) return;
+    const a=Number(amount.value||0);
+    if(!(a>0)){box.classList.remove('show');box.innerHTML='';return}
+    const typeEl=document.getElementById('transactionType');
+    const type=typeEl ? typeEl.value : 'Transaction';
+    const f=fee ? fee.textContent : '';
+    const t=total ? total.textContent : '';
+    const c=change ? change.textContent : '';
+    box.innerHTML='<strong>'+String(type||'Transaction')+'</strong> · Amount '+peso(a)+(f?' · Fee '+f:'')+(t?' · Total '+t:'')+(Number(cash?.value||0)>0 && c?' · Change '+c:'');
+    box.classList.add('show');
+  }
+
+  function flashSaved(){
+    const el=document.getElementById('savedFlash');
+    if(!el)return;
+    el.textContent='Saved ✓';
+    el.classList.add('show');
+    clearTimeout(window.__gcashSavedTimer);
+    window.__gcashSavedTimer=setTimeout(()=>el.classList.remove('show'),1800);
+  }
+
+  // Cash Counter's existing latest-status script remains the source of truth.
+  function mirrorCashCheck(){
+    const badge=document.getElementById('cashCounterLatestBadge');
+    const details=document.getElementById('cashCounterLatestDetails');
+    const card=document.getElementById('homeBalanceCheck');
+    const value=document.getElementById('homeBalanceCheckValue');
+    const note=document.getElementById('homeBalanceCheckNote');
+    if(!badge||!card||!value||!note)return;
+    const s=String(badge.textContent||'').trim().toUpperCase();
+    card.classList.remove('warn','no-count');
+    if(s==='MATCHED'){
+      value.textContent='BALANCES OK';
+      note.textContent=details?.textContent || 'Cash Counter matches Cash on Hand.';
+    }else if(s==='SHORT'||s==='OVER'){
+      card.classList.add('warn');
+      value.textContent=s;
+      note.textContent=details?.textContent || 'Cash Counter and Cash on Hand have a difference.';
+    }else{
+      card.classList.add('no-count');
+      value.textContent=s || 'NO COUNT';
+      note.textContent=details?.textContent || 'Open Cash Counter to check physical cash.';
+    }
+  }
+
+  function addHistorySummary(){
+    const section=document.getElementById('historySection');
+    if(!section || document.getElementById('historyDaySummary')) return;
+    const holder=document.createElement('div');
+    holder.id='historyDaySummary';
+    holder.className='history-day-summary';
+    holder.innerHTML='<div><small>Cash In</small><strong id="histDayIn">₱0.00</strong></div><div><small>Cash Out</small><strong id="histDayOut">₱0.00</strong></div><div><small>Fees</small><strong id="histDayFees">₱0.00</strong></div><div><small>Transactions</small><strong id="histDayCount">0</strong></div>';
+    const header=section.querySelector('.history-view-header');
+    if(header && header.parentNode) header.parentNode.insertBefore(holder,header.nextSibling); else section.prepend(holder);
+  }
+
+  function refreshHistorySummary(){
+    addHistorySummary();
+    const holder=document.getElementById('historyDaySummary');
+    if(!holder)return;
+    let key='';
+    try{ if(typeof calSelected!=='undefined') key=calSelected||''; }catch(e){}
+    if(!key){holder.classList.remove('show');return}
+    let list=[];
+    try{ if(typeof history!=='undefined' && Array.isArray(history)) list=history; }catch(e){}
+    const rows=list.filter(x=>localKey(x.timestamp||x.date)===key);
+    let ci=0,co=0,fees=0;
+    rows.forEach(x=>{if(x.type==='Cash In')ci+=Number(x.amount||0);if(x.type==='Cash Out')co+=Number(x.amount||0);fees+=Number(x.fee||0)});
+    const set=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v};
+    set('histDayIn',peso(ci));set('histDayOut',peso(co));set('histDayFees',peso(fees));set('histDayCount',String(rows.length));
+    holder.classList.add('show');
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    refreshToday(); refreshConfirm(); mirrorCashCheck(); addHistorySummary(); refreshHistorySummary();
+    ['amount','cashReceived'].forEach(id=>document.getElementById(id)?.addEventListener('input',()=>setTimeout(refreshConfirm,0)));
+    document.getElementById('deductBtn')?.addEventListener('click',()=>setTimeout(refreshConfirm,0));
+    document.getElementById('recordBtn')?.addEventListener('click',()=>setTimeout(refreshConfirm,0));
+
+    const cc=document.getElementById('cashCounterLatestCard');
+    if(cc)new MutationObserver(mirrorCashCheck).observe(cc,{subtree:true,childList:true,characterData:true});
+
+    const hist=document.getElementById('historySection');
+    if(hist)new MutationObserver(()=>{refreshToday();refreshHistorySummary()}).observe(hist,{subtree:true,childList:true});
+
+    // Watch the sync status. A successful sync is a safe point for a brief confirmation.
+    const sync=document.getElementById('syncStatus');
+    if(sync)new MutationObserver(()=>{
+      const t=String(sync.textContent||'').trim().toLowerCase();
+      if(t==='synced.' || t==='synced') flashSaved();
+      refreshToday();
+    }).observe(sync,{subtree:true,childList:true,characterData:true});
+
+    setInterval(()=>{refreshToday();mirrorCashCheck();refreshHistorySummary()},5000);
+  });
+})();
+</script>
+
 </body>
 </html>
