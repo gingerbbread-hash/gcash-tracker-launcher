@@ -2051,6 +2051,44 @@ label[for="capitalSaripayInput"],
 .earnings-three-row span{display:block;font-size:9px;line-height:1.15;color:#667085;font-weight:800;min-height:22px}.earnings-three-row strong{display:block;font-size:13px;overflow-wrap:anywhere;margin-top:3px}
 @media(max-width:390px){.earnings-three-row strong{font-size:11px}.earnings-three-row span{font-size:8px}.wallet-clean-grid{gap:6px}}
 </style>
+
+<style id="cash-counter-main-tab-style">
+/* Cash Counter is now a normal fourth GCash Tracker tab. */
+.bottom-tab-nav{
+  grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+}
+.bottom-tab-btn{
+  min-width:0 !important;
+  padding-left:3px !important;
+  padding-right:3px !important;
+}
+.bottom-tab-btn[data-main-tab="cashcounter"]{
+  font-size:11px;
+}
+.cash-counter-main-page{
+  padding:0 !important;
+  margin:0 !important;
+  width:100% !important;
+  max-width:none !important;
+}
+.cash-counter-frame{
+  display:block;
+  width:100%;
+  height:calc(100vh - var(--bottom-nav-h,70px) - env(safe-area-inset-bottom,0px));
+  min-height:620px;
+  border:0;
+  background:#f4f7fb;
+}
+@media(max-width:600px){
+  .bottom-tab-btn{font-size:10px !important}
+  .bottom-tab-btn .tab-icon{font-size:18px !important}
+  .cash-counter-frame{
+    height:calc(100dvh - var(--bottom-nav-h,66px) - env(safe-area-inset-bottom,0px));
+    min-height:560px;
+  }
+}
+</style>
+
 </head>
 <body>
 <main class="app">
@@ -2120,44 +2158,6 @@ label[for="capitalSaripayInput"],
   <section id="tabWalletsPage" class="app-tab-page">
     <div id="walletsTabMount"></div>
 
-    <section class="card" id="cashCounterShortcutCard" style="margin-top:12px">
-      <h2 class="section-title" style="margin-bottom:6px">Cash Counter</h2>
-      <p class="note" style="margin:0 0 10px">
-        Count your physical bills and coins.
-      </p>
-
-      <div id="cashCounterLatestCard" style="
-        border:1px solid #e4e7ec;
-        border-radius:12px;
-        padding:11px;
-        margin-bottom:10px;
-        background:#f9fafb;
-      ">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-          <span style="font-size:12px;font-weight:800;color:#667085">Latest Cash Check</span>
-          <span id="cashCounterLatestBadge" style="
-            padding:5px 9px;
-            border-radius:999px;
-            font-size:11px;
-            font-weight:900;
-            background:#eef2f6;
-            color:#344054;
-          ">Loading…</span>
-        </div>
-        <div id="cashCounterLatestDetails" style="
-          margin-top:8px;
-          font-size:12px;
-          color:#475467;
-          line-height:1.55;
-        ">Checking latest cash count…</div>
-      </div>
-
-      <button id="openCashCounterBtn" class="btn btn-secondary" type="button">
-        Open Cash Counter
-      </button>
-      <div id="cashCounterShortcutStatus" class="status"></div>
-    </section>
-
     <section class="card" id="bloggerPairingCard" style="margin-top:12px">
       <h2 class="section-title" style="margin-bottom:6px">Device Pairing</h2>
       <p class="note" style="margin:0 0 10px">
@@ -2171,6 +2171,17 @@ label[for="capitalSaripayInput"],
       </div>
       <div id="createPairingCodeStatus" class="status"></div>
     </section>
+  </section>
+
+  <section id="tabCashCounterPage" class="app-tab-page cash-counter-main-page">
+    <iframe
+      id="cashCounterFrame"
+      class="cash-counter-frame"
+      src="https://script.google.com/macros/s/AKfycbzHZBbsTHU5rRMrO4iNCizaQHd1SqVMb1NgWFSRvw8UHf_zdJTLJEQHYZTouUfvpknouw/exec?page=cashcounter&embedded=1"
+      title="Cash Counter"
+      loading="eager"
+      referrerpolicy="no-referrer"
+    ></iframe>
   </section>
 
   <section id="tabHistoryPage" class="app-tab-page">
@@ -2334,6 +2345,7 @@ label[for="capitalSaripayInput"],
 <nav class="bottom-tab-nav" aria-label="GCash Tracker tabs">
   <button class="bottom-tab-btn active" type="button" data-main-tab="home"><span class="tab-icon">⌂</span>Home</button>
   <button class="bottom-tab-btn" type="button" data-main-tab="wallets"><span class="tab-icon">▣</span>Wallets</button>
+  <button class="bottom-tab-btn" type="button" data-main-tab="cashcounter"><span class="tab-icon">₱</span>Cash Counter</button>
   <button class="bottom-tab-btn" type="button" data-main-tab="history"><span class="tab-icon">▦</span>History</button>
 </nav>
 
@@ -5179,6 +5191,7 @@ document.addEventListener('DOMContentLoaded', function(){
   const pages={
     home:document.getElementById('tabHomePage'),
     wallets:document.getElementById('tabWalletsPage'),
+    cashcounter:document.getElementById('tabCashCounterPage'),
     history:document.getElementById('tabHistoryPage')
   };
   const buttons=[...document.querySelectorAll('[data-main-tab]')];
@@ -5369,27 +5382,7 @@ document.addEventListener('DOMContentLoaded', function(){
 })();
 </script>
 
-<script id="cash-counter-shortcut-script">
-window.CASH_COUNTER_URL = 'https://script.google.com/macros/s/AKfycbzHZBbsTHU5rRMrO4iNCizaQHd1SqVMb1NgWFSRvw8UHf_zdJTLJEQHYZTouUfvpknouw/exec?page=cashcounter';
 
-(function () {
-  const btn = document.getElementById('openCashCounterBtn');
-  const status = document.getElementById('cashCounterShortcutStatus');
-  if (!btn) return;
-
-  btn.addEventListener('click', function () {
-    const url = String(window.CASH_COUNTER_URL || '').trim();
-
-    if (!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec(?:\?.*)?$/.test(url)) {
-      if (status) status.textContent = 'Cash Counter URL is not valid.';
-      return;
-    }
-
-    if (status) status.textContent = '';
-    window.open(url, '_blank', 'noopener');
-  });
-})();
-</script>
 
 
 <style id="wallet-cash-transfer-colors">
@@ -5580,6 +5573,20 @@ window.CASH_COUNTER_URL = 'https://script.google.com/macros/s/AKfycbzHZBbsTHU5rR
     }).observe(sync,{subtree:true,childList:true,characterData:true});
 
     setInterval(()=>{refreshToday();mirrorCashCheck();refreshConfirm();refreshHistorySummary()},3000);
+  });
+})();
+</script>
+
+
+<script id="cash-counter-main-tab-script">
+(function(){
+  document.addEventListener('click', function(e){
+    const btn=e.target.closest('[data-main-tab="cashcounter"]');
+    if(!btn) return;
+    const frame=document.getElementById('cashCounterFrame');
+    if(frame && !frame.getAttribute('src')){
+      frame.setAttribute('src', frame.dataset.src || '');
+    }
   });
 })();
 </script>
