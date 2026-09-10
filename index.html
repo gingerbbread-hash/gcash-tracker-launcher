@@ -1321,7 +1321,7 @@ body.app-locked #historyToggle{
 .cal-num{font-size:12px;font-weight:900}.cal-fee{font-size:9px;font-weight:900;color:var(--success);overflow-wrap:anywhere}
 #calDetail{margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
 .cal-head{display:flex;justify-content:space-between;gap:8px;margin-bottom:8px}.cal-head strong:last-child{color:var(--success)}
-.cal-sum{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px}.cal-sum .metric{padding:7px 5px}.cal-sum .metric strong{font-size:12px}
+.cal-sum{display:grid;grid-template-columns:repeat(2,1fr);gap:5px;margin-bottom:8px}.cal-sum .metric{padding:7px 5px}.cal-sum .metric strong{font-size:12px}
 .cal-exp{background:#fff7ed;color:#9a3412;border-radius:10px;padding:8px;margin:7px 0;font-size:11px}
 @media(max-width:480px){.cal-grid,.cal-week{gap:3px}.cal-day{min-height:57px;padding:4px 3px}.cal-fee{font-size:8px}}
 
@@ -2917,12 +2917,9 @@ label[for="capitalSaripayInput"],
   function renderDay(key){
     const box=$('calDetail'); if(!box)return;
     const txs=history.filter(x=>dateKey(x)===key);
-    const exps=expenses.filter(x=>dateKey(x)===key);
-    const dayTransfers=transfers.filter(x=>dateKey(x)===key);
     const fees=txs.reduce((s,x)=>s+Number(x.fee||0),0);
     const ci=txs.filter(x=>x.type==='Cash In').reduce((s,x)=>s+Number(x.amount||0),0);
     const co=txs.filter(x=>x.type==='Cash Out').reduce((s,x)=>s+Number(x.amount||0),0);
-    const et=exps.reduce((s,x)=>s+Number(x.amount||0),0);
     const q=key.split('-').map(Number), d=new Date(q[0],q[1]-1,q[2]);
     const txhtml=txs.map(tx=>`<div class="history-tx-card ${transactionWalletLabel(tx)==='Maya'?'history-wallet-maya':'history-wallet-gcash'}">
       <div class="history-tx-head">
@@ -2942,25 +2939,7 @@ label[for="capitalSaripayInput"],
 
       <div class="history-tx-actions"><button class="link-btn" type="button" data-cal-remove="${escapeHtml(tx.id)}">Remove</button></div>
     </div>`).join('');
-    const exhtml=exps.length?`<div class="cal-exp"><strong>Expenses: ${money(et)}</strong>${exps.map(x=>`<div>${escapeHtml(x.expense||'Expense')}: -${money(x.amount)}</div>`).join('')}</div>`:'';
-    const transferHtml=dayTransfers.map(t=>`<div class="history-tx-card">
-      <div class="history-tx-head">
-        <div>
-          <div class="history-tx-kind">
-            <span class="badge badge-neutral">Transfer</span>
-            <span class="history-wallet-pill">Saripay → GCash</span>
-          </div>
-          <div class="history-tx-fee">${Number(t.deduction||0)>0?`Transfer expense ${money(t.deduction)}`:'No transfer deduction'}</div>
-        </div>
-        <div>
-          <div class="history-tx-amount">${money(t.amount)}</div>
-          <div class="history-tx-meta">${escapeHtml(t.date||'')}</div>
-        </div>
-      </div>
-      ${transferBalanceHtml(t)?`<div class="history-balance-title">BALANCE MOVEMENT</div>${transferBalanceHtml(t)}`:''}
-      <div class="history-tx-actions"><button class="link-btn" type="button" data-cal-transfer-remove="${escapeHtml(t.id)}">Remove</button></div>
-    </div>`).join('');
-    box.innerHTML=`<div class="cal-head"><strong>${d.toLocaleDateString('en-PH',{month:'long',day:'numeric',year:'numeric'})}</strong><strong>${money(fees)} fees</strong></div><div class="cal-sum"><div class="metric"><small>Cash In</small><strong>${money(ci)}</strong></div><div class="metric"><small>Cash Out</small><strong>${money(co)}</strong></div><div class="metric"><small>Expenses</small><strong>${money(et)}</strong></div></div>${exhtml}${transferHtml}${txhtml||(!dayTransfers.length?'<div class="history-empty">No transactions on this date.</div>':'')}`;
+    box.innerHTML=`<div class="cal-head"><strong>${d.toLocaleDateString('en-PH',{month:'long',day:'numeric',year:'numeric'})}</strong><strong>${money(fees)} fees</strong></div><div class="cal-sum"><div class="metric"><small>Cash In</small><strong>${money(ci)}</strong></div><div class="metric"><small>Cash Out</small><strong>${money(co)}</strong></div></div>${txhtml||'<div class="history-empty">No transactions on this date.</div>'}`;
     box.style.display='block';
   }
   function renderCalendar(){
