@@ -5064,10 +5064,11 @@ document.addEventListener('DOMContentLoaded', function(){
       hc.style.setProperty('grid-column','1 / -1','important');
     }
 
-    // WALLETS: GCash | Maya, then Cash on Hand wide
+    // WALLETS: GCash | Maya, then Cash on Hand | Transfer Money
     const wg=document.getElementById('cashInAvailable')?.closest('.capital-balance');
     const wm=document.getElementById('mayaAvailable')?.closest('.capital-balance');
     const wc=document.getElementById('cashOutAvailable')?.closest('.capital-balance');
+    const wt=document.getElementById('mayaTransferBtn');
     const wallets=wg && wg.parentElement;
     if(wallets){
       wallets.style.setProperty('display','grid','important');
@@ -5075,7 +5076,11 @@ document.addEventListener('DOMContentLoaded', function(){
       wg.style.setProperty('order','1','important');
       wm.style.setProperty('order','2','important');
       wc.style.setProperty('order','3','important');
-      wc.style.setProperty('grid-column','1 / -1','important');
+      wc.style.setProperty('grid-column','auto','important');
+      if(wt){
+        wt.style.setProperty('order','4','important');
+        wt.style.setProperty('grid-column','auto','important');
+      }
     }
   }
 
