@@ -1939,6 +1939,30 @@ label[for="capitalSaripayInput"],
 }
 </style>
 
+
+<style id="simple-earnings-final">
+/* Simplified Wallets: expenses are retired from the UI and counted as withdrawn earnings. */
+#addExpenseBtn,
+#expenseHistoryToggle,
+#expenseHistorySection,
+.capital-summary-three .capital-earnings-row,
+.capital-summary-three .capital-expense-row{
+  display:none !important;
+}
+.capital-summary-three{
+  display:grid !important;
+  grid-template-columns:1fr !important;
+}
+.capital-summary-three .capital-total-row{
+  width:100% !important;
+}
+.capital-earnings-extra{
+  grid-template-columns:1fr 1fr !important;
+}
+@media(max-width:430px){
+  .capital-earnings-extra{grid-template-columns:1fr 1fr !important;}
+}
+</style>
 </head>
 <body>
 <main class="app">
@@ -3013,7 +3037,7 @@ label[for="capitalSaripayInput"],
     if(withdrawnEarningsEl) withdrawnEarningsEl.textContent = money(data.withdrawnEarnings || 0);
     expectedTotalMoney.textContent = money(data.expectedTotalMoney ?? (Number(data.cashOnHand||0)+Number(data.gcashBalance||0)));
     capitalExpensesTotal.textContent = money(data.totalExpenses || 0);
-    capitalStatus.textContent = 'Capital, earnings, and withdrawals are tracked separately.';
+    capitalStatus.textContent = 'Capital and available earnings are tracked separately.';
     // Persist the latest complete on-screen state after successful mutations.
     setTimeout(saveLocalTrackerCache, 0);
 
@@ -4179,6 +4203,7 @@ label[for="capitalSaripayInput"],
       capitalData.saripayBalance = Number(tx.newSaripay);
       capitalData.grossFees = Number(capitalData.grossFees || 0) + Number(tx.fee || 0);
       capitalData.netEarnings = Number(capitalData.netEarnings || 0) + Number(tx.fee || 0);
+      capitalData.availableEarnings = Number(capitalData.availableEarnings || 0) + Number(tx.fee || 0);
       capitalData.expectedTotalMoney = Number(capitalData.expectedTotalMoney || 0) + Number(tx.fee || 0);
       renderCapital(capitalData);
     }
@@ -4298,8 +4323,10 @@ label[for="capitalSaripayInput"],
       capitalData.saripayBalance = Number(tx.newSaripay ?? capitalData.saripayBalance ?? 0);
       capitalData.grossFees = Number(capitalData.grossFees || 0) + Number(tx.fee || 0);
       capitalData.netEarnings = Number(capitalData.netEarnings || 0) + Number(tx.fee || 0);
+      capitalData.availableEarnings = Number(capitalData.availableEarnings || 0) + Number(tx.fee || 0);
       capitalData.expectedTotalMoney = Number(capitalData.expectedTotalMoney || 0) + Number(tx.fee || 0);
       netEarnings.textContent = money(capitalData.netEarnings);
+      if(availableEarningsEl) availableEarningsEl.textContent = money(capitalData.availableEarnings);
       expectedTotalMoney.textContent = money(capitalData.expectedTotalMoney);
       saveLocalTrackerCache();
     }
