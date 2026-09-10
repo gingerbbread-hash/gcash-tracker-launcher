@@ -3149,6 +3149,7 @@ label[for="capitalSaripayInput"],
     const combined=[];
     capitalMovements.forEach(m=>combined.push({kind:'capital',date:m.date||'',timestamp:m.timestamp||m.date||'',data:m}));
     mayaTransfers.forEach(t=>combined.push({kind:'transfer',date:t.date||'',timestamp:t.timestamp||t.date||'',data:t}));
+    expenses.forEach(x=>combined.push({kind:'expense',date:x.date||'',timestamp:x.timestamp||x.date||'',data:x}));
     combined.sort((a,b)=>String(b.timestamp||b.date).localeCompare(String(a.timestamp||a.date)));
     capitalActivityEmpty.style.display=combined.length?'none':'block';
     combined.forEach(row=>{
@@ -3157,6 +3158,9 @@ label[for="capitalSaripayInput"],
       if(row.kind==='transfer'){
         const t=row.data;
         item.innerHTML=`<div class="capital-activity-top"><div class="capital-activity-type">Transfer Money</div><div class="capital-activity-amount">${money(t.amount)}</div></div><div class="capital-activity-meta">${escapeHtml(t.fromWallet||'')} → ${escapeHtml(t.toWallet||'')} · ${escapeHtml(t.date||'')}</div><div class="capital-activity-remove"><button type="button" class="link-btn" data-wallet-transfer-id="${escapeHtml(t.id)}">Reverse</button></div>`;
+      }else if(row.kind==='expense'){
+        const x=row.data;
+        item.innerHTML=`<div class="capital-activity-top"><div class="capital-activity-type">Withdraw Earnings</div><div class="capital-activity-amount" style="color:#b42318">−${money(x.amount)}</div></div><div class="capital-activity-meta">${escapeHtml(x.expense||'Expense')} · ${escapeHtml(x.paidFrom==='GCash'?'GCash':x.paidFrom==='Maya'?'Maya':'Cash on Hand')} · ${escapeHtml(x.date||'')}</div>${x.note?`<div class="capital-activity-note">${escapeHtml(x.note)}</div>`:''}<div class="capital-activity-remove"><button type="button" class="link-btn" data-expense-id="${escapeHtml(x.id)}">Reverse</button></div>`;
       }else{
         const m=row.data;
         const sign=m.type==='ADD_CAPITAL'?'+':'−';
@@ -3278,6 +3282,22 @@ label[for="capitalSaripayInput"],
   });
 
   if(capitalActivityList) capitalActivityList.addEventListener('click',e=>{
+    const expenseBtn=e.target.closest('[data-expense-id]');
+    if(expenseBtn){
+      const id=expenseBtn.dataset.expenseId;
+      if(!confirm('Reverse this old expense / withdrawn earnings record?')) return;
+      google.script.run
+        .withSuccessHandler(()=>{
+          expenses=expenses.filter(x=>String(x.id)!==String(id));
+          renderExpenses();
+          renderCapitalActivity();
+          loadCapital();
+          saveLocalTrackerCache();
+        })
+        .withFailureHandler(err=>alert((err&&err.message)||'Could not reverse record.'))
+        .deleteExpenseBySession(getSessionToken(),id);
+      return;
+    }
     const transferBtn=e.target.closest('[data-wallet-transfer-id]');
     if(transferBtn){
       const id=transferBtn.dataset.walletTransferId;
@@ -5209,5 +5229,45 @@ window.CASH_COUNTER_URL = 'https://script.google.com/macros/s/AKfycbxvG-9yAjMFBT
 })();
 </script>
 
+
+<style id="wallet-cash-transfer-colors">
+/* Distinct Wallets colors: Cash on Hand = warm amber, Transfer Money = soft purple */
+#cashOutAvailable{
+  background:#fff5df !important;
+  border-color:#f2c66d !important;
+  color:#8a5200 !important;
+}
+#cashOutAvailable *{color:#8a5200 !important;}
+#mayaTransferBtn{
+  background:#f3edff !important;
+  border-color:#c7afff !important;
+  color:#6436b8 !important;
+}
+#mayaTransferBtn *{color:#6436b8 !important;}
+</style>
+
+<script id="wallet-cash-transfer-color-fix">
+(function(){
+  function applyWalletColors(){
+    const cash=document.getElementById('cashOutAvailable')?.closest('.capital-balance');
+    const transfer=document.getElementById('mayaTransferBtn');
+    if(cash){
+      cash.style.setProperty('background','#fff5df','important');
+      cash.style.setProperty('border-color','#f2c66d','important');
+      cash.style.setProperty('color','#8a5200','important');
+      cash.querySelectorAll('*').forEach(el=>el.style.setProperty('color','#8a5200','important'));
+    }
+    if(transfer){
+      transfer.style.setProperty('background','#f3edff','important');
+      transfer.style.setProperty('border-color','#c7afff','important');
+      transfer.style.setProperty('color','#6436b8','important');
+      transfer.querySelectorAll('*').forEach(el=>el.style.setProperty('color','#6436b8','important'));
+    }
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',applyWalletColors); else applyWalletColors();
+  window.addEventListener('load',applyWalletColors);
+  setTimeout(applyWalletColors,500);
+})();
+</script>
 </body>
 </html>
