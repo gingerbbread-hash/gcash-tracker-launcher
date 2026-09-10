@@ -5295,9 +5295,6 @@ document.addEventListener('DOMContentLoaded', function(){
 
 <script id="cash-counter-latest-status-script">
 (function(){
-  const badge = document.getElementById('cashCounterLatestBadge');
-  const details = document.getElementById('cashCounterLatestDetails');
-
   function money(v){
     return '₱' + Number(v || 0).toLocaleString('en-PH', {
       minimumFractionDigits:2,
@@ -5305,80 +5302,94 @@ document.addEventListener('DOMContentLoaded', function(){
     });
   }
 
-  function paint(data){
-    if(!badge || !details) return;
+  function paintHomeCashCheck(data){
+    const card = document.getElementById('homeBalanceCheck');
+    const value = document.getElementById('homeBalanceCheckValue');
+    const note = document.getElementById('homeBalanceCheckNote');
+    if(!card || !value || !note) return;
+
+    card.classList.remove('warn','matched');
 
     if(!data || !data.available){
-      badge.textContent = 'NO COUNT';
-      badge.style.background = '#eef2f6';
-      badge.style.color = '#344054';
-      details.textContent = 'No saved cash count yet.';
+      value.textContent = 'NO COUNT';
+      note.textContent = 'No saved Cash Counter check yet.';
       return;
     }
 
     const status = String(data.status || 'MATCHED').toUpperCase();
-    badge.textContent = status;
+    const physical = money(data.physicalCash);
+    const tracker = money(data.trackerCashOnHand);
+    const diff = Number(data.difference || 0);
 
     if(status === 'MATCHED'){
-      badge.style.background = '#ecfdf3';
-      badge.style.color = '#027a48';
-    }else if(status === 'SHORT'){
-      badge.style.background = '#fef3f2';
-      badge.style.color = '#b42318';
-    }else{
-      badge.style.background = '#fffaeb';
-      badge.style.color = '#b54708';
+      card.classList.add('matched');
+      value.textContent = 'BALANCES OK';
+      note.textContent = 'Cash Counter ' + physical + ' matches Cash on Hand ' + tracker + '.';
+      return;
     }
 
-    let extra = '';
-    const diff = Number(data.difference || 0);
-    if(Math.abs(diff) > 0.01){
-      extra = `<br>Difference: <strong>${diff < 0 ? '-' : '+'}${money(Math.abs(diff))}</strong>`;
-    }
+    card.classList.add('warn');
+    value.textContent = status === 'SHORT' ? 'SHORT' : 'OVER';
+    note.textContent =
+      'Cash Counter ' + physical +
+      ' · Cash on Hand ' + tracker +
+      ' · Difference ' + (diff < 0 ? '-' : '+') + money(Math.abs(diff));
+  }
 
-    details.innerHTML =
-      `Physical Cash: <strong>${money(data.physicalCash)}</strong><br>` +
-      `Tracker Cash: <strong>${money(data.trackerCashOnHand)}</strong>` +
-      extra +
-      (data.date ? `<br>Checked: ${data.date}` : '');
+  function showUnavailable(err){
+    const card = document.getElementById('homeBalanceCheck');
+    const value = document.getElementById('homeBalanceCheckValue');
+    const note = document.getElementById('homeBalanceCheckNote');
+    if(!card || !value || !note) return;
+    card.classList.remove('warn','matched');
+    value.textContent = 'UNAVAILABLE';
+    note.textContent = (err && err.message)
+      ? err.message
+      : 'Could not read Cash Counter status.';
   }
 
   function loadCashCounterLatestStatus(){
-    if(!window.google || !google.script || !google.script.run) return;
+    const value = document.getElementById('homeBalanceCheckValue');
+    const note = document.getElementById('homeBalanceCheckNote');
+    if(value) value.textContent = 'CHECKING';
+    if(note) note.textContent = 'Comparing Cash Counter with Cash on Hand.';
 
-    if(badge) badge.textContent = 'Loading…';
-    if(details) details.textContent = 'Checking latest cash count…';
+    if(!window.google || !google.script || !google.script.run){
+      showUnavailable(new Error('Tracker connection is not ready.'));
+      return;
+    }
 
     google.script.run
-      .withSuccessHandler(paint)
-      .withFailureHandler(function(err){
-        if(badge){
-          badge.textContent = 'UNAVAILABLE';
-          badge.style.background = '#eef2f6';
-          badge.style.color = '#344054';
-        }
-        if(details){
-          details.textContent = (err && err.message)
-            ? err.message
-            : 'Could not read Cash Counter status.';
-        }
-      })
+      .withSuccessHandler(paintHomeCashCheck)
+      .withFailureHandler(showUnavailable)
       .getCashCounterLatestStatusBySession('LOCAL_NO_LOGIN');
   }
 
   window.loadCashCounterLatestStatus = loadCashCounterLatestStatus;
 
   if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', loadCashCounterLatestStatus, {once:true});
+    document.addEventListener('DOMContentLoaded', function(){
+      setTimeout(loadCashCounterLatestStatus, 150);
+    }, {once:true});
   }else{
-    loadCashCounterLatestStatus();
+    setTimeout(loadCashCounterLatestStatus, 150);
   }
 
-  // Refresh whenever Wallets is opened.
+  // Refresh after opening Home or Cash Counter.
   document.addEventListener('click', function(e){
-    const btn = e.target.closest('[data-main-tab="wallets"]');
-    if(btn) setTimeout(loadCashCounterLatestStatus, 100);
+    const btn = e.target.closest('[data-main-tab]');
+    if(!btn) return;
+    const tab = btn.getAttribute('data-main-tab');
+    if(tab === 'home'){
+      setTimeout(loadCashCounterLatestStatus, 100);
+    }else if(tab === 'cashcounter'){
+      // Refresh Home status after the user has had time to make a cash count/correction.
+      setTimeout(loadCashCounterLatestStatus, 1200);
+    }
   });
+
+  // Periodically refresh the small Home check.
+  setInterval(loadCashCounterLatestStatus, 30000);
 })();
 </script>
 
@@ -5495,28 +5506,10 @@ document.addEventListener('DOMContentLoaded', function(){
     clearTimeout(window.__gcashSavedTimer);
     window.__gcashSavedTimer=setTimeout(()=>el.classList.remove('show'),1800);
   }
-
-  // Cash Counter's existing latest-status script remains the source of truth.
+  // Cash Balance Check is now painted directly by loadCashCounterLatestStatus().
   function mirrorCashCheck(){
-    const badge=document.getElementById('cashCounterLatestBadge');
-    const details=document.getElementById('cashCounterLatestDetails');
-    const card=document.getElementById('homeBalanceCheck');
-    const value=document.getElementById('homeBalanceCheckValue');
-    const note=document.getElementById('homeBalanceCheckNote');
-    if(!badge||!card||!value||!note)return;
-    const s=String(badge.textContent||'').trim().toUpperCase();
-    card.classList.remove('warn','matched');
-    if(s==='MATCHED'){
-      card.classList.add('matched');
-      value.textContent='BALANCES OK';
-      note.textContent=details?.textContent || 'Cash Counter matches Cash on Hand.';
-    }else if(s==='SHORT'||s==='OVER'){
-      card.classList.add('warn');
-      value.textContent=s;
-      note.textContent=details?.textContent || 'Cash Counter and Cash on Hand have a difference.';
-    }else{
-      value.textContent=s || 'NO COUNT';
-      note.textContent=details?.textContent || 'Open Cash Counter to check physical cash.';
+    if(typeof window.loadCashCounterLatestStatus === 'function'){
+      window.loadCashCounterLatestStatus();
     }
   }
 
