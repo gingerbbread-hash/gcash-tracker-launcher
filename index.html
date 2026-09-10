@@ -1894,6 +1894,51 @@ label[for="capitalSaripayInput"],
 }
 </style>
 
+
+<style id="capital-actions-v1">
+.capital-earnings-extra{
+  display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px
+}
+.capital-available-row,.capital-withdrawn-row{
+  min-width:0;padding:10px;border-radius:13px;display:flex;flex-direction:column;gap:4px
+}
+.capital-available-row{background:#ecfdf3;border:1px solid #abefc6;color:#067647}
+.capital-withdrawn-row{background:#f8fafc;border:1px solid #d0d5dd;color:#475467}
+.capital-earnings-extra span{font-size:10px;font-weight:850}
+.capital-earnings-extra strong{font-size:16px;font-weight:950}
+.capital-action-grid{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px
+}
+.capital-action-btn{
+  min-height:46px;border-radius:12px;font-size:11px;font-weight:900;padding:7px 5px;cursor:pointer
+}
+.capital-action-btn.add{background:#ecfdf3;border:1px solid #abefc6;color:#067647}
+.capital-action-btn.withdraw-capital{background:#fff7ed;border:1px solid #fed7aa;color:#c2410c}
+.capital-action-btn.withdraw-earnings{background:#fef3f2;border:1px solid #fecdca;color:#b42318}
+.capital-wallet-choice-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.capital-wallet-choice{
+  min-height:46px;border:1px solid var(--border);border-radius:12px;background:#f8fafc;
+  color:#475467;font-size:11px;font-weight:900;padding:6px 4px;cursor:pointer
+}
+.capital-wallet-choice.active{background:#eaf3ff;border-color:#8dbbff;color:#0b63ce}
+.capital-action-available{
+  margin-top:10px;padding:9px 10px;border-radius:11px;background:#f8fafc;
+  color:#667085;font-size:11px;line-height:1.45
+}
+.capital-activity-item{border:1px solid var(--border);border-radius:13px;padding:10px;background:#fff;margin-top:7px}
+.capital-activity-top{display:flex;justify-content:space-between;gap:10px}
+.capital-activity-type{font-size:12px;font-weight:900}
+.capital-activity-amount{font-size:14px;font-weight:950;white-space:nowrap}
+.capital-activity-meta{font-size:10px;color:var(--muted);margin-top:3px}
+.capital-activity-note{font-size:11px;color:#475467;margin-top:5px}
+.capital-activity-remove{margin-top:6px;text-align:right}
+@media(max-width:380px){
+  .capital-action-grid{gap:4px}
+  .capital-action-btn{font-size:10px;padding:6px 3px}
+  .capital-wallet-choice{font-size:10px}
+}
+</style>
+
 </head>
 <body>
 <main class="app">
@@ -2044,7 +2089,7 @@ label[for="capitalSaripayInput"],
     <button type="button" id="saripayTransferBtn" class="saripay-transfer-btn">Transfer Saripay → GCash</button>
     <div class="capital-summary-row capital-summary-three">
       <div class="capital-total-row">
-        <span>Base Capital</span>
+        <span>Current Capital</span>
         <strong id="totalCapital">₱0.00</strong>
       </div>
       <div class="capital-earnings-row">
@@ -2056,9 +2101,29 @@ label[for="capitalSaripayInput"],
         <strong id="capitalExpensesTotal">₱0.00</strong>
       </div>
     </div>
+    <div class="capital-earnings-extra">
+      <div class="capital-available-row">
+        <span>Available Earnings</span>
+        <strong id="availableEarnings">₱0.00</strong>
+      </div>
+      <div class="capital-withdrawn-row">
+        <span>Withdrawn Earnings</span>
+        <strong id="withdrawnEarnings">₱0.00</strong>
+      </div>
+    </div>
+    <div class="capital-action-grid">
+      <button type="button" id="addCapitalActionBtn" class="capital-action-btn add">Add Capital</button>
+      <button type="button" id="withdrawCapitalActionBtn" class="capital-action-btn withdraw-capital">Withdraw Capital</button>
+      <button type="button" id="withdrawEarningsActionBtn" class="capital-action-btn withdraw-earnings">Withdraw Earnings</button>
+    </div>
     <div class="expected-total-row">
       <span>Expected Total Money</span>
       <strong id="expectedTotalMoney">₱0.00</strong>
+    </div>
+    <button type="button" id="capitalActivityToggle" class="expense-history-toggle">View Capital Activity</button>
+    <div id="capitalActivitySection" class="expense-history-section" style="display:none">
+      <div id="capitalActivityEmpty" class="history-empty">No capital activity yet.</div>
+      <div id="capitalActivityList" class="expense-history-list"></div>
     </div>
     <button type="button" id="expenseHistoryToggle" class="expense-history-toggle">View Expense History</button>
     <div id="expenseHistorySection" class="expense-history-section" style="display:none">
@@ -2151,6 +2216,37 @@ label[for="capitalSaripayInput"],
 </nav>
 
 
+
+
+<div id="capitalActionModal" class="capital-modal" aria-hidden="true">
+  <div class="capital-modal-card" role="dialog" aria-modal="true" aria-labelledby="capitalActionTitle">
+    <div id="capitalActionTitle" class="capital-modal-title">Add Capital</div>
+    <div id="capitalActionHelp" class="capital-modal-help">Choose where the money goes.</div>
+
+    <label class="label" for="capitalActionAmount">Amount</label>
+    <input id="capitalActionAmount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="Enter amount">
+
+    <div class="field-gap"></div>
+    <label class="label">Wallet</label>
+    <div class="capital-wallet-choice-row">
+      <button type="button" class="capital-wallet-choice active" data-capital-wallet="Cash on Hand">Cash on Hand</button>
+      <button type="button" class="capital-wallet-choice" data-capital-wallet="GCash">GCash</button>
+      <button type="button" class="capital-wallet-choice" data-capital-wallet="Maya">Maya</button>
+    </div>
+
+    <div class="field-gap"></div>
+    <label class="label" for="capitalActionNote">Note <span style="font-weight:500;color:#98a2b3">(optional)</span></label>
+    <input id="capitalActionNote" type="text" maxlength="120" placeholder="Reason or note">
+
+    <div id="capitalActionAvailable" class="capital-action-available"></div>
+    <div id="capitalActionStatus" class="status"></div>
+
+    <div class="capital-modal-actions">
+      <button type="button" id="saveCapitalActionBtn" class="capital-save">Save</button>
+      <button type="button" id="cancelCapitalActionBtn" class="capital-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
 
 <div id="deleteTxModal" class="delete-tx-modal" aria-hidden="true">
   <div class="delete-tx-card" role="dialog" aria-modal="true" aria-labelledby="deleteTxTitle">
@@ -2590,6 +2686,15 @@ label[for="capitalSaripayInput"],
   const mayaDirGcashToMaya=$('mayaDirGcashToMaya'), mayaDirMayaToGcash=$('mayaDirMayaToGcash'), cancelMayaTransferBtn=$('cancelMayaTransferBtn'), saveMayaTransferBtn=$('saveMayaTransferBtn');
   const mayaTransferHistoryToggle=$('mayaTransferHistoryToggle'), mayaTransferHistorySection=$('mayaTransferHistorySection'), mayaTransferHistoryEmpty=$('mayaTransferHistoryEmpty'), mayaTransferHistoryList=$('mayaTransferHistoryList');
   let mayaTransferDirection='GCashToMaya', mayaTransfers=[];
+  let capitalMovements=[];
+  const availableEarningsEl=$('availableEarnings'), withdrawnEarningsEl=$('withdrawnEarnings');
+  const addCapitalActionBtn=$('addCapitalActionBtn'), withdrawCapitalActionBtn=$('withdrawCapitalActionBtn'), withdrawEarningsActionBtn=$('withdrawEarningsActionBtn');
+  const capitalActionModal=$('capitalActionModal'), capitalActionTitle=$('capitalActionTitle'), capitalActionHelp=$('capitalActionHelp');
+  const capitalActionAmount=$('capitalActionAmount'), capitalActionNote=$('capitalActionNote'), capitalActionAvailable=$('capitalActionAvailable'), capitalActionStatus=$('capitalActionStatus');
+  const saveCapitalActionBtn=$('saveCapitalActionBtn'), cancelCapitalActionBtn=$('cancelCapitalActionBtn');
+  const capitalActivityToggle=$('capitalActivityToggle'), capitalActivitySection=$('capitalActivitySection'), capitalActivityEmpty=$('capitalActivityEmpty'), capitalActivityList=$('capitalActivityList');
+  const capitalWalletChoices=[...document.querySelectorAll('[data-capital-wallet]')];
+  let capitalActionType='ADD_CAPITAL', capitalActionWallet='Cash on Hand';
   const saripayAvailable = $('saripayAvailable');
   const saripayTransferBtn = $('saripayTransferBtn');
   const saripayTransferModal = $('saripayTransferModal');
@@ -2886,6 +2991,8 @@ label[for="capitalSaripayInput"],
       saripayAvailable.textContent = money(0);
       totalCapital.textContent = money(0);
       netEarnings.textContent = money(0);
+      if(availableEarningsEl) availableEarningsEl.textContent = money(0);
+      if(withdrawnEarningsEl) withdrawnEarningsEl.textContent = money(0);
       expectedTotalMoney.textContent = money(0);
       capitalExpensesTotal.textContent = money(0);
       capitalStatus.textContent = unlocked ? 'Set your current balances to start monitoring.' : 'Loading your balances…';
@@ -2898,11 +3005,13 @@ label[for="capitalSaripayInput"],
     cashInAvailable.textContent = money(data.gcashBalance);
     mayaAvailable.textContent=money(data.mayaBalance||0); if(homeMayaBalance)homeMayaBalance.textContent=money(data.mayaBalance||0);
     saripayAvailable.textContent = money(data.saripayBalance || 0);
-    totalCapital.textContent = money(data.baseCapital ?? data.totalCapital);
+    totalCapital.textContent = money(data.currentCapital ?? data.totalCapital ?? data.baseCapital);
     netEarnings.textContent = money(data.netEarnings || 0);
+    if(availableEarningsEl) availableEarningsEl.textContent = money(data.availableEarnings ?? data.netEarnings ?? 0);
+    if(withdrawnEarningsEl) withdrawnEarningsEl.textContent = money(data.withdrawnEarnings || 0);
     expectedTotalMoney.textContent = money(data.expectedTotalMoney ?? (Number(data.cashOnHand||0)+Number(data.gcashBalance||0)));
     capitalExpensesTotal.textContent = money(data.totalExpenses || 0);
-    capitalStatus.textContent = 'Base capital is separate from earnings. Expenses reduce net earnings.';
+    capitalStatus.textContent = 'Capital, earnings, and withdrawals are tracked separately.';
     // Persist the latest complete on-screen state after successful mutations.
     setTimeout(saveLocalTrackerCache, 0);
 
@@ -3001,6 +3110,163 @@ label[for="capitalSaripayInput"],
       expenseHistoryList.appendChild(item);
     });
   }
+
+
+  function capitalActionLabel(type){
+    if(type==='ADD_CAPITAL') return 'Add Capital';
+    if(type==='WITHDRAW_CAPITAL') return 'Withdraw Capital';
+    return 'Withdraw Earnings';
+  }
+
+  function renderCapitalActivity(){
+    if(!capitalActivityList || !capitalActivityEmpty) return;
+    capitalActivityList.innerHTML='';
+    capitalActivityEmpty.style.display=capitalMovements.length?'none':'block';
+
+    capitalMovements.forEach(m=>{
+      const item=document.createElement('div');
+      item.className='capital-activity-item';
+      const sign=m.type==='ADD_CAPITAL'?'+':'−';
+      const amountColor=m.type==='ADD_CAPITAL'?'#067647':(m.type==='WITHDRAW_EARNINGS'?'#b42318':'#c2410c');
+      item.innerHTML=`
+        <div class="capital-activity-top">
+          <div class="capital-activity-type">${escapeHtml(capitalActionLabel(m.type))}</div>
+          <div class="capital-activity-amount" style="color:${amountColor}">${sign}${money(m.amount)}</div>
+        </div>
+        <div class="capital-activity-meta">${escapeHtml(m.wallet||'')} · ${escapeHtml(m.date||'')}</div>
+        ${m.note?`<div class="capital-activity-note">${escapeHtml(m.note)}</div>`:''}
+        <div class="capital-activity-remove"><button type="button" class="link-btn" data-capital-movement-id="${escapeHtml(m.id)}">Remove</button></div>`;
+      capitalActivityList.appendChild(item);
+    });
+  }
+
+  function setCapitalActionWallet(wallet){
+    capitalActionWallet = wallet;
+    capitalWalletChoices.forEach(btn=>btn.classList.toggle('active',btn.dataset.capitalWallet===wallet));
+    updateCapitalActionAvailable();
+  }
+
+  function updateCapitalActionAvailable(){
+    if(!capitalActionAvailable) return;
+    const c=capitalData||{};
+    const walletBalance=capitalActionWallet==='GCash'
+      ? Number(c.gcashBalance||0)
+      : capitalActionWallet==='Maya'
+        ? Number(c.mayaBalance||0)
+        : Number(c.cashOnHand||0);
+
+    if(capitalActionType==='ADD_CAPITAL'){
+      capitalActionAvailable.innerHTML='The amount will be added to <strong>'+escapeHtml(capitalActionWallet)+'</strong> and Current Capital.';
+    }else if(capitalActionType==='WITHDRAW_CAPITAL'){
+      capitalActionAvailable.innerHTML='Wallet balance: <strong>'+money(walletBalance)+'</strong><br>Current Capital: <strong>'+money(c.currentCapital ?? c.totalCapital ?? 0)+'</strong>';
+    }else{
+      capitalActionAvailable.innerHTML='Wallet balance: <strong>'+money(walletBalance)+'</strong><br>Available Earnings: <strong>'+money(c.availableEarnings ?? c.netEarnings ?? 0)+'</strong>';
+    }
+  }
+
+  function openCapitalAction(type){
+    if(!unlocked || !capitalData || !capitalData.initialized) return;
+    capitalActionType=type;
+    capitalActionAmount.value='';
+    capitalActionNote.value='';
+    capitalActionStatus.textContent='';
+    setCapitalActionWallet('Cash on Hand');
+
+    capitalActionTitle.textContent=capitalActionLabel(type);
+    capitalActionHelp.textContent=
+      type==='ADD_CAPITAL' ? 'Add new money to the business without counting it as earnings.' :
+      type==='WITHDRAW_CAPITAL' ? 'Take back part of your business capital without counting it as an expense.' :
+      'Take profit out for yourself without changing lifetime Net Earnings.';
+
+    saveCapitalActionBtn.textContent=capitalActionLabel(type);
+    capitalActionModal.classList.add('show');
+    capitalActionModal.style.display='flex';
+    capitalActionModal.setAttribute('aria-hidden','false');
+  }
+
+  function closeCapitalAction(){
+    capitalActionModal.classList.remove('show');
+    capitalActionModal.style.display='none';
+    capitalActionModal.setAttribute('aria-hidden','true');
+  }
+
+  function loadCapitalMovements(){
+    if(!unlocked) return;
+    google.script.run
+      .withSuccessHandler(data=>{
+        capitalMovements=data||[];
+        renderCapitalActivity();
+        saveLocalTrackerCache();
+      })
+      .withFailureHandler(()=>{})
+      .getCapitalMovementsBySession(getSessionToken());
+  }
+
+  if(addCapitalActionBtn) addCapitalActionBtn.addEventListener('click',()=>openCapitalAction('ADD_CAPITAL'));
+  if(withdrawCapitalActionBtn) withdrawCapitalActionBtn.addEventListener('click',()=>openCapitalAction('WITHDRAW_CAPITAL'));
+  if(withdrawEarningsActionBtn) withdrawEarningsActionBtn.addEventListener('click',()=>openCapitalAction('WITHDRAW_EARNINGS'));
+  if(cancelCapitalActionBtn) cancelCapitalActionBtn.addEventListener('click',closeCapitalAction);
+  if(capitalActionModal) capitalActionModal.addEventListener('click',e=>{if(e.target===capitalActionModal)closeCapitalAction();});
+  capitalWalletChoices.forEach(btn=>btn.addEventListener('click',()=>setCapitalActionWallet(btn.dataset.capitalWallet)));
+
+  if(capitalActivityToggle) capitalActivityToggle.addEventListener('click',()=>{
+    const open=capitalActivitySection.style.display!=='none';
+    capitalActivitySection.style.display=open?'none':'block';
+    capitalActivityToggle.textContent=open?'View Capital Activity':'Hide Capital Activity';
+    if(!open) loadCapitalMovements();
+  });
+
+  if(saveCapitalActionBtn) saveCapitalActionBtn.addEventListener('click',()=>{
+    const amount=Number(capitalActionAmount.value);
+    if(!isFinite(amount)||amount<=0){
+      capitalActionStatus.textContent='Enter a valid amount.';
+      capitalActionStatus.className='status err';
+      return;
+    }
+
+    saveCapitalActionBtn.disabled=true;
+    capitalActionStatus.textContent='Saving…';
+    capitalActionStatus.className='status';
+
+    google.script.run
+      .withSuccessHandler(data=>{
+        saveCapitalActionBtn.disabled=false;
+        if(data&&data.movement) capitalMovements.unshift(data.movement);
+        if(data&&data.capital) renderCapital(data.capital);
+        renderCapitalActivity();
+        saveLocalTrackerCache();
+        closeCapitalAction();
+      })
+      .withFailureHandler(err=>{
+        saveCapitalActionBtn.disabled=false;
+        capitalActionStatus.textContent=(err&&err.message)||'Could not save.';
+        capitalActionStatus.className='status err';
+      })
+      .addCapitalMovementBySession(getSessionToken(),{
+        type:capitalActionType,
+        amount:amount,
+        wallet:capitalActionWallet,
+        note:capitalActionNote.value
+      });
+  });
+
+  if(capitalActivityList) capitalActivityList.addEventListener('click',e=>{
+    const btn=e.target.closest('[data-capital-movement-id]');
+    if(!btn) return;
+    const id=btn.dataset.capitalMovementId;
+    if(!confirm('Remove this capital activity and reverse its effect?')) return;
+
+    google.script.run
+      .withSuccessHandler(data=>{
+        capitalMovements=(data&&data.movements)||capitalMovements.filter(x=>String(x.id)!==String(id));
+        if(data&&data.capital) renderCapital(data.capital);
+        renderCapitalActivity();
+        saveLocalTrackerCache();
+      })
+      .withFailureHandler(err=>alert((err&&err.message)||'Could not remove capital activity.'))
+      .deleteCapitalMovementBySession(getSessionToken(),id);
+  });
+
 
   function escapeHtml(value){
     return String(value ?? '')
@@ -3327,6 +3593,7 @@ label[for="capitalSaripayInput"],
         transactions: Array.isArray(history) ? history : [],
         expenses: Array.isArray(expenses) ? expenses : [],
         transfers: Array.isArray(transfers) ? transfers : [],
+        capitalMovements: Array.isArray(capitalMovements) ? capitalMovements : [],
         capital: capitalData || null
       };
       localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(snapshot));
@@ -3342,6 +3609,7 @@ label[for="capitalSaripayInput"],
       history = Array.isArray(data.transactions) ? data.transactions : [];
       expenses = Array.isArray(data.expenses) ? data.expenses : [];
       transfers = Array.isArray(data.transfers) ? data.transfers : [];
+      capitalMovements = Array.isArray(data.capitalMovements) ? data.capitalMovements : [];
       capitalData = data.capital || null;
       unlocked = true;
 
@@ -3349,6 +3617,7 @@ label[for="capitalSaripayInput"],
       render();
       renderExpenses();
       renderCapital(capitalData);
+      renderCapitalActivity();
       setLockedView(false);
       showSync('Saved records loaded. Syncing…');
       return true;
@@ -3367,11 +3636,13 @@ label[for="capitalSaripayInput"],
         history=(data && data.transactions)||[];
         expenses=(data && data.expenses)||[];
         transfers=(data && data.transfers)||[];
+        capitalMovements=(data && data.capitalMovements)||[];
         capitalData=(data && data.capital)||null;
         unlocked=true;
         render();
         renderExpenses();
         renderCapital(capitalData);
+        renderCapitalActivity();
         saveLocalTrackerCache();
         setLockedView(false);
         showSync('Synced.',true);
@@ -3505,7 +3776,7 @@ label[for="capitalSaripayInput"],
     if(accountMenuBtn) accountMenuBtn.setAttribute('aria-expanded','false');
     clearSessionToken();
     unlocked=false;
-    history=[]; expenses=[]; capitalData=null;
+    history=[]; expenses=[]; capitalMovements=[]; capitalData=null;
     render(); renderExpenses(); renderCapital(null);
     setLockedView(true);
     showSync('Signing out…');
@@ -3538,6 +3809,7 @@ label[for="capitalSaripayInput"],
         claimLegacyBtn.disabled=false;
         history=(data && data.transactions)||[];
         expenses=(data && data.expenses)||[];
+        capitalMovements=(data && data.capitalMovements)||[];
         capitalData=(data && data.capital)||null;
         applySignedInUser((data && data.user)||{});
         render(); renderExpenses(); renderCapital(capitalData);
