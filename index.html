@@ -5296,101 +5296,108 @@ document.addEventListener('DOMContentLoaded', function(){
 
 <script id="cash-counter-latest-status-script">
 (function(){
+  let lastCashCounterStatus = null;
+
   function money(v){
-    return '₱' + Number(v || 0).toLocaleString('en-PH', {
+    return '₱' + Number(v || 0).toLocaleString('en-PH',{
       minimumFractionDigits:2,
       maximumFractionDigits:2
     });
   }
 
-  function paintHomeCashCheck(data){
-    const card = document.getElementById('homeBalanceCheck');
-    const value = document.getElementById('homeBalanceCheckValue');
-    const note = document.getElementById('homeBalanceCheckNote');
+  function getTrackerCashFromHome(){
+    const el=document.getElementById('cashOutAvailable');
+    if(!el) return null;
+    const txt=(el.textContent||'').replace(/[^\d.-]/g,'');
+    const n=Number(txt);
+    return isFinite(n)?n:null;
+  }
+
+  function paint(data){
+    const card=document.getElementById('homeBalanceCheck');
+    const value=document.getElementById('homeBalanceCheckValue');
+    const note=document.getElementById('homeBalanceCheckNote');
     if(!card || !value || !note) return;
 
     card.classList.remove('warn','matched');
 
-    if(!data || !data.available){
-      value.textContent = 'NO COUNT';
-      note.textContent = 'No saved Cash Counter check yet.';
+    if(!data || !isFinite(Number(data.physicalCash))){
+      value.textContent='NO COUNT';
+      note.textContent='Cash Counter has not loaded yet.';
       return;
     }
 
-    const status = String(data.status || 'MATCHED').toUpperCase();
-    const physical = money(data.physicalCash);
-    const tracker = money(data.trackerCashOnHand);
-    const diff = Number(data.difference || 0);
+    const physical=Number(data.physicalCash||0);
+    const trackerFromHome=getTrackerCashFromHome();
+    const tracker=trackerFromHome===null
+      ? Number(data.trackerCashOnHand||0)
+      : trackerFromHome;
+    const diff=physical-tracker;
 
-    if(status === 'MATCHED'){
+    if(Math.abs(diff)<=0.01){
       card.classList.add('matched');
-      value.textContent = 'BALANCES OK';
-      note.textContent = 'Cash Counter ' + physical + ' matches Cash on Hand ' + tracker + '.';
-      return;
+      value.textContent='BALANCES OK';
+      note.textContent='Cash Counter '+money(physical)+' matches Cash on Hand '+money(tracker)+'.';
+    }else{
+      card.classList.add('warn');
+      value.textContent=diff<0?'SHORT':'OVER';
+      note.textContent=
+        'Cash Counter '+money(physical)+
+        ' · Cash on Hand '+money(tracker)+
+        ' · Difference '+(diff<0?'-':'+')+money(Math.abs(diff));
+    }
+  }
+
+  function requestCashCounterStatus(){
+    const value=document.getElementById('homeBalanceCheckValue');
+    const note=document.getElementById('homeBalanceCheckNote');
+
+    if(lastCashCounterStatus){
+      paint(lastCashCounterStatus);
+    }else{
+      if(value) value.textContent='CHECKING';
+      if(note) note.textContent='Comparing Cash Counter with Cash on Hand.';
     }
 
-    card.classList.add('warn');
-    value.textContent = status === 'SHORT' ? 'SHORT' : 'OVER';
-    note.textContent =
-      'Cash Counter ' + physical +
-      ' · Cash on Hand ' + tracker +
-      ' · Difference ' + (diff < 0 ? '-' : '+') + money(Math.abs(diff));
-  }
-
-  function showUnavailable(err){
-    const card = document.getElementById('homeBalanceCheck');
-    const value = document.getElementById('homeBalanceCheckValue');
-    const note = document.getElementById('homeBalanceCheckNote');
-    if(!card || !value || !note) return;
-    card.classList.remove('warn','matched');
-    value.textContent = 'UNAVAILABLE';
-    note.textContent = (err && err.message)
-      ? err.message
-      : 'Could not read Cash Counter status.';
-  }
-
-  function loadCashCounterLatestStatus(){
-    const value = document.getElementById('homeBalanceCheckValue');
-    const note = document.getElementById('homeBalanceCheckNote');
-    if(value) value.textContent = 'CHECKING';
-    if(note) note.textContent = 'Comparing Cash Counter with Cash on Hand.';
-
-    if(!window.google || !google.script || !google.script.run){
-      showUnavailable(new Error('Tracker connection is not ready.'));
-      return;
+    const frame=document.getElementById('cashCounterFrame');
+    if(frame && frame.contentWindow){
+      try{
+        frame.contentWindow.postMessage({type:'GCASH_REQUEST_CASH_COUNTER_STATUS'},'*');
+      }catch(e){}
     }
-
-    google.script.run
-      .withSuccessHandler(paintHomeCashCheck)
-      .withFailureHandler(showUnavailable)
-      .getCashCounterLatestStatusBySession('LOCAL_NO_LOGIN');
   }
 
-  window.loadCashCounterLatestStatus = loadCashCounterLatestStatus;
+  window.addEventListener('message',function(e){
+    const d=e && e.data;
+    if(!d || d.type!=='GCASH_CASH_COUNTER_STATUS') return;
+    lastCashCounterStatus=d;
+    paint(d);
+  });
 
-  if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', function(){
-      setTimeout(loadCashCounterLatestStatus, 150);
-    }, {once:true});
+  window.loadCashCounterLatestStatus=requestCashCounterStatus;
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',function(){
+      setTimeout(requestCashCounterStatus,300);
+      setTimeout(requestCashCounterStatus,1200);
+    },{once:true});
   }else{
-    setTimeout(loadCashCounterLatestStatus, 150);
+    setTimeout(requestCashCounterStatus,300);
   }
 
-  // Refresh after opening Home or Cash Counter.
-  document.addEventListener('click', function(e){
-    const btn = e.target.closest('[data-main-tab]');
+  document.addEventListener('click',function(e){
+    const btn=e.target.closest('[data-main-tab]');
     if(!btn) return;
-    const tab = btn.getAttribute('data-main-tab');
-    if(tab === 'home'){
-      setTimeout(loadCashCounterLatestStatus, 100);
-    }else if(tab === 'cashcounter'){
-      // Refresh Home status after the user has had time to make a cash count/correction.
-      setTimeout(loadCashCounterLatestStatus, 1200);
+    const tab=btn.getAttribute('data-main-tab');
+    if(tab==='home'){
+      setTimeout(requestCashCounterStatus,150);
+    }else if(tab==='cashcounter'){
+      setTimeout(requestCashCounterStatus,500);
     }
   });
 
-  // Periodically refresh the small Home check.
-  setInterval(loadCashCounterLatestStatus, 30000);
+  // No recurring Google Sheets request. Just ask the already-loaded Cash Counter tab.
+  setInterval(requestCashCounterStatus,30000);
 })();
 </script>
 
