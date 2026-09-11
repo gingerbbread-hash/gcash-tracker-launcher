@@ -1324,9 +1324,6 @@ body.app-locked #historyToggle{
     .balance-check.warn .balance-check-value{color:#b42318}
     .balance-check.no-count .balance-check-value{color:#667085}
     .balance-check-note{margin-top:3px;font-size:9px;color:#667085;line-height:1.3}
-    .tx-confirm-strip{display:none;margin:0 0 8px;border:1px solid #bfd8ff;background:#f4f8ff;border-radius:12px;padding:9px 10px;font-size:11px;line-height:1.4}
-    .tx-confirm-strip.show{display:block}
-    .tx-confirm-strip strong{color:#073b8c}
     .saved-flash{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(18px);z-index:25000;opacity:0;pointer-events:none;transition:.2s ease;background:#101828;color:#fff;border-radius:999px;padding:10px 15px;font-size:12px;font-weight:900;box-shadow:0 10px 30px rgba(16,24,40,.24);white-space:nowrap}
     .saved-flash.show{opacity:1;transform:translateX(-50%) translateY(0)}
     .wallet-health-note{margin:8px 0 0;padding:8px 10px;border-radius:11px;background:#f8fafc;border:1px solid var(--border);font-size:10px;color:#667085;line-height:1.4}
@@ -1369,17 +1366,6 @@ body.app-locked #historyToggle{
       border-color:#fecdd3 !important;
     }
     .home-wallet-check.warn strong{color:#b42318 !important}
-
-
-    .tx-confirm-strip{
-      border-width:2px !important;
-      padding:11px 12px !important;
-      font-size:12px !important;
-    }
-    .tx-confirm-main{font-size:13px;font-weight:900;line-height:1.35}
-    .tx-confirm-change{margin-top:7px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:7px;border-top:1px solid #d6e4ff}
-    .tx-confirm-change span{font-size:11px;font-weight:850;color:#475467}
-    .tx-confirm-change strong{font-size:22px !important;color:#7a1fa2 !important;line-height:1}
 
 </style>
 
@@ -1588,7 +1574,7 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
 
 .bottom-tab-nav{
   position:fixed;left:0;right:0;bottom:0;z-index:15000;
-  display:grid;grid-template-columns:repeat(3,1fr);gap:5px;
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;
   padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));
   background:rgba(255,255,255,.97);border-top:1px solid var(--border);
   backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)
@@ -3611,6 +3597,28 @@ label[for="capitalSaripayInput"],
 }
 </style>
 
+
+<style id="four-tabs-one-row-fix">
+.bottom-tab-nav{
+  grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+}
+.bottom-tab-btn{
+  min-width:0 !important;
+  width:auto !important;
+  padding-left:2px !important;
+  padding-right:2px !important;
+  white-space:nowrap !important;
+}
+@media(max-width:600px){
+  .bottom-tab-btn{
+    font-size:9px !important;
+  }
+  .bottom-tab-btn .tab-icon{
+    font-size:17px !important;
+  }
+}
+</style>
+
 </head>
 <body>
 <main class="app">
@@ -3915,7 +3923,7 @@ label[for="capitalSaripayInput"],
       </select>
       <div class="field-gap"></div>
       <div id="status" class="status"></div>
-      <div id="txConfirmStrip" class="tx-confirm-strip"></div>
+      
 <div class="transaction-action-row">
         <button type="button" id="deductToggleBtn" class="action-deduct">Deduct Fee</button>
         <button class="action-record" type="submit">Record Transaction</button>
@@ -7048,29 +7056,6 @@ document.addEventListener('DOMContentLoaded', function(){
     if(dateEl) dateEl.textContent=new Intl.DateTimeFormat('en-PH',{month:'short',day:'numeric',year:'numeric'}).format(new Date());
   }
 
-  function refreshConfirm(){
-    const box=document.getElementById('txConfirmStrip');
-    const amount=document.getElementById('amount');
-    const cash=document.getElementById('cashReceived');
-    const feeEl=document.getElementById('fee');
-    const totalEl=document.getElementById('total');
-    const changeEl=document.getElementById('change');
-    const typeEl=document.getElementById('txType');
-    if(!box || !amount) return;
-    const a=Number(amount.value||0);
-    if(!(a>0)){box.classList.remove('show');box.innerHTML='';return}
-    const type=(typeEl && typeEl.value) ? typeEl.value : 'Transaction';
-    const feeText=feeEl ? feeEl.textContent : '₱0.00';
-    const totalText=totalEl ? totalEl.textContent : peso(a);
-    const changeText=changeEl ? changeEl.textContent : '₱0.00';
-    const cashValue=Number(cash?.value||0);
-    let main='<strong>'+type+'</strong> · Amount '+peso(a)+' · Fee '+feeText+' · Total '+totalText;
-    if(cashValue>0) main='Customer cash '+peso(cashValue)+' → '+main;
-    box.innerHTML='<div class="tx-confirm-main">'+main+'</div>'+
-      '<div class="tx-confirm-change"><span>CHANGE</span><strong>'+changeText+'</strong></div>';
-    box.classList.add('show');
-  }
-
 
   function flashSaved(){
     const el=document.getElementById('savedFlash');
@@ -7116,14 +7101,7 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   document.addEventListener('DOMContentLoaded',()=>{
-    refreshToday(); refreshConfirm(); mirrorCashCheck(); addHistorySummary(); refreshHistorySummary();
-    ['amount','cashReceived'].forEach(id=>document.getElementById(id)?.addEventListener('input',()=>setTimeout(refreshConfirm,0)));
-    ['fee','total','change'].forEach(id=>{
-      const el=document.getElementById(id);
-      if(el)new MutationObserver(refreshConfirm).observe(el,{subtree:true,childList:true,characterData:true});
-    });
-    document.getElementById('deductBtn')?.addEventListener('click',()=>setTimeout(refreshConfirm,0));
-    document.getElementById('recordBtn')?.addEventListener('click',()=>setTimeout(refreshConfirm,0));
+    refreshToday(); mirrorCashCheck(); addHistorySummary(); refreshHistorySummary();
 
     const cc=document.getElementById('cashCounterLatestCard');
     if(cc)new MutationObserver(mirrorCashCheck).observe(cc,{subtree:true,childList:true,characterData:true});
@@ -7139,7 +7117,7 @@ document.addEventListener('DOMContentLoaded', function(){
       refreshToday();
     }).observe(sync,{subtree:true,childList:true,characterData:true});
 
-    setInterval(()=>{refreshToday();refreshConfirm();refreshHistorySummary()},3000);
+    setInterval(()=>{refreshToday();refreshHistorySummary()},3000);
   });
 })();
 </script>
