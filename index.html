@@ -4482,6 +4482,7 @@ label[for="capitalSaripayInput"],
   const recordTransactionBtn = form ? form.querySelector('.action-record') : null;
 
   let history = [];
+  window.__gcashTransactions = history;
   let selectedPeriod = 'today';
   let selectedTypeFilter = 'all';
   let selectedSpecificDate = '';
@@ -5403,6 +5404,7 @@ label[for="capitalSaripayInput"],
 
       const data = JSON.parse(raw);
       history = Array.isArray(data.transactions) ? data.transactions : [];
+      window.__gcashTransactions = history;
       expenses = Array.isArray(data.expenses) ? data.expenses : [];
       transfers = Array.isArray(data.transfers) ? data.transfers : [];
       capitalMovements = Array.isArray(data.capitalMovements) ? data.capitalMovements : [];
@@ -5430,6 +5432,7 @@ label[for="capitalSaripayInput"],
     google.script.run
       .withSuccessHandler(data=>{
         history=(data && data.transactions)||[];
+        window.__gcashTransactions = history;
         expenses=(data && data.expenses)||[];
         transfers=(data && data.transfers)||[];
         capitalMovements=(data && data.capitalMovements)||[];
@@ -5572,7 +5575,7 @@ label[for="capitalSaripayInput"],
     if(accountMenuBtn) accountMenuBtn.setAttribute('aria-expanded','false');
     clearSessionToken();
     unlocked=false;
-    history=[]; expenses=[]; capitalMovements=[]; capitalData=null;
+    history=[]; window.__gcashTransactions = history; expenses=[]; capitalMovements=[]; capitalData=null;
     render(); renderExpenses(); renderCapital(null);
     setLockedView(true);
     showSync('Signing out…');
@@ -5604,6 +5607,7 @@ label[for="capitalSaripayInput"],
       .withSuccessHandler(data=>{
         claimLegacyBtn.disabled=false;
         history=(data && data.transactions)||[];
+        window.__gcashTransactions = history;
         expenses=(data && data.expenses)||[];
         capitalMovements=(data && data.capitalMovements)||[];
         capitalData=(data && data.capital)||null;
@@ -5956,6 +5960,7 @@ label[for="capitalSaripayInput"],
 
   function applyOptimisticTransaction(tx){
     history.unshift(tx);
+    window.__gcashTransactions = history;
 
     // Make the newly recorded transaction immediately visible in Calendar History.
     // This applies to both GCash and Maya Cash In/Cash Out.
@@ -6000,6 +6005,7 @@ label[for="capitalSaripayInput"],
         const idx = history.findIndex(x => String(x.id) === String(serverTx.id));
         if(idx >= 0) history[idx] = serverTx;
         else history.unshift(serverTx);
+        window.__gcashTransactions = history;
 
         q.shift();
         savePendingTxQueue(q);
@@ -6056,6 +6062,7 @@ label[for="capitalSaripayInput"],
       if(!id || history.some(x=>String(x.id)===id)) return;
       const tx=makeOptimisticTransaction(payload);
       history.unshift(tx);
+    window.__gcashTransactions = history;
     });
     render();
     setTimeout(processPendingTxQueue, 300);
@@ -6640,6 +6647,7 @@ label[for="capitalSaripayInput"],
           removeQueuedCashPieces(id);
 
           history = history.filter(x => String(x.id) !== String(id));
+          window.__gcashTransactions = history;
           render();
           loadCapital();
 
@@ -6678,6 +6686,7 @@ label[for="capitalSaripayInput"],
         savePendingTxQueue([]);
         savePendingCashPiecesQueue([]);
         history=[];
+        window.__gcashTransactions = history;
         render();
         loadCapital();
 
@@ -7037,7 +7046,7 @@ document.addEventListener('DOMContentLoaded', function(){
   function refreshToday(){
     let list=[];
     try{
-      if(typeof history !== 'undefined' && Array.isArray(history)) list=history;
+      if(Array.isArray(window.__gcashTransactions)) list=window.__gcashTransactions;
     }catch(e){}
     const today=todayKey();
     const rows=list.filter(x=>{
@@ -7091,7 +7100,7 @@ document.addEventListener('DOMContentLoaded', function(){
     try{ if(typeof calSelected!=='undefined') key=calSelected||''; }catch(e){}
     if(!key){holder.classList.remove('show');return}
     let list=[];
-    try{ if(typeof history!=='undefined' && Array.isArray(history)) list=history; }catch(e){}
+    try{ if(Array.isArray(window.__gcashTransactions)) list=window.__gcashTransactions; }catch(e){}
     const rows=list.filter(x=>localKey(x.timestamp||x.date)===key);
     let ci=0,co=0,fees=0;
     rows.forEach(x=>{if(x.type==='Cash In')ci+=Number(x.amount||0);if(x.type==='Cash Out')co+=Number(x.amount||0);fees+=Number(x.fee||0)});
