@@ -2125,7 +2125,7 @@ label[for="capitalSaripayInput"],
       </div>
       <div class="home-balance-mini home-wallet-check" id="homeBalanceCheck">
         <div class="wallet-name-line"><small>Cash Balance Check</small></div>
-        <strong id="homeBalanceCheckValue">CHECKING</strong>
+        <strong id="homeBalanceCheckValue">LOADING</strong>
         <span id="homeBalanceCheckNote" class="home-check-note">Comparing Cash Counter with Cash on Hand.</span>
       </div>
       <div class="home-balance-mini saripay home-wallet-saripay">
@@ -5296,73 +5296,64 @@ document.addEventListener('DOMContentLoaded', function(){
 
 <script id="cash-counter-latest-status-script">
 (function(){
-  let lastCashCounterStatus = null;
+  let lastStatus=null;
 
   function money(v){
-    return '₱' + Number(v || 0).toLocaleString('en-PH',{
+    return '₱'+Number(v||0).toLocaleString('en-PH',{
       minimumFractionDigits:2,
       maximumFractionDigits:2
     });
   }
 
-  function getTrackerCashFromHome(){
+  function getHomeCash(){
     const el=document.getElementById('cashOutAvailable');
     if(!el) return null;
-    const txt=(el.textContent||'').replace(/[^\d.-]/g,'');
-    const n=Number(txt);
+    const n=Number((el.textContent||'').replace(/[^\d.-]/g,''));
     return isFinite(n)?n:null;
   }
 
-  function paint(data){
+  function paint(d){
+    if(!d) return;
+
+    const physical=Number(d.physicalCash);
+    const homeCash=getHomeCash();
+    if(!isFinite(physical) || homeCash===null) return;
+
     const card=document.getElementById('homeBalanceCheck');
     const value=document.getElementById('homeBalanceCheckValue');
     const note=document.getElementById('homeBalanceCheckNote');
-    if(!card || !value || !note) return;
+    if(!card||!value||!note) return;
+
+    lastStatus=d;
+    const diff=physical-homeCash;
 
     card.classList.remove('warn','matched');
-
-    if(!data || !isFinite(Number(data.physicalCash))){
-      value.textContent='NO COUNT';
-      note.textContent='Cash Counter has not loaded yet.';
-      return;
-    }
-
-    const physical=Number(data.physicalCash||0);
-    const trackerFromHome=getTrackerCashFromHome();
-    const tracker=trackerFromHome===null
-      ? Number(data.trackerCashOnHand||0)
-      : trackerFromHome;
-    const diff=physical-tracker;
 
     if(Math.abs(diff)<=0.01){
       card.classList.add('matched');
       value.textContent='BALANCES OK';
-      note.textContent='Cash Counter '+money(physical)+' matches Cash on Hand '+money(tracker)+'.';
+      note.textContent='Cash Counter '+money(physical)+' matches Cash on Hand '+money(homeCash)+'.';
     }else{
       card.classList.add('warn');
       value.textContent=diff<0?'SHORT':'OVER';
       note.textContent=
         'Cash Counter '+money(physical)+
-        ' · Cash on Hand '+money(tracker)+
+        ' · Cash on Hand '+money(homeCash)+
         ' · Difference '+(diff<0?'-':'+')+money(Math.abs(diff));
     }
   }
 
-  function requestCashCounterStatus(){
-    const value=document.getElementById('homeBalanceCheckValue');
-    const note=document.getElementById('homeBalanceCheckNote');
-
-    if(lastCashCounterStatus){
-      paint(lastCashCounterStatus);
-    }else{
-      if(value) value.textContent='WAITING';
-      if(note) note.textContent='Loading Cash Counter total.';
-    }
+  function requestStatus(){
+    // Important: do NOT change BALANCES OK / SHORT / OVER back to a loading state.
+    if(lastStatus) paint(lastStatus);
 
     const frame=document.getElementById('cashCounterFrame');
     if(frame && frame.contentWindow){
       try{
-        frame.contentWindow.postMessage({type:'GCASH_REQUEST_CASH_COUNTER_STATUS'},'*');
+        frame.contentWindow.postMessage(
+          {type:'GCASH_REQUEST_CASH_COUNTER_STATUS'},
+          '*'
+        );
       }catch(e){}
     }
   }
@@ -5370,34 +5361,34 @@ document.addEventListener('DOMContentLoaded', function(){
   window.addEventListener('message',function(e){
     const d=e && e.data;
     if(!d || d.type!=='GCASH_CASH_COUNTER_STATUS') return;
-    lastCashCounterStatus=d;
     paint(d);
   });
 
-  window.loadCashCounterLatestStatus=requestCashCounterStatus;
+  window.loadCashCounterLatestStatus=requestStatus;
 
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',function(){
-      setTimeout(requestCashCounterStatus,300);
-      setTimeout(requestCashCounterStatus,1200);
-    },{once:true});
-  }else{
-    setTimeout(requestCashCounterStatus,300);
+  function boot(){
+    // Only startup retries. No permanent polling.
+    [300,800,1500,3000,6000].forEach(function(ms){
+      setTimeout(requestStatus,ms);
+    });
   }
 
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',boot,{once:true});
+  }else{
+    boot();
+  }
+
+  // Refresh only when the user actually switches to Home or Cash Counter.
   document.addEventListener('click',function(e){
-    const btn=e.target.closest('[data-main-tab]');
-    if(!btn) return;
-    const tab=btn.getAttribute('data-main-tab');
-    if(tab==='home'){
-      setTimeout(requestCashCounterStatus,150);
-    }else if(tab==='cashcounter'){
-      setTimeout(requestCashCounterStatus,500);
+    const b=e.target.closest('[data-main-tab]');
+    if(!b) return;
+    const tab=b.getAttribute('data-main-tab');
+    if(tab==='home' || tab==='cashcounter'){
+      setTimeout(requestStatus,200);
+      setTimeout(requestStatus,800);
     }
   });
-
-  // No recurring Google Sheets request. Just ask the already-loaded Cash Counter tab.
-  setInterval(requestCashCounterStatus,30000);
 })();
 </script>
 
@@ -5573,7 +5564,7 @@ document.addEventListener('DOMContentLoaded', function(){
       refreshToday();
     }).observe(sync,{subtree:true,childList:true,characterData:true});
 
-    setInterval(()=>{refreshToday();mirrorCashCheck();refreshConfirm();refreshHistorySummary()},3000);
+    setInterval(()=>{refreshToday();refreshConfirm();refreshHistorySummary()},3000);
   });
 })();
 </script>
