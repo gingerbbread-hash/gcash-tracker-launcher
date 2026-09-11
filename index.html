@@ -5355,8 +5355,8 @@ document.addEventListener('DOMContentLoaded', function(){
     if(lastCashCounterStatus){
       paint(lastCashCounterStatus);
     }else{
-      if(value) value.textContent='CHECKING';
-      if(note) note.textContent='Comparing Cash Counter with Cash on Hand.';
+      if(value) value.textContent='WAITING';
+      if(note) note.textContent='Loading Cash Counter total.';
     }
 
     const frame=document.getElementById('cashCounterFrame');
