@@ -2052,40 +2052,1561 @@ label[for="capitalSaripayInput"],
 @media(max-width:390px){.earnings-three-row strong{font-size:11px}.earnings-three-row span{font-size:8px}.wallet-clean-grid{gap:6px}}
 </style>
 
-<style id="cash-counter-main-tab-style">
-/* Cash Counter is now a normal fourth GCash Tracker tab. */
-.bottom-tab-nav{
-  grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+
+
+
+<style id="cash-counter-true-native-style">
+
+#cashCounterNative :root{--bg:#f7f8fa;--card:#fff;--text:#172033;--muted:#667085;--border:#e4e7ec;--orange:#f97316;--orange-soft:#fff7ed;--green:#067647;--red:#b42318}
+#cashCounterNative *{box-sizing:border-box} #cashCounterNative{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--text)}
+#cashCounterNative{max-width:720px;margin:0 auto;padding:14px}#cashCounterNative .hero{background:linear-gradient(135deg,#9a3412,#f97316);color:#fff;border-radius:20px;padding:18px;margin-bottom:12px}
+#cashCounterNative .hero h1{margin:0 0 4px;font-size:24px}#cashCounterNative .hero p{margin:0;font-size:13px;opacity:.92}#cashCounterNative .card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:12px}
+#cashCounterNative .label{display:block;font-size:12px;font-weight:800;margin-bottom:6px}#cashCounterNative .cash-input{width:100%;min-height:46px;border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:18px}
+#cashCounterNative .summary{display:grid;grid-template-columns:1fr 1fr;gap:8px}#cashCounterNative .metric{background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:10px}#cashCounterNative .metric small{display:block;color:var(--muted);font-size:10px;font-weight:800;text-transform:uppercase}#cashCounterNative .metric strong{display:block;margin-top:4px;font-size:17px}#cashCounterNative .statusbox{grid-column:1/-1}#cashCounterNative .matched strong{color:var(--green)}#cashCounterNative .short strong{color:var(--red)}#cashCounterNative .over strong{color:#b54708}
+#cashCounterNative .tabs{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:12px}#cashCounterNative .tabs button{border:1px solid var(--border);background:#fff;border-radius:10px;padding:10px 6px;font-weight:800;font-size:12px}#cashCounterNative .tabs button.active{background:#172033;color:#fff}
+#cashCounterNative .view{display:none}#cashCounterNative .view.active{display:block}#cashCounterNative .denom-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#cashCounterNative .denom{display:grid;grid-template-columns:100px minmax(170px,1fr);grid-template-areas:"left right";align-items:center;column-gap:10px;border:1px solid var(--border);border-radius:14px;padding:10px;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+#cashCounterNative .denom-left{grid-area:left;display:flex;flex-direction:column;align-items:center;gap:7px}
+#cashCounterNative .money-sample{position:relative;width:96px;height:58px;border:1px solid var(--border);border-radius:10px;background:#fff;overflow:hidden;display:flex;align-items:center;justify-content:center}
+#cashCounterNative .money-sample.coin{width:58px;height:58px;border-radius:50%}
+#cashCounterNative .money-sample img{width:100%;height:100%;object-fit:contain;display:block}
+#cashCounterNative .money-sample.bill::after{content:"SAMPLE";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-18deg);font-size:10px;font-weight:900;letter-spacing:1px;color:rgba(180,35,24,.48);pointer-events:none}
+#cashCounterNative .amount-badge{display:inline-flex;align-items:center;justify-content:center;min-width:76px;padding:5px 10px;border-radius:999px;background:#172033;color:#fff;font-size:15px;font-weight:900;line-height:1}
+#cashCounterNative .denom-right{grid-area:right;display:grid;grid-template-columns:1fr;gap:8px;min-width:0}
+#cashCounterNative .input-wrap{display:flex;align-items:center;justify-content:flex-end;min-width:170px}
+
+#cashCounterNative .subtotal{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:6px;border-top:1px dashed #d0d5dd}
+#cashCounterNative .subtotal span:first-child{font-size:11px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+#cashCounterNative .subtotal .sub-amount{font-size:15px;color:#172033;font-weight:900;white-space:nowrap}
+#cashCounterNative .total{display:flex;justify-content:space-between;align-items:center;background:var(--orange-soft);color:#9a3412;border-radius:11px;padding:11px;margin-top:10px;font-weight:900}#cashCounterNative .btn{width:100%;border:0;border-radius:11px;padding:12px;font-size:14px;font-weight:900;margin-top:10px}#cashCounterNative .primary{background:#172033;color:#fff}#cashCounterNative .secondary{background:#eef2f6;color:#344054}
+#cashCounterNative .exchange{display:grid;grid-template-columns:1fr 1fr;gap:10px}#cashCounterNative .exchange h3{font-size:12px;text-transform:uppercase;color:var(--muted);margin:0 0 7px}#cashCounterNative .exchange .denom-grid{grid-template-columns:1fr}
+#cashCounterNative .history-item{padding:14px;border:1px solid var(--border);border-radius:12px;margin-bottom:10px;background:#fff}
+#cashCounterNative .history-item:last-child{border-bottom:1px solid var(--border)}
+#cashCounterNative .history-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+#cashCounterNative .history-title{font-size:13px;font-weight:900}
+#cashCounterNative .history-date{margin-top:4px;color:var(--muted);font-size:11px}
+#cashCounterNative .history-status{font-size:11px;font-weight:900;padding:5px 8px;border-radius:999px;background:#f2f4f7}
+#cashCounterNative .history-status.matched{color:var(--green);background:#ecfdf3}
+#cashCounterNative .history-status.short{color:var(--red);background:#fef3f2}
+#cashCounterNative .history-status.over{color:#b54708;background:#fffaeb}
+#cashCounterNative .history-values{margin-top:10px;display:grid;gap:6px}
+#cashCounterNative .history-row{display:flex;justify-content:space-between;gap:12px;font-size:12px}
+#cashCounterNative .history-row span{color:var(--muted)}
+#cashCounterNative .history-row strong{font-weight:850}
+#cashCounterNative .history-difference{padding-top:7px;margin-top:2px;border-top:1px dashed var(--border)}#cashCounterNative .history-item:last-child{border-bottom:0}#cashCounterNative .history-top{display:flex;justify-content:space-between;gap:8px;font-weight:850;font-size:13px}#cashCounterNative .history-sub{margin-top:3px;color:var(--muted);font-size:11px}#cashCounterNative .msg{min-height:20px;margin-top:8px;font-size:12px;color:var(--muted)}#cashCounterNative .msg.err{color:var(--red)}#cashCounterNative .msg.ok{color:var(--green)}
+@media(max-width:560px){
+
+  #cashCounterNative .denom-grid{grid-template-columns:1fr}
+  #cashCounterNative{padding:10px}
+  #cashCounterNative .denom{grid-template-columns:96px minmax(170px,1fr);padding:10px}
+  #cashCounterNative .money-sample{width:92px;height:56px}
+  #cashCounterNative .money-sample.coin{width:56px;height:56px}
+  #cashCounterNative .amount-badge{min-width:72px;font-size:14px}
+  #cashCounterNative .sub-amount{font-size:14px}
 }
-.bottom-tab-btn{
-  min-width:0 !important;
-  padding-left:3px !important;
-  padding-right:3px !important;
+#cashCounterNative .qty-control{display:grid;grid-template-columns:44px 68px 44px;align-items:center;justify-content:end;gap:6px;white-space:nowrap}
+#cashCounterNative .qty-btn{width:44px;height:44px;border:0;border-radius:10px;background:#eef2f6;color:#172033;font-size:25px;font-weight:900;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+#cashCounterNative .qty-btn:active{transform:scale(.97);background:#e4e7ec}
+#cashCounterNative .qty-input{width:68px;min-width:68px;height:44px;border:1px solid #d0d5dd;border-radius:10px;padding:4px;font-size:19px;font-weight:900;text-align:center;background:#fcfcfd;box-sizing:border-box}
+#cashCounterNative .qty-input::-webkit-outer-spin-button, #cashCounterNative .qty-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+#cashCounterNative .qty-input[type=number]{-moz-appearance:textfield}
+@media(max-width:560px){
+  #cashCounterNative .qty-control{grid-template-columns:44px 64px 44px;gap:5px}
+  #cashCounterNative .qty-btn{width:44px;height:44px;font-size:25px}
+  #cashCounterNative .qty-input{width:64px;min-width:64px;height:44px;font-size:19px}
 }
-.bottom-tab-btn[data-main-tab="cashcounter"]{
+
+
+#cashCounterNative .today-check-card{
+  border:1px solid #e4e7ec;
+  border-radius:14px;
+  padding:12px;
+  margin-bottom:10px;
+  background:#f9fafb;
+}
+#cashCounterNative .today-check-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+#cashCounterNative .today-check-title{
+  font-size:13px;
+  font-weight:900;
+  color:#344054;
+}
+#cashCounterNative .today-check-badge{
+  padding:5px 9px;
+  border-radius:999px;
   font-size:11px;
+  font-weight:900;
+  background:#eef2f6;
+  color:#344054;
 }
-.cash-counter-main-page{
-  padding:0 !important;
-  margin:0 !important;
-  width:100% !important;
-  max-width:none !important;
+#cashCounterNative .today-check-badge.matched{background:#ecfdf3;color:#027a48}
+#cashCounterNative .today-check-badge.short{background:#fef3f2;color:#b42318}
+#cashCounterNative .today-check-badge.over{background:#fffaeb;color:#b54708}
+#cashCounterNative .today-check-details{
+  margin-top:9px;
+  font-size:12px;
+  line-height:1.55;
+  color:#475467;
 }
-.cash-counter-frame{
-  display:block;
-  width:100%;
-  height:900px;
-  min-height:700px;
-  overflow:hidden;
+#cashCounterNative .today-check-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:11px;
+}
+#cashCounterNative .today-check-actions button{
+  height:44px;
   border:0;
+  border-radius:11px;
+  font-size:13px;
+  font-weight:900;
+}
+#cashCounterNative .today-view-btn{background:#eef2f6;color:#344054}
+#cashCounterNative .today-new-btn{background:#172033;color:#fff}
+#cashCounterNative #dailyCountForm{display:none}
+#cashCounterNative #dailyCountForm.show{display:block}
+
+
+#cashCounterNative .last-pieces-card{
+  display:none;
+  margin-top:10px;
+  border:1px solid #e4e7ec;
+  border-radius:14px;
+  background:#fff;
+  overflow:hidden;
+}
+#cashCounterNative .last-pieces-card.show{display:block}
+#cashCounterNative .last-pieces-head{
+  padding:11px 12px;
+  background:#f8fafc;
+  border-bottom:1px solid #e4e7ec;
+  font-size:13px;
+  font-weight:900;
+  color:#172033;
+}
+#cashCounterNative .last-pieces-list{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+#cashCounterNative .inventory-photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+#cashCounterNative .inventory-photo-card{border:1px solid #e4e7ec;border-radius:14px;background:#fff;padding:10px;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+#cashCounterNative .inventory-photo-card .money-sample{width:100%;max-width:138px;height:74px}
+#cashCounterNative .inventory-photo-card .money-sample.coin{width:74px;height:74px}
+#cashCounterNative .inventory-photo-name{font-size:13px;font-weight:900;color:#172033;text-align:center;line-height:1.2}
+#cashCounterNative .inventory-photo-meta{display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center}
+#cashCounterNative .inventory-photo-pieces{font-size:13px;font-weight:900;color:#172033}
+#cashCounterNative .inventory-photo-subtotal{font-size:12px;color:#667085;font-weight:700}
+#cashCounterNative .inventory-empty{grid-column:1/-1;border:1px dashed #d0d5dd;border-radius:14px;background:#fff;padding:14px;text-align:center;color:#667085;font-size:13px;font-weight:700}
+@media(max-width:560px){
+  #cashCounterNative .inventory-photo-grid{grid-template-columns:1fr 1fr}
+  #cashCounterNative .inventory-photo-card{padding:9px}
+  #cashCounterNative .inventory-photo-card .money-sample{max-width:120px;height:64px}
+  #cashCounterNative .inventory-photo-card .money-sample.coin{width:64px;height:64px}
+}
+
+#cashCounterNative .last-piece-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  padding:10px 12px;
+  border-bottom:1px solid #eef2f6;
+  font-size:13px;
+}
+#cashCounterNative .last-piece-row:nth-child(odd){
+  border-right:1px solid #eef2f6;
+}
+#cashCounterNative .last-piece-denom{
+  font-weight:800;
+  color:#344054;
+}
+#cashCounterNative .last-piece-count{
+  font-weight:900;
+  color:#172033;
+  white-space:nowrap;
+}
+#cashCounterNative .last-piece-total{
+  color:#667085;
+  font-size:11px;
+  margin-left:4px;
+}
+@media(max-width:560px){
+  #cashCounterNative .last-pieces-list{grid-template-columns:1fr}
+  #cashCounterNative .last-piece-row:nth-child(odd){border-right:0}
+  #cashCounterNative .last-pieces-list.inventory-photo-grid{grid-template-columns:1fr 1fr}
+}
+
+
+#cashCounterNative .inventory-photo-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+#cashCounterNative .inventory-photo-card{
+  border:1px solid #e4e7ec;
+  border-radius:16px;
+  background:#fff;
+  overflow:hidden;
+  box-shadow:0 2px 6px rgba(16,24,40,.05);
+}
+#cashCounterNative .inventory-denom-title{
+  padding:9px 10px;
+  text-align:center;
+  font-size:17px;
+  font-weight:950;
+  color:#172033;
+  background:#eef4ff;
+  border-bottom:1px solid #e4e7ec;
+}
+#cashCounterNative .inventory-photo-wrap{
+  min-height:88px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:8px 10px;
+  background:#fff;
+}
+#cashCounterNative .inventory-photo-wrap .money-sample{
+  width:100%;
+  max-width:170px;
+  height:82px;
+  border:0;
+  background:transparent;
+}
+#cashCounterNative .inventory-photo-wrap .money-sample.coin{
+  width:82px;
+  height:82px;
+}
+#cashCounterNative .inventory-info{
+  padding:9px 10px 10px;
+  text-align:center;
+  background:#fff5f5;
+  border-top:1px solid #f3dede;
+}
+#cashCounterNative .inventory-pieces{
+  font-size:16px;
+  font-weight:950;
+  color:#172033;
+}
+#cashCounterNative .inventory-subtotal{
+  margin-top:2px;
+  font-size:14px;
+  font-weight:800;
+  color:#344054;
+}
+#cashCounterNative .inventory-empty{
+  grid-column:1/-1;
+  border:1px dashed #d0d5dd;
+  border-radius:14px;
+  background:#fff;
+  padding:18px;
+  text-align:center;
+  color:#667085;
+  font-size:13px;
+  font-weight:700;
+}
+#cashCounterNative .inventory-total-bar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-top:12px;
+  padding:12px 14px;
+  border-radius:12px;
+  background:#ecfdf3;
+  color:#067647;
+  font-weight:950;
+}
+#cashCounterNative .inventory-total-bar span{
+  font-size:14px;
+}
+#cashCounterNative .inventory-total-bar strong{
+  font-size:20px;
+}
+#cashCounterNative .inventory-actions{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:12px;
+}
+#cashCounterNative .inventory-actions button{
+  height:48px;
+  border:0;
+  border-radius:11px;
+  font-size:14px;
+  font-weight:900;
+}
+#cashCounterNative .inventory-count-btn{
+  background:#1769e0;
+  color:#fff;
+}
+#cashCounterNative .inventory-close-btn{
+  background:#eef2f6;
+  color:#344054;
+}
+@media(max-width:560px){
+  #cashCounterNative .inventory-photo-grid{grid-template-columns:1fr 1fr;gap:9px}
+  #cashCounterNative .inventory-denom-title{font-size:15px;padding:8px}
+  #cashCounterNative .inventory-photo-wrap{min-height:74px;padding:7px}
+  #cashCounterNative .inventory-photo-wrap .money-sample{max-width:145px;height:68px}
+  #cashCounterNative .inventory-photo-wrap .money-sample.coin{width:68px;height:68px}
+  #cashCounterNative .inventory-pieces{font-size:15px}
+  #cashCounterNative .inventory-subtotal{font-size:13px}
+  #cashCounterNative .inventory-total-bar strong{font-size:18px}
+}
+
+
+#cashCounterNative .inventory-edit-btn{
+  width:100%;
+  height:46px;
+  margin-top:10px;
+  border:1px solid #d0d5dd;
+  border-radius:11px;
+  background:#fff;
+  color:#172033;
+  font-size:14px;
+  font-weight:900;
+}
+#cashCounterNative #editInventoryPanel{
+  display:none;
+  margin-top:12px;
+  padding:12px;
+  border:1px solid #e4e7ec;
+  border-radius:14px;
+  background:#f8fafc;
+}
+#cashCounterNative #editInventoryPanel.show{display:block}
+#cashCounterNative .edit-money-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+#cashCounterNative .edit-money-card{
+  border:1px solid #e4e7ec;
+  border-radius:14px;
+  background:#fff;
+  overflow:hidden;
+}
+#cashCounterNative .edit-money-title{
+  padding:8px;
+  text-align:center;
+  font-size:14px;
+  font-weight:950;
+  color:#172033;
+  background:#eef4ff;
+}
+#cashCounterNative .edit-money-photo{
+  min-height:70px;
+  padding:7px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+#cashCounterNative .edit-money-photo .money-sample{width:100%;max-width:135px;height:65px;border:0;background:transparent}
+#cashCounterNative .edit-money-photo .money-sample.coin{width:65px;height:65px}
+#cashCounterNative .edit-qty{
+  display:grid;
+  grid-template-columns:42px 1fr 42px;
+  gap:6px;
+  padding:8px;
+  background:#f9fafb;
+}
+#cashCounterNative .edit-qty button{
+  height:40px;
+  border:0;
+  border-radius:9px;
+  background:#eef2f6;
+  color:#172033;
+  font-size:23px;
+  font-weight:950;
+}
+#cashCounterNative .edit-qty input{
+  width:100%;
+  min-width:0;
+  height:40px;
+  border:1px solid #d0d5dd;
+  border-radius:9px;
+  text-align:center;
+  font-size:17px;
+  font-weight:900;
+  color:#172033;
+  background:#fff;
+}
+#cashCounterNative .edit-save-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin-top:10px;
+}
+#cashCounterNative .edit-save-row button{
+  height:46px;
+  border:0;
+  border-radius:10px;
+  font-size:14px;
+  font-weight:900;
+}
+#cashCounterNative #saveInventoryCorrection{background:#172033;color:#fff}
+#cashCounterNative #cancelInventoryCorrection{background:#eef2f6;color:#344054}
+@media(max-width:560px){
+  #cashCounterNative .edit-money-grid{grid-template-columns:1fr 1fr}
+}
+
+
+/* ===== Mobile-first Cash Counter layout ===== */
+#cashCounterNative{
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden;
+}
+#cashCounterNative{
+  margin:0;
+  padding:0;
+}
+
+#cashCounterNative *{box-sizing:border-box}
+
+@media(max-width:560px){
+  
+
+  #cashCounterNative h1{font-size:20px;line-height:1.2}
+  #cashCounterNative .sub{font-size:11px}
+
+  #cashCounterNative .today-check-card{
+    padding:10px;
+    border-radius:12px;
+  }
+
+  #cashCounterNative .today-check-head{
+    align-items:flex-start;
+  }
+
+  #cashCounterNative .today-check-title{
+    font-size:13px;
+  }
+
+  #cashCounterNative .today-check-badge{
+    font-size:11px;
+    padding:5px 7px;
+  }
+
+  #cashCounterNative .today-check-details{
+    font-size:11px;
+    line-height:1.4;
+  }
+
+  /* Current saved inventory: always 2 per row */
+  #cashCounterNative .inventory-photo-grid{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
+    gap:7px !important;
+  }
+
+  #cashCounterNative .inventory-photo-card{
+    min-width:0;
+    border-radius:11px;
+  }
+
+  #cashCounterNative .inventory-denom-title{
+    font-size:13px;
+    line-height:1.15;
+    padding:7px 4px;
+    min-height:43px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  #cashCounterNative .inventory-photo-wrap{
+    min-height:58px;
+    height:68px;
+    padding:4px;
+  }
+
+  #cashCounterNative .inventory-photo-wrap .money-sample{
+    width:100%;
+    max-width:128px;
+    height:58px;
+  }
+
+  #cashCounterNative .inventory-photo-wrap .money-sample.coin{
+    width:58px;
+    height:58px;
+  }
+
+  #cashCounterNative .money-sample img{
+    max-width:100%;
+    max-height:100%;
+    object-fit:contain;
+  }
+
+  #cashCounterNative .inventory-info{
+    padding:6px 4px 7px;
+  }
+
+  #cashCounterNative .inventory-pieces{
+    font-size:13px;
+  }
+
+  #cashCounterNative .inventory-subtotal{
+    font-size:11px;
+  }
+
+  #cashCounterNative .inventory-total-bar{
+    padding:9px 10px;
+    margin-top:8px;
+  }
+
+  #cashCounterNative .inventory-total-bar span{
+    font-size:12px;
+  }
+
+  #cashCounterNative .inventory-total-bar strong{
+    font-size:17px;
+  }
+
+  #cashCounterNative .inventory-actions{
+    grid-template-columns:1fr 1fr;
+    gap:7px;
+    margin-top:8px;
+  }
+
+  #cashCounterNative .inventory-actions button, #cashCounterNative .inventory-edit-btn{
+    min-width:0;
+    height:44px;
+    font-size:12px;
+    padding:0 6px;
+  }
+
+  /* Edit Cash Counter: 2 money cards per row on phone */
+  #cashCounterNative #editInventoryPanel{
+    padding:8px;
+    border-radius:12px;
+  }
+
+  #cashCounterNative .edit-money-grid{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
+    gap:7px;
+  }
+
+  #cashCounterNative .edit-money-card{
+    min-width:0;
+    border-radius:11px;
+  }
+
+  #cashCounterNative .edit-money-title{
+    font-size:12px;
+    line-height:1.15;
+    padding:7px 3px;
+    min-height:39px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  #cashCounterNative .edit-money-photo{
+    min-height:54px;
+    height:62px;
+    padding:4px;
+  }
+
+  #cashCounterNative .edit-money-photo .money-sample{
+    max-width:118px;
+    height:54px;
+  }
+
+  #cashCounterNative .edit-money-photo .money-sample.coin{
+    width:54px;
+    height:54px;
+  }
+
+  #cashCounterNative .edit-qty{
+    grid-template-columns:36px minmax(0,1fr) 36px;
+    gap:4px;
+    padding:6px;
+  }
+
+  #cashCounterNative .edit-qty button{
+    width:36px;
+    height:38px;
+    font-size:21px;
+    padding:0;
+  }
+
+  #cashCounterNative .edit-qty input{
+    min-width:0;
+    width:100%;
+    height:38px;
+    font-size:15px;
+    padding:0 2px;
+  }
+
+  #cashCounterNative .edit-save-row{
+    gap:7px;
+  }
+
+  #cashCounterNative .edit-save-row button{
+    height:44px;
+    font-size:12px;
+  }
+
+  /* Optional physical count screen */
+  #cashCounterNative .denom-grid{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
+    gap:7px !important;
+  }
+
+  #cashCounterNative .denom{
+    min-width:0;
+    padding:7px;
+    border-radius:11px;
+  }
+
+  #cashCounterNative .money-stage{
+    min-height:58px;
+  }
+
+  #cashCounterNative .denom .money-sample{
+    max-width:125px;
+    height:58px;
+  }
+
+  #cashCounterNative .denom .money-sample.coin{
+    width:58px;
+    height:58px;
+  }
+
+  #cashCounterNative .amount-label{
+    font-size:13px;
+    padding:5px 4px;
+  }
+
+  #cashCounterNative .qty-control{
+    grid-template-columns:36px minmax(0,1fr) 36px;
+    gap:4px;
+  }
+
+  #cashCounterNative .qty-btn{
+    width:36px;
+    height:38px;
+    font-size:21px;
+  }
+
+  #cashCounterNative .qty-control input{
+    min-width:0;
+    width:100%;
+    height:38px;
+    font-size:15px;
+  }
+
+  #cashCounterNative .summary{
+    grid-template-columns:1fr !important;
+  }
+
+  #cashCounterNative .total{
+    padding:10px;
+  }
+
+  #cashCounterNative .btn.primary{
+    height:46px;
+    font-size:13px;
+  }
+}
+
+
+/* ===== Approved Mobile Cash Counter Design ===== */
+#cashCounterNative{
+  margin:0;
+  padding:0;
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden;
   background:#f4f7fb;
 }
+#cashCounterNative *{box-sizing:border-box}
+#cashCounterNative{
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  color:#172033;
+}
+#cashCounterNative{
+  width:100%;
+  max-width:480px;
+  margin:0 auto;
+  padding:0 10px 18px;
+}
+
+/* Header */
+#cashCounterNative .hero{
+  margin:0 -10px 10px;
+  padding:14px 16px 12px;
+  border-radius:0 0 16px 16px;
+  background:linear-gradient(135deg,#0f4c81,#0d6bb8);
+  color:#fff;
+  box-shadow:0 2px 8px rgba(15,76,129,.18);
+}
+#cashCounterNative .hero h1{
+  margin:0;
+  font-size:25px;
+  line-height:1.05;
+  font-weight:950;
+}
+#cashCounterNative .hero p{
+  margin:4px 0 0;
+  font-size:12px;
+  line-height:1.35;
+  color:#eaf4ff;
+}
+
+/* Cards */
+#cashCounterNative .card{
+  border:0;
+  border-radius:14px;
+  background:#fff;
+  box-shadow:0 1px 3px rgba(16,24,40,.08);
+  margin:0 0 10px;
+  padding:10px;
+}
+#cashCounterNative .label{
+  font-size:13px;
+  font-weight:900;
+  color:#172033;
+}
+#cashCounterNative .cash-input{
+  margin-top:6px;
+  min-height:42px;
+  border-radius:10px !important;
+  border:1px solid #dfe5ec !important;
+  font-size:17px !important;
+  font-weight:950 !important;
+}
+#cashCounterNative .msg{
+  font-size:11px;
+  line-height:1.35;
+}
+
+/* Summary */
+#cashCounterNative .summary{
+  display:grid !important;
+  grid-template-columns:1fr 1fr !important;
+  gap:8px !important;
+}
+#cashCounterNative .metric{
+  border:1px solid #e4e7ec;
+  border-radius:10px;
+  background:#f8fafc;
+  padding:8px 9px;
+}
+#cashCounterNative .metric small{
+  font-size:9px;
+  font-weight:900;
+  color:#667085;
+}
+#cashCounterNative .metric strong{
+  display:block;
+  margin-top:3px;
+  font-size:14px;
+  font-weight:950;
+  color:#172033;
+}
+#cashCounterNative .metric.statusbox{
+  grid-column:1/-1;
+}
+#cashCounterNative .metric.statusbox strong{
+  font-size:15px;
+}
+#cashCounterNative .metric.statusbox.matched strong{color:#067647}
+#cashCounterNative .metric.statusbox.short strong{color:#b42318}
+#cashCounterNative .metric.statusbox.over strong{color:#b54708}
+
+/* Tabs */
+#cashCounterNative .tabs{
+  grid-template-columns:1fr 1fr !important;
+  gap:6px !important;
+  margin-bottom:10px !important;
+}
+#cashCounterNative .tabs button{
+  min-height:38px;
+  border-radius:9px !important;
+  font-size:12px !important;
+  font-weight:900 !important;
+}
+#cashCounterNative .tabs button.active{
+  background:#172033 !important;
+  color:#fff !important;
+}
+
+/* Current Cash Counter header */
+#cashCounterNative .today-check-card{
+  border:0 !important;
+  background:transparent !important;
+  padding:0 !important;
+  margin:0 !important;
+}
+#cashCounterNative .today-check-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:7px;
+}
+#cashCounterNative .today-check-title{
+  font-size:13px !important;
+  font-weight:950 !important;
+  color:#172033 !important;
+}
+#cashCounterNative .today-check-badge{
+  background:#eef2f6 !important;
+  color:#344054 !important;
+  border-radius:999px !important;
+  font-size:11px !important;
+  font-weight:950 !important;
+  padding:5px 8px !important;
+}
+#cashCounterNative .today-check-details{
+  margin:0 0 9px !important;
+  padding:8px 9px;
+  border-radius:10px;
+  background:#eef6ff;
+  color:#344054 !important;
+  font-size:11px !important;
+  line-height:1.35 !important;
+}
+
+/* Money cards */
+#cashCounterNative .inventory-photo-grid{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
+  gap:8px !important;
+}
+#cashCounterNative .inventory-photo-card{
+  min-width:0 !important;
+  overflow:hidden !important;
+  border:1px solid #e4e7ec !important;
+  border-radius:13px !important;
+  background:#fff !important;
+  box-shadow:0 1px 3px rgba(16,24,40,.06) !important;
+}
+#cashCounterNative .inventory-denom-title{
+  min-height:38px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:7px 5px !important;
+  font-size:13px !important;
+  line-height:1.15 !important;
+  font-weight:950 !important;
+  color:#172033 !important;
+  background:#eaf3ff !important;
+  border-bottom:0 !important;
+}
+#cashCounterNative .inventory-photo-card:nth-child(2n) .inventory-denom-title{background:#fff4cf !important}
+#cashCounterNative .inventory-photo-card:nth-child(3n) .inventory-denom-title{background:#e7f8ee !important}
+#cashCounterNative .inventory-photo-card:nth-child(4n) .inventory-denom-title{background:#f1e8ff !important}
+#cashCounterNative .inventory-photo-card:nth-child(5n) .inventory-denom-title{background:#ffe6e6 !important}
+#cashCounterNative .inventory-photo-card:nth-child(6n) .inventory-denom-title{background:#ffecd9 !important}
+
+#cashCounterNative .inventory-photo-wrap{
+  height:80px !important;
+  min-height:80px !important;
+  padding:6px !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  background:#fff !important;
+}
+#cashCounterNative .inventory-photo-wrap .money-sample{
+  width:100% !important;
+  max-width:150px !important;
+  height:68px !important;
+  border:0 !important;
+  background:transparent !important;
+}
+#cashCounterNative .inventory-photo-wrap .money-sample.coin{
+  width:68px !important;
+  height:68px !important;
+}
+#cashCounterNative .money-sample img{
+  width:100% !important;
+  height:100% !important;
+  max-width:100% !important;
+  object-fit:contain !important;
+}
+#cashCounterNative .money-sample.bill::after{
+  font-size:8px !important;
+  letter-spacing:.5px !important;
+}
+#cashCounterNative .inventory-info{
+  padding:8px 5px 9px !important;
+  text-align:center !important;
+  background:#fff3f3 !important;
+  border-top:0 !important;
+}
+#cashCounterNative .inventory-pieces{
+  font-size:14px !important;
+  font-weight:950 !important;
+  color:#172033 !important;
+}
+#cashCounterNative .inventory-subtotal{
+  margin-top:2px !important;
+  font-size:12px !important;
+  font-weight:800 !important;
+  color:#344054 !important;
+}
+
+/* Total bar */
+#cashCounterNative .inventory-total-bar{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  margin-top:9px !important;
+  padding:10px !important;
+  border-radius:11px !important;
+  background:#eaf9ee !important;
+  color:#086c3b !important;
+  font-weight:950 !important;
+}
+#cashCounterNative .inventory-total-bar span{
+  font-size:13px !important;
+  margin-right:5px;
+}
+#cashCounterNative .inventory-total-bar strong{
+  font-size:17px !important;
+}
+
+/* Main action buttons */
+#cashCounterNative .inventory-actions{
+  display:grid !important;
+  grid-template-columns:1fr 1fr !important;
+  gap:8px !important;
+  margin-top:9px !important;
+}
+#cashCounterNative .inventory-actions button, #cashCounterNative .inventory-edit-btn{
+  width:100% !important;
+  height:44px !important;
+  border:0 !important;
+  border-radius:10px !important;
+  font-size:12px !important;
+  font-weight:900 !important;
+  margin:0 !important;
+}
+#cashCounterNative .inventory-count-btn{
+  background:#1477df !important;
+  color:#fff !important;
+}
+#cashCounterNative .inventory-close-btn{
+  background:#4b5563 !important;
+  color:#fff !important;
+}
+#cashCounterNative .inventory-edit-btn{
+  margin-top:8px !important;
+  background:#0d9850 !important;
+  color:#fff !important;
+}
+
+/* Edit Cash Counter panel */
+#cashCounterNative #editInventoryPanel{
+  padding:9px !important;
+  border-radius:12px !important;
+}
+#cashCounterNative .edit-money-grid{
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
+  gap:8px !important;
+}
+#cashCounterNative .edit-money-card{
+  min-width:0 !important;
+  overflow:hidden !important;
+  border-radius:11px !important;
+}
+#cashCounterNative .edit-money-title{
+  min-height:36px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px !important;
+  line-height:1.1 !important;
+  padding:6px 4px !important;
+}
+#cashCounterNative .edit-money-photo{
+  height:65px !important;
+  min-height:65px !important;
+  padding:5px !important;
+}
+#cashCounterNative .edit-money-photo .money-sample{
+  max-width:130px !important;
+  height:56px !important;
+}
+#cashCounterNative .edit-money-photo .money-sample.coin{
+  width:56px !important;
+  height:56px !important;
+}
+#cashCounterNative .edit-qty{
+  grid-template-columns:36px minmax(0,1fr) 36px !important;
+  gap:4px !important;
+  padding:6px !important;
+}
+#cashCounterNative .edit-qty button{
+  width:36px !important;
+  height:38px !important;
+  font-size:20px !important;
+}
+#cashCounterNative .edit-qty input{
+  width:100% !important;
+  min-width:0 !important;
+  height:38px !important;
+  font-size:15px !important;
+}
+#cashCounterNative .edit-save-row{
+  gap:7px !important;
+}
+#cashCounterNative .edit-save-row button{
+  height:42px !important;
+  font-size:12px !important;
+}
+
+/* Physical count section */
+#cashCounterNative #dailyCountForm{
+  margin-top:10px !important;
+}
+#cashCounterNative .denom-grid{
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
+  gap:8px !important;
+}
+#cashCounterNative .denom{
+  min-width:0 !important;
+  border-radius:11px !important;
+  padding:7px !important;
+}
+#cashCounterNative .denom-left, #cashCounterNative .denom-right{
+  min-width:0 !important;
+}
+#cashCounterNative .denom .money-sample{
+  max-width:125px !important;
+  height:56px !important;
+}
+#cashCounterNative .denom .money-sample.coin{
+  width:56px !important;
+  height:56px !important;
+}
+#cashCounterNative .amount-badge{
+  min-width:0 !important;
+  width:auto !important;
+  font-size:12px !important;
+  padding:5px 8px !important;
+}
+#cashCounterNative .qty-control{
+  grid-template-columns:34px minmax(0,1fr) 34px !important;
+  gap:4px !important;
+}
+#cashCounterNative .qty-btn{
+  width:34px !important;
+  height:36px !important;
+  font-size:20px !important;
+}
+#cashCounterNative .qty-input{
+  width:100% !important;
+  min-width:0 !important;
+  height:36px !important;
+  font-size:15px !important;
+}
+#cashCounterNative .subtotal{
+  gap:4px !important;
+}
+#cashCounterNative .subtotal span:first-child{
+  font-size:9px !important;
+}
+#cashCounterNative .subtotal .sub-amount{
+  font-size:11px !important;
+}
+#cashCounterNative .total{
+  padding:9px !important;
+  font-size:12px !important;
+}
+#cashCounterNative .btn.primary{
+  height:44px !important;
+  font-size:12px !important;
+}
+
+/* History */
+#cashCounterNative .history-item{
+  padding:10px !important;
+  border-radius:10px !important;
+}
+#cashCounterNative .history-title{
+  font-size:12px !important;
+}
+#cashCounterNative .history-date, #cashCounterNative .history-row{
+  font-size:10px !important;
+}
+
+
+/* ===== True iPhone full-width fix ===== */
+@media screen and (max-width:600px){
+  #cashCounterNative{
+    width:100% !important;
+    min-width:0 !important;
+    max-width:none !important;
+    margin:0 !important;
+    padding:0 !important;
+    overflow-x:hidden !important;
+  }
+
+  #cashCounterNative{
+    -webkit-text-size-adjust:100%;
+  }
+
+  #cashCounterNative, #cashCounterNative{
+    width:100% !important;
+    max-width:none !important;
+    min-width:0 !important;
+    margin:0 !important;
+    padding:0 6px 14px !important;
+  }
+
+  #cashCounterNative .hero{
+    width:auto !important;
+    margin:0 -6px 8px !important;
+    border-radius:0 0 14px 14px !important;
+  }
+
+  #cashCounterNative .card{
+    width:100% !important;
+    max-width:none !important;
+    margin:0 0 8px !important;
+    padding:8px !important;
+    border-radius:12px !important;
+  }
+
+  #cashCounterNative .inventory-photo-grid{
+    width:100% !important;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
+    gap:6px !important;
+  }
+
+  #cashCounterNative .inventory-photo-card{
+    width:100% !important;
+    min-width:0 !important;
+  }
+
+  #cashCounterNative .inventory-denom-title{
+    font-size:12px !important;
+    min-height:34px !important;
+    padding:6px 3px !important;
+  }
+
+  #cashCounterNative .inventory-photo-wrap{
+    height:68px !important;
+    min-height:68px !important;
+    padding:3px !important;
+  }
+
+  #cashCounterNative .inventory-photo-wrap .money-sample{
+    max-width:100% !important;
+    height:60px !important;
+  }
+
+  #cashCounterNative .inventory-photo-wrap .money-sample.coin{
+    width:60px !important;
+    height:60px !important;
+  }
+
+  #cashCounterNative .inventory-info{
+    padding:6px 3px 7px !important;
+  }
+
+  #cashCounterNative .inventory-pieces{
+    font-size:13px !important;
+  }
+
+  #cashCounterNative .inventory-subtotal{
+    font-size:11px !important;
+  }
+
+  #cashCounterNative .inventory-actions{
+    grid-template-columns:1fr 1fr !important;
+    gap:6px !important;
+  }
+
+  #cashCounterNative .inventory-actions button, #cashCounterNative .inventory-edit-btn{
+    height:42px !important;
+    font-size:11px !important;
+  }
+
+  #cashCounterNative .summary{
+    grid-template-columns:1fr 1fr !important;
+    gap:6px !important;
+  }
+
+  #cashCounterNative .metric{
+    padding:7px !important;
+  }
+
+  #cashCounterNative .metric strong{
+    font-size:13px !important;
+  }
+
+  #cashCounterNative .tabs button{
+    min-height:36px !important;
+    padding:7px 4px !important;
+    font-size:11px !important;
+  }
+}
+
+
+/* ===== Physical count denomination comparison ===== */
+#cashCounterNative .denom-compare{
+  margin-top:10px;
+  display:none;
+}
+#cashCounterNative .denom-compare.show{display:block}
+#cashCounterNative .denom-compare-title{
+  font-size:13px;
+  font-weight:950;
+  color:#172033;
+  margin-bottom:7px;
+}
+#cashCounterNative .denom-compare-grid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:6px;
+}
+#cashCounterNative .denom-compare-row{
+  display:grid;
+  grid-template-columns:74px 1fr auto;
+  align-items:center;
+  gap:7px;
+  padding:8px 9px;
+  border:1px solid #e4e7ec;
+  border-radius:10px;
+  background:#fff;
+}
+#cashCounterNative .denom-compare-row.match{
+  background:#ecfdf3;
+  border-color:#abefc6;
+}
+#cashCounterNative .denom-compare-row.short{
+  background:#fef3f2;
+  border-color:#fecdca;
+}
+#cashCounterNative .denom-compare-row.over{
+  background:#fffaeb;
+  border-color:#fedf89;
+}
+#cashCounterNative .denom-compare-name{
+  font-size:12px;
+  font-weight:950;
+  color:#172033;
+}
+#cashCounterNative .denom-compare-counts{
+  font-size:10px;
+  line-height:1.35;
+  color:#475467;
+}
+#cashCounterNative .denom-compare-counts strong{
+  color:#172033;
+}
+#cashCounterNative .denom-compare-result{
+  font-size:10px;
+  font-weight:950;
+  text-align:right;
+  white-space:nowrap;
+}
+#cashCounterNative .denom-compare-row.match .denom-compare-result{color:#067647}
+#cashCounterNative .denom-compare-row.short .denom-compare-result{color:#b42318}
+#cashCounterNative .denom-compare-row.over .denom-compare-result{color:#b54708}
 @media(max-width:600px){
-  .bottom-tab-btn{font-size:10px !important}
-  .bottom-tab-btn .tab-icon{font-size:18px !important}
-  .cash-counter-frame{
-    height:900px;
-    min-height:650px;
+  #cashCounterNative .denom-compare-row{
+    grid-template-columns:62px minmax(0,1fr) auto;
+    padding:7px;
+    gap:5px;
+  }
+  #cashCounterNative .denom-compare-name{font-size:11px}
+  #cashCounterNative .denom-compare-counts{font-size:9px}
+  #cashCounterNative .denom-compare-result{font-size:9px}
+}
+
+
+/* ===== Approved Physical Count Mobile Screen ===== */
+@media screen and (max-width:600px){
+
+  #cashCounterNative #dailyCountForm{
+    margin-top:10px !important;
+  }
+
+  #cashCounterNative #dailyCountForm > .msg{
+    margin:0 0 8px !important;
+    padding:8px 9px !important;
+    border-radius:10px !important;
+    background:#eef6ff !important;
+    color:#344054 !important;
+    font-size:11px !important;
+    line-height:1.35 !important;
+  }
+
+  #cashCounterNative .denom-grid{
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr) !important;
+    gap:8px !important;
+  }
+
+  #cashCounterNative .denom{
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:stretch !important;
+    justify-content:flex-start !important;
+    min-width:0 !important;
+    padding:0 !important;
+    overflow:hidden !important;
+    border:1px solid #e4e7ec !important;
+    border-radius:13px !important;
+    background:#fff !important;
+    box-shadow:0 1px 3px rgba(16,24,40,.06) !important;
+  }
+
+  #cashCounterNative .denom-left{
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:center !important;
+    gap:0 !important;
+    min-width:0 !important;
+    width:100% !important;
+  }
+
+  #cashCounterNative .amount-badge{
+    order:-1 !important;
+    width:100% !important;
+    min-width:0 !important;
+    margin:0 !important;
+    padding:7px 4px !important;
+    border-radius:0 !important;
+    background:#eaf3ff !important;
+    color:#172033 !important;
+    font-size:14px !important;
+    line-height:1.15 !important;
+    font-weight:950 !important;
+    text-align:center !important;
+  }
+
+  #cashCounterNative .denom:nth-child(2n) .amount-badge{background:#fff4cf !important}
+  #cashCounterNative .denom:nth-child(3n) .amount-badge{background:#e7f8ee !important}
+  #cashCounterNative .denom:nth-child(4n) .amount-badge{background:#f1e8ff !important}
+  #cashCounterNative .denom:nth-child(5n) .amount-badge{background:#ffe6e6 !important}
+  #cashCounterNative .denom:nth-child(6n) .amount-badge{background:#ffecd9 !important}
+
+  #cashCounterNative .denom .money-sample{
+    width:100% !important;
+    max-width:145px !important;
+    height:72px !important;
+    margin:6px auto 2px !important;
+    border:0 !important;
+    background:transparent !important;
+  }
+
+  #cashCounterNative .denom .money-sample.coin{
+    width:72px !important;
+    height:72px !important;
+  }
+
+  #cashCounterNative .denom-right{
+    display:flex !important;
+    flex-direction:column !important;
+    gap:0 !important;
+    min-width:0 !important;
+    width:100% !important;
+    padding:0 7px 8px !important;
+  }
+
+  #cashCounterNative .input-wrap{
+    width:100% !important;
+    min-width:0 !important;
+    display:block !important;
+  }
+
+  #cashCounterNative .qty-control{
+    display:grid !important;
+    grid-template-columns:44px minmax(0,1fr) 44px !important;
+    gap:6px !important;
+    align-items:center !important;
+    width:100% !important;
+  }
+
+  #cashCounterNative .qty-btn{
+    width:44px !important;
+    height:42px !important;
+    min-width:44px !important;
+    border-radius:10px !important;
+    font-size:24px !important;
+    font-weight:950 !important;
+    padding:0 !important;
+  }
+
+  #cashCounterNative .qty-btn[data-action="minus"]{
+    background:#f04438 !important;
+    color:#fff !important;
+  }
+
+  #cashCounterNative .qty-btn[data-action="plus"]{
+    background:#1477df !important;
+    color:#fff !important;
+  }
+
+  #cashCounterNative .qty-input{
+    width:100% !important;
+    min-width:0 !important;
+    height:42px !important;
+    border:1px solid #d0d5dd !important;
+    border-radius:10px !important;
+    padding:0 4px !important;
+    background:#fff !important;
+    color:#172033 !important;
+    font-size:18px !important;
+    font-weight:950 !important;
+    text-align:center !important;
+  }
+
+  #cashCounterNative .subtotal{
+    display:flex !important;
+    justify-content:center !important;
+    align-items:center !important;
+    gap:5px !important;
+    margin-top:6px !important;
+    padding-top:0 !important;
+    border-top:0 !important;
+    text-align:center !important;
+  }
+
+  #cashCounterNative .subtotal span:first-child{
+    font-size:11px !important;
+    font-weight:800 !important;
+    color:#344054 !important;
+    text-transform:none !important;
+    letter-spacing:0 !important;
+  }
+
+  #cashCounterNative .subtotal span:first-child::after{
+    content:":";
+  }
+
+  #cashCounterNative .subtotal .sub-amount{
+    font-size:12px !important;
+    font-weight:900 !important;
+    color:#172033 !important;
+  }
+
+  #cashCounterNative .total{
+    margin-top:10px !important;
+    padding:11px 12px !important;
+    border-radius:11px !important;
+    background:#fff3e6 !important;
+    color:#9a3412 !important;
+    font-size:14px !important;
+    font-weight:950 !important;
+  }
+
+  #cashCounterNative .denom-compare{
+    margin-top:10px !important;
+  }
+
+  #cashCounterNative .denom-compare-title{
+    font-size:14px !important;
+    font-weight:950 !important;
+    color:#172033 !important;
+  }
+
+  #cashCounterNative .denom-compare-grid{
+    gap:6px !important;
+  }
+
+  #cashCounterNative .denom-compare-row{
+    grid-template-columns:65px minmax(0,1fr) auto !important;
+    gap:6px !important;
+    padding:8px !important;
+    border-radius:10px !important;
+  }
+
+  #cashCounterNative #saveCount{
+    height:46px !important;
+    margin-top:10px !important;
+    border-radius:10px !important;
+    background:#1477df !important;
+    color:#fff !important;
+    font-size:13px !important;
+    font-weight:900 !important;
+  }
+}
+
+
+
+#cashCounterNative .integrated-tracker-nav{position:sticky;top:0;z-index:50;background:#fff;border-bottom:1px solid #e4e7ec;padding:8px 10px}
+#cashCounterNative .integrated-tracker-nav a{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#344054;font-weight:850;font-size:12px}
+
+
+/* When Cash Counter is shown inside GCash Tracker, make it match the other tabs. */
+#cashCounterNative, #cashCounterNative{
+  background:transparent !important;
+}
+
+
+
+
+
+
+
+
+
+
+@media(max-width:600px){
+  
+  
+  
+}
+
+
+/* True in-page integration: no iframe, no inner app shell. */
+#tabCashCounterPage{
+  padding:0 !important;
+}
+#cashCounterNative{
+  width:100%;
+  max-width:none;
+  margin:0;
+  padding:0;
+  background:transparent;
+}
+#cashCounterNative .cash-counter-native-heading{
+  margin:0 0 12px;
+  padding:2px 2px 0;
+}
+#cashCounterNative .cash-counter-native-heading .section-title{
+  margin:0 0 3px;
+}
+#cashCounterNative .cash-counter-native-heading .note{
+  margin:0;
+}
+#cashCounterNative .integrated-tracker-nav,
+#cashCounterNative .hero{
+  display:none !important;
+}
+#cashCounterNative .card{
+  border:1px solid #d7e5f8 !important;
+  border-radius:18px !important;
+  box-shadow:none !important;
+  background:#fff !important;
+  margin-bottom:12px !important;
+}
+#cashCounterNative .summary{
+  grid-template-columns:1fr 1fr !important;
+}
+#cashCounterNative .metric.statusbox{
+  grid-column:1/-1 !important;
+}
+@media(max-width:600px){
+  #cashCounterNative .card{
+    border-radius:14px !important;
   }
 }
 </style>
@@ -2174,16 +3695,99 @@ label[for="capitalSaripayInput"],
     </section>
   </section>
 
-  <section id="tabCashCounterPage" class="app-tab-page cash-counter-main-page">
-    <iframe
-      id="cashCounterFrame"
-      class="cash-counter-frame"
-      src="https://script.google.com/macros/s/AKfycbzHZBbsTHU5rRMrO4iNCizaQHd1SqVMb1NgWFSRvw8UHf_zdJTLJEQHYZTouUfvpknouw/exec?page=cashcounter&embedded=1"
-      title="Cash Counter"
-      loading="eager"
-      referrerpolicy="no-referrer"
-    ></iframe>
+  <section id="tabCashCounterPage" class="app-tab-page">
+
+<div id="cashCounterNative">
+  <div class="cash-counter-native-heading">
+    <h2 class="section-title">Cash Counter</h2>
+    <p class="note">Count and manage the actual bills and coins in Cash on Hand.</p>
+  </div>
+
+<section class="card">
+    <label class="label">Tracker Cash on Hand</label>
+    <div id="trackerCashAuto" class="cash-input" style="display:flex;align-items:center;font-weight:900;background:#f8fafc;">Loading…</div>
+    <div class="msg">Automatically read from your main GCash/Maya Tracker. This Cash Counter cannot change it.</div>
   </section>
+
+  <section class="card">
+    <div id="summary" class="summary"></div>
+  </section>
+
+  <section class="card">
+    <div class="tabs">
+      <button class="active" data-tab="count">Cash Check</button>
+<button data-tab="history">History</button>
+    </div>
+
+    <div id="countView" class="view active">
+
+      <div id="cashCounterInventoryCard" class="today-check-card">
+        <div class="today-check-head">
+          <div class="today-check-title">Current Cash Counter</div>
+          <div id="cashCounterInventoryTotal" class="today-check-badge">Loading…</div>
+        </div>
+
+        <div class="today-check-details">
+          These are the saved denominations the Cash Counter says you currently have.
+          Compare them with the actual money in your cash box.
+        </div>
+
+        <div id="cashCounterPiecesList" class="inventory-photo-grid" style="margin-top:12px"></div>
+
+        <div class="inventory-total-bar">
+          <span>Total Cash Counter</span>
+          <strong id="cashCounterInventoryTotalBottom">₱0.00</strong>
+        </div>
+
+        <div class="inventory-actions">
+          <button id="startNewCheck" class="inventory-count-btn" type="button">Count Physical Cash</button>
+          <button id="notNowBtn" class="inventory-close-btn" type="button">Close</button>
+        </div>
+
+        <button id="editInventoryBtn" class="inventory-edit-btn" type="button">Edit Cash Counter</button>
+
+        <div id="editInventoryPanel">
+          <div style="font-size:14px;font-weight:950;color:#172033;margin-bottom:4px">Correct Saved Pieces</div>
+          <div style="font-size:12px;color:#667085;margin-bottom:10px">
+            This changes only the Cash Counter inventory. It does not change your main GCash/Maya Tracker.
+          </div>
+          <div id="editInventoryGrid" class="edit-money-grid"></div>
+          <div class="edit-save-row">
+            <button id="saveInventoryCorrection" type="button">Save Correction</button>
+            <button id="cancelInventoryCorrection" type="button">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="dailyCountForm">
+        <div class="msg" style="margin-bottom:9px">
+          Count the actual bills and coins in your cash box.
+        </div>
+        <div id="countGrid" class="denom-grid"></div>
+        <div class="total"><span>Physical Cash Total</span><strong id="countTotal">₱0.00</strong></div>
+
+        <div id="denomCompare" class="denom-compare">
+          <div class="denom-compare-title">Expected vs Physical Pieces</div>
+          <div id="denomCompareGrid" class="denom-compare-grid"></div>
+        </div>
+
+        <button id="saveCount" class="btn primary">Save Physical Cash Check</button>
+      <div style="margin-top:8px;color:#98a2b3;font-size:9px;line-height:1.35">
+        Sample/reference images: Bangko Sentral ng Pilipinas and Wikimedia Commons.
+        ₱10 coin photo: Vj7895, CC BY-SA 4.0.
+      </div>
+      </div>
+
+    </div>
+<div id="historyView" class="view">
+      <div id="historyList"></div>
+    </div>
+
+    <div id="msg" class="msg"></div>
+  </section>
+
+</div>
+</section>
 
   <section id="tabHistoryPage" class="app-tab-page">
     <div id="historyTabMount"></div>
@@ -5314,7 +6918,6 @@ document.addEventListener('DOMContentLoaded', function(){
 
   function paint(d){
     if(!d) return;
-
     const physical=Number(d.physicalCash);
     const homeCash=getHomeCash();
     if(!isFinite(physical) || homeCash===null) return;
@@ -5326,7 +6929,6 @@ document.addEventListener('DOMContentLoaded', function(){
 
     lastStatus=d;
     const diff=physical-homeCash;
-
     card.classList.remove('warn','matched');
 
     if(Math.abs(diff)<=0.01){
@@ -5336,57 +6938,30 @@ document.addEventListener('DOMContentLoaded', function(){
     }else{
       card.classList.add('warn');
       value.textContent=diff<0?'SHORT':'OVER';
-      note.textContent=
-        'Cash Counter '+money(physical)+
-        ' · Cash on Hand '+money(homeCash)+
+      note.textContent='Cash Counter '+money(physical)+' · Cash on Hand '+money(homeCash)+
         ' · Difference '+(diff<0?'-':'+')+money(Math.abs(diff));
     }
   }
 
-  function requestStatus(){
-    // Important: do NOT change BALANCES OK / SHORT / OVER back to a loading state.
-    if(lastStatus) paint(lastStatus);
-
-    const frame=document.getElementById('cashCounterFrame');
-    if(frame && frame.contentWindow){
-      try{
-        frame.contentWindow.postMessage(
-          {type:'GCASH_REQUEST_CASH_COUNTER_STATUS'},
-          '*'
-        );
-      }catch(e){}
-    }
-  }
-
-  window.addEventListener('message',function(e){
-    const d=e && e.data;
-    if(!d || d.type!=='GCASH_CASH_COUNTER_STATUS') return;
-    paint(d);
+  window.addEventListener('gcash-cash-counter-status',function(e){
+    paint(e.detail||null);
   });
 
-  window.loadCashCounterLatestStatus=requestStatus;
+  window.loadCashCounterLatestStatus=function(){
+    if(lastStatus) paint(lastStatus);
+    try{
+      if(typeof sendCashCounterStatusToTracker==='function'){
+        sendCashCounterStatusToTracker();
+      }
+    }catch(e){}
+  };
 
-  function boot(){
-    // Only startup retries. No permanent polling.
-    [300,800,1500,3000,6000].forEach(function(ms){
-      setTimeout(requestStatus,ms);
-    });
-  }
-
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',boot,{once:true});
-  }else{
-    boot();
-  }
-
-  // Refresh only when the user actually switches to Home or Cash Counter.
   document.addEventListener('click',function(e){
     const b=e.target.closest('[data-main-tab]');
     if(!b) return;
     const tab=b.getAttribute('data-main-tab');
     if(tab==='home' || tab==='cashcounter'){
-      setTimeout(requestStatus,200);
-      setTimeout(requestStatus,800);
+      setTimeout(window.loadCashCounterLatestStatus,150);
     }
   });
 })();
@@ -5570,33 +7145,542 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 
 
-<script id="cash-counter-main-tab-script">
-(function(){
-  document.addEventListener('click', function(e){
-    const btn=e.target.closest('[data-main-tab="cashcounter"]');
-    if(!btn) return;
-    const frame=document.getElementById('cashCounterFrame');
-    if(frame && !frame.getAttribute('src')){
-      frame.setAttribute('src', frame.dataset.src || '');
-    }
+
+
+
+
+
+<script id="cash-counter-true-native-script">
+
+const D=[['1000','₱1,000',1000],['500','₱500',500],['200','₱200',200],['100','₱100',100],['50','₱50',50],['20b','₱20 bill',20],['20c','₱20 coin',20],['10','₱10',10],['5','₱5',5],['1','₱1',1]];
+const MONEY_IMAGES={
+  '1000':{url:'https://www.bsp.gov.ph/Coins%20and%20Notes/Polymer/1000banknote.png',kind:'bill',alt:'Philippine ₱1,000 sample'},
+  '500':{url:'https://www.bsp.gov.ph/Coins%20and%20Notes/Polymer/500banknote.png',kind:'bill',alt:'Philippine ₱500 sample'},
+  '200':{url:'https://upload.wikimedia.org/wikipedia/commons/3/32/NDS_obverse_200_Philippine_peso_bill.jpg',kind:'bill',alt:'Philippine ₱200 sample'},
+  '100':{url:'https://www.bsp.gov.ph/Coins%20and%20Notes/Polymer/100banknote.png',kind:'bill',alt:'Philippine ₱100 sample'},
+  '50':{url:'https://www.bsp.gov.ph/Coins%20and%20Notes/Polymer/50banknote.png',kind:'bill',alt:'Philippine ₱50 sample'},
+  '20b':{url:'https://upload.wikimedia.org/wikipedia/commons/c/cd/NDS_obverse_20_Philippine_peso_bill.jpg',kind:'bill',alt:'Philippine ₱20 bill sample'},
+  '20c':{url:'https://upload.wikimedia.org/wikipedia/commons/1/15/Font_20_peso_Coin_Philippines.png',kind:'coin',alt:'Philippine ₱20 coin sample'},
+  '10':{url:'https://upload.wikimedia.org/wikipedia/commons/8/8b/NGC_PHP_10_piso.jpg',kind:'coin',alt:'Philippine ₱10 coin sample'},
+  '5':{url:'https://upload.wikimedia.org/wikipedia/commons/9/96/PhilippinesNewGen5PesoObverse.png',kind:'coin',alt:'Philippine ₱5 coin sample'},
+  '1':{url:'https://upload.wikimedia.org/wikipedia/commons/4/43/1_philippinischer_Peso_2018.jpg',kind:'coin',alt:'Philippine ₱1 coin sample'},
+};
+const $=id=>document.getElementById(id);
+const money=v=>'₱'+Number(v||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+const zero=()=>Object.fromEntries(D.map(d=>[d[0],0]));
+let current=null;
+
+function sendCashCounterStatusToTracker(){
+  try{
+    if(!current || !current.pieces) return;
+    const vals={'1000':1000,'500':500,'200':200,'100':100,'50':50,'20b':20,'20c':20,'10':10,'5':5,'1':1};
+    let physical=0;
+    Object.keys(vals).forEach(function(k){
+      physical += Number(current.pieces[k]||0)*vals[k];
+    });
+    window.dispatchEvent(new CustomEvent('gcash-cash-counter-status',{
+      detail:{
+        physicalCash:physical,
+        trackerCashOnHand:Number(current.trackerCashOnHand||0)
+      }
+    }));
+  }catch(e){}
+}
+
+function grid(prefix,pieces){
+  pieces=pieces||zero();
+  return D.map(d=>{
+    const ref=MONEY_IMAGES[d[0]];
+    const kind=ref?ref.kind:(d[0].includes('c')||Number(d[2])<=10?'coin':'bill');
+    const img=ref
+      ? `<div class="money-sample ${kind}">
+           <img src="${ref.url}" alt="${ref.alt}" loading="lazy"
+                onerror="this.parentElement.style.display='none'">
+         </div>`
+      : `<div class="money-sample ${kind}"></div>`;
+
+    return `<div class="denom">
+      <div class="denom-left">
+        ${img}
+        <div class="amount-badge">${d[1]}</div>
+      </div>
+
+      <div class="denom-right">
+        <div class="input-wrap">
+          <div class="qty-control">
+            <button type="button" class="qty-btn" data-action="minus" data-prefix="${prefix}" data-key="${d[0]}" aria-label="Subtract one">−</button>
+            <input class="qty-input" type="number" min="0" step="1" inputmode="numeric"
+                   data-prefix="${prefix}" data-key="${d[0]}"
+                   value="${Number(pieces[d[0]]||0)}">
+            <button type="button" class="qty-btn" data-action="plus" data-prefix="${prefix}" data-key="${d[0]}" aria-label="Add one">+</button>
+          </div>
+        </div>
+        <div class="subtotal">
+          <span>Total</span>
+          <span class="sub-amount" data-sub="${prefix}-${d[0]}">
+            ${money(Number(pieces[d[0]]||0)*d[2])}
+          </span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function read(prefix){const o=zero();document.querySelectorAll(`input[data-prefix="${prefix}"]`).forEach(i=>o[i.dataset.key]=Math.max(0,Math.floor(Number(i.value||0))));return o}
+function total(p){return D.reduce((s,d)=>s+Number(p[d[0]]||0)*d[2],0)}
+function refreshSubs(prefix){document.querySelectorAll(`input[data-prefix="${prefix}"]`).forEach(i=>{const d=D.find(x=>x[0]===i.dataset.key);const el=document.querySelector(`[data-sub="${prefix}-${i.dataset.key}"]`);if(el)el.textContent=money(Number(i.value||0)*d[2])})}
+
+function showMsg(t,cls=''){ $('msg').textContent=t; $('msg').className='msg '+cls }
+
+function renderSummary(x){
+  current=x||current;
+  if(!current){$('summary').innerHTML='';return}
+
+  const tracker=Number(current.trackerCashOnHand||0);
+  const physical=total(read('count'));
+  const hasCount=physical>0;
+
+  $('trackerCashAuto').textContent=money(tracker);
+
+  let checkText='READY TO COUNT';
+  let cls='matched';
+
+  if(hasCount){
+    const diff=physical-tracker;
+    cls=Math.abs(diff)<.01?'matched':diff<0?'short':'over';
+    checkText=Math.abs(diff)<.01
+      ? 'MATCHED'
+      : diff<0
+        ? 'SHORT '+money(Math.abs(diff))
+        : 'OVER '+money(diff);
+  }
+
+  $('summary').innerHTML=`
+    <div class="metric"><small>Physical Cash</small><strong>${hasCount?money(physical):'Not counted'}</strong></div>
+    <div class="metric"><small>Tracker Cash on Hand</small><strong>${money(tracker)}</strong></div>
+    <div class="metric statusbox ${cls}"><small>Cash Check</small><strong>${checkText}</strong></div>`;
+}
+
+
+
+function renderCashCounterInventory(x){
+  current=x||current;
+  if(!current) return;
+
+  const pieces=(current.pieces && typeof current.pieces==='object')
+    ? current.pieces
+    : {};
+
+  const list=$('cashCounterPiecesList');
+  const activeDenoms=D.filter(d=>{
+    const qty=Math.max(0,Math.floor(Number(pieces[d[0]]||0)));
+    return qty>0;
   });
-})();
-</script>
+
+  if(!activeDenoms.length){
+    list.innerHTML=`
+      <div class="inventory-empty">
+        No saved money pieces yet.
+      </div>`;
+  }else{
+    list.innerHTML=activeDenoms.map(d=>{
+      const key=d[0];
+      const qty=Math.max(0,Math.floor(Number(pieces[key]||0)));
+      const subtotal=qty*Number(d[2]||0);
+      const ref=MONEY_IMAGES[key]||null;
+      const kind=ref
+        ? ref.kind
+        : (key.includes('c')||Number(d[2])<=10 ? 'coin' : 'bill');
+
+      const img=ref
+        ? `<div class="money-sample ${kind}">
+             <img src="${ref.url}"
+                  alt="${ref.alt}"
+                  loading="lazy"
+                  onerror="this.parentElement.style.display='none'">
+           </div>`
+        : `<div class="money-sample ${kind}"></div>`;
+
+      const title = key==='20b'
+        ? '₱20 Pesos (Bill)'
+        : key==='20c'
+          ? '₱20 Pesos (Coin)'
+          : `${d[1]} ${Number(d[2])===1?'Peso':'Pesos'}`;
+
+      return `
+        <div class="inventory-photo-card">
+          <div class="inventory-denom-title">${title}</div>
+
+          <div class="inventory-photo-wrap">
+            ${img}
+          </div>
+
+          <div class="inventory-info">
+            <div class="inventory-pieces">
+              ${qty} ${qty===1?'piece':'pieces'}
+            </div>
+            <div class="inventory-subtotal">
+              Total: ${money(subtotal)}
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  const totalNow=total(pieces);
+  $('cashCounterInventoryTotal').textContent=money(totalNow);
+  $('cashCounterInventoryTotalBottom').textContent=money(totalNow);
+}
 
 
-<script id="cash-counter-auto-height-script">
-(function(){
-  window.addEventListener('message', function(e){
-    const d=e && e.data;
-    if(!d || d.type!=='GCASH_CASH_COUNTER_HEIGHT') return;
-    const frame=document.getElementById('cashCounterFrame');
-    const h=Number(d.height||0);
-    if(frame && isFinite(h) && h>500){
-      frame.style.height=Math.ceil(h + 12) + 'px';
-    }
+function renderInventoryEditor(){
+  const pieces=(current && current.pieces && typeof current.pieces==='object')
+    ? current.pieces : {};
+  const grid=$('editInventoryGrid');
+
+  grid.innerHTML=D.map(d=>{
+    const key=d[0];
+    const qty=Math.max(0,Math.floor(Number(pieces[key]||0)));
+    const ref=MONEY_IMAGES[key]||null;
+    const kind=ref ? ref.kind : (key.includes('c')||Number(d[2])<=10?'coin':'bill');
+    const img=ref
+      ? `<div class="money-sample ${kind}"><img src="${ref.url}" alt="${ref.alt}" loading="lazy"></div>`
+      : `<div class="money-sample ${kind}"></div>`;
+    const title=key==='20b'?'₱20 Pesos (Bill)':key==='20c'?'₱20 Pesos (Coin)':`${d[1]} ${Number(d[2])===1?'Peso':'Pesos'}`;
+
+    return `<div class="edit-money-card">
+      <div class="edit-money-title">${title}</div>
+      <div class="edit-money-photo">${img}</div>
+      <div class="edit-qty">
+        <button type="button" class="edit-minus" data-key="${key}">−</button>
+        <input type="number" min="0" step="1" inputmode="numeric" data-edit-key="${key}" value="${qty}">
+        <button type="button" class="edit-plus" data-key="${key}">+</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function readInventoryEditor(){
+  const out={};
+  D.forEach(d=>{
+    const el=document.querySelector(`input[data-edit-key="${d[0]}"]`);
+    out[d[0]]=Math.max(0,Math.floor(Number(el ? el.value : 0)||0));
   });
-})();
-</script>
+  return out;
+}
 
+$('editInventoryBtn').addEventListener('click',()=>{
+  renderInventoryEditor();
+  $('editInventoryPanel').classList.add('show');
+  $('editInventoryPanel').scrollIntoView({behavior:'smooth',block:'start'});
+});
+
+$('cancelInventoryCorrection').addEventListener('click',()=>{
+  $('editInventoryPanel').classList.remove('show');
+});
+
+document.addEventListener('click',e=>{
+  const plus=e.target.closest('.edit-plus');
+  const minus=e.target.closest('.edit-minus');
+  const btn=plus||minus;
+  if(!btn) return;
+
+  const input=document.querySelector(`input[data-edit-key="${btn.dataset.key}"]`);
+  if(!input) return;
+
+  let n=Math.max(0,Math.floor(Number(input.value||0)));
+  if(plus) n+=1;
+  if(minus) n=Math.max(0,n-1);
+  input.value=n;
+});
+
+$('saveInventoryCorrection').addEventListener('click',()=>{
+  const corrected=readInventoryEditor();
+
+  if(!confirm('Save this Cash Counter correction? This will NOT change your main GCash/Maya Tracker.')){
+    return;
+  }
+
+  const btn=$('saveInventoryCorrection');
+  btn.disabled=true;
+  btn.textContent='Saving…';
+
+  google.script.run
+    .withSuccessHandler(x=>{
+      current=x;
+      renderCashCounterInventory(current);
+      setTimeout(sendCashCounterStatusToTracker,80);
+      $('editInventoryPanel').classList.remove('show');
+      btn.disabled=false;
+      btn.textContent='Save Correction';
+      showMsg('Cash Counter correction saved.','ok');
+      loadHistory();
+    })
+    .withFailureHandler(e=>{
+      btn.disabled=false;
+      btn.textContent='Save Correction';
+      showMsg((e&&e.message)?e.message:'Could not save correction.','err');
+    })
+    .saveManualCashCounterCorrection(corrected);
+});
+
+$('notNowBtn').addEventListener('click',()=>{
+  $('dailyCountForm').classList.remove('show');
+  showMsg('Cash Counter inventory only.');
+  window.scrollTo({top:0,behavior:'smooth'});
+});
+
+$('startNewCheck').addEventListener('click',()=>{
+  
+  $('dailyCountForm').classList.add('show');
+  $('countGrid').innerHTML=grid('count',zero());
+  refreshCount();
+  showMsg('Start from zero and count the physical money.');
+  $('dailyCountForm').scrollIntoView({behavior:'smooth',block:'start'});
+});
+
+function load(){
+  showMsg('');
+  google.script.run
+    .withSuccessHandler(x=>{
+      current=x;
+      renderCashCounterInventory(current);
+      setTimeout(sendCashCounterStatusToTracker,80);
+
+      $('countGrid').innerHTML=grid('count',zero());
+      refreshCount();
+      renderSummary(current);
+      setTimeout(sendCashCounterStatusToTracker,50);
+
+      $('dailyCountForm').classList.remove('show');
+      showMsg('Cash Counter inventory loaded. Count physical cash only if you want to verify it.');
+    })
+    .withFailureHandler(e=>{
+      $('trackerCashAuto').textContent='Unable to read';
+      showMsg((e&&e.message)?e.message:'Could not load Cash Counter.','err');
+    })
+    .getCashCounter();
+}
+
+function renderDenominationComparison(){
+  if(!current) return;
+
+  const expected=(current.pieces && typeof current.pieces==='object')
+    ? current.pieces : {};
+  const counted=read('count');
+
+  const box=$('denomCompare');
+  const grid=$('denomCompareGrid');
+
+  // Show only denominations that exist in the Cash Counter
+  // or that the user physically counted.
+  const rows=D.filter(d=>{
+    const key=d[0];
+    return Number(expected[key]||0)>0 || Number(counted[key]||0)>0;
+  });
+
+  if(!rows.length){
+    box.classList.remove('show');
+    grid.innerHTML='';
+    return;
+  }
+
+  grid.innerHTML=rows.map(d=>{
+    const key=d[0];
+    const exp=Math.max(0,Math.floor(Number(expected[key]||0)));
+    const got=Math.max(0,Math.floor(Number(counted[key]||0)));
+    const diff=got-exp;
+
+    let cls='match';
+    let result='MATCHED';
+
+    if(diff<0){
+      cls='short';
+      result=`SHORT ${Math.abs(diff)} ${Math.abs(diff)===1?'pc':'pcs'}`;
+    }else if(diff>0){
+      cls='over';
+      result=`OVER ${diff} ${diff===1?'pc':'pcs'}`;
+    }
+
+    const name=key==='20b'
+      ? '₱20 Bill'
+      : key==='20c'
+        ? '₱20 Coin'
+        : d[1];
+
+    return `
+      <div class="denom-compare-row ${cls}">
+        <div class="denom-compare-name">${name}</div>
+        <div class="denom-compare-counts">
+          Expected <strong>${exp}</strong> · Counted <strong>${got}</strong>
+        </div>
+        <div class="denom-compare-result">${result}</div>
+      </div>`;
+  }).join('');
+
+  box.classList.add('show');
+}
+
+function refreshCount(){
+  refreshSubs('count');
+  $('countTotal').textContent=money(total(read('count')));
+  if(current){
+    renderSummary(current);
+    renderDenominationComparison();
+  }
+}
+
+
+document.addEventListener('click',e=>{
+  const btn=e.target.closest('.qty-btn');
+  if(!btn) return;
+
+  const input=document.querySelector(
+    `input[data-prefix="${btn.dataset.prefix}"][data-key="${btn.dataset.key}"]`
+  );
+  if(!input) return;
+
+  let value=Math.max(0,Math.floor(Number(input.value||0)));
+
+  if(btn.dataset.action==='plus') value+=1;
+  if(btn.dataset.action==='minus') value=Math.max(0,value-1);
+
+  input.value=value;
+
+  if(btn.dataset.prefix==='count') refreshCount();
+});
+
+document.addEventListener('input',e=>{
+  if(e.target.matches('input[data-prefix="count"]')) refreshCount();
+});
+
+
+document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));
+  ['count','history'].forEach(t=>$(t+'View').classList.toggle('active',b.dataset.tab===t));
+  if(b.dataset.tab==='history') loadHistory();
+}));
+
+$('saveCount').addEventListener('click',()=>{
+  const pieces=read('count');
+  const physical=total(pieces);
+
+  if(physical<=0){
+    showMsg('Count your physical cash first.','err');
+    return;
+  }
+
+  const btn=$('saveCount');
+  btn.disabled=true;
+  btn.textContent='Saving…';
+  showMsg('Saving Cash Check…');
+
+  google.script.run
+    .withSuccessHandler(x=>{
+      btn.disabled=false;
+      btn.textContent='Save Physical Cash Check';
+      current=x;
+
+      // Keep the just-saved numbers visible and show the final result.
+      const tracker=Number(x.trackerCashOnHand||0);
+      const diff=physical-tracker;
+      const cls=Math.abs(diff)<.01?'matched':diff<0?'short':'over';
+      const status=Math.abs(diff)<.01
+        ? 'MATCHED'
+        : diff<0
+          ? 'SHORT '+money(Math.abs(diff))
+          : 'OVER '+money(diff);
+
+      $('summary').innerHTML=`
+        <div class="metric"><small>Physical Cash</small><strong>${money(physical)}</strong></div>
+        <div class="metric"><small>Tracker Cash on Hand</small><strong>${money(tracker)}</strong></div>
+        <div class="metric statusbox ${cls}"><small>Cash Check</small><strong>${status}</strong></div>`;
+
+      showMsg('Cash check saved ✓','ok');
+      loadHistory();
+      renderCashCounterInventory(current);
+      setTimeout(sendCashCounterStatusToTracker,80);
+      $('dailyCountForm').classList.remove('show');
+      
+      
+    })
+    .withFailureHandler(e=>{
+      btn.disabled=false;
+      btn.textContent='Save Physical Cash Check';
+      showMsg((e&&e.message)?e.message:'Could not save Daily Cash Check.','err');
+    })
+    .saveCashCount(pieces);
+});
+
+
+function loadHistory(){
+  $('historyList').innerHTML='Loading…';
+
+  google.script.run
+    .withSuccessHandler(rows=>{
+      const counts=(rows||[]).filter(r=>r.action==='COUNT');
+
+      if(!counts.length){
+        $('historyList').innerHTML='No Cash Check history yet.';
+        return;
+      }
+
+      $('historyList').innerHTML=counts.map(r=>{
+        const physical=Number(r.physicalTotal||0);
+        const tracker=Number(r.trackerCashOnHand||0);
+        const diff=Number(r.difference||0);
+
+        let status='MATCHED';
+        let statusClass='matched';
+
+        if(diff < -0.01){
+          status='SHORT';
+          statusClass='short';
+        }else if(diff > 0.01){
+          status='OVER';
+          statusClass='over';
+        }
+
+        const differenceRow=Math.abs(diff)>.01
+          ? `<div class="history-row history-difference">
+               <span>Difference</span>
+               <strong>${diff<0?'-':'+'}${money(Math.abs(diff))}</strong>
+             </div>`
+          : '';
+
+        return `<div class="history-item">
+          <div class="history-head">
+            <div>
+              <div class="history-title">CASH CHECK</div>
+              <div class="history-date">${r.date}</div>
+            </div>
+            <div class="history-status ${statusClass}">${status}</div>
+          </div>
+
+          <div class="history-values">
+            <div class="history-row">
+              <span>Physical Cash</span>
+              <strong>${money(physical)}</strong>
+            </div>
+            <div class="history-row">
+              <span>Tracker Cash on Hand</span>
+              <strong>${money(tracker)}</strong>
+            </div>
+            ${differenceRow}
+          </div>
+        </div>`;
+      }).join('');
+    })
+    .withFailureHandler(e=>{
+      $('historyList').textContent=(e&&e.message)?e.message:'Could not load history.';
+    })
+    .getCashCountHistory();
+}
+
+$('countGrid').innerHTML=grid('count',zero());refreshCount();load();
+
+
+
+
+</script>
 </body>
 </html>
