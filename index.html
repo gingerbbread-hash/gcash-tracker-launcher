@@ -4280,6 +4280,62 @@ body > .hero{
 }
 </style>
 
+
+<style id="cash-counter-reconciliation-ui">
+#cashCounterNative .reconcile-preview{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:7px;
+  margin:10px 0 12px;
+}
+#cashCounterNative .reconcile-preview-item{
+  border:1px solid #e4e7ec;
+  background:#f8fafc;
+  border-radius:11px;
+  padding:8px;
+}
+#cashCounterNative .reconcile-preview-item.full{grid-column:1/-1}
+#cashCounterNative .reconcile-preview-item span{
+  display:block;
+  color:#667085;
+  font-size:9px;
+  font-weight:850;
+  text-transform:uppercase;
+  letter-spacing:.03em;
+}
+#cashCounterNative .reconcile-preview-item strong{
+  display:block;
+  margin-top:3px;
+  font-size:15px;
+  color:#172033;
+}
+#cashCounterNative .reconcile-preview-item.matched strong{color:#067647}
+#cashCounterNative .reconcile-preview-item.short strong{color:#b42318}
+#cashCounterNative .reconcile-preview-item.over strong{color:#b54708}
+#cashCounterNative .reconcile-reason,
+#cashCounterNative .reconcile-note{
+  width:100%;
+  min-height:42px;
+  border:1px solid #d0d5dd;
+  border-radius:10px;
+  background:#fff;
+  color:#172033;
+  font-size:13px;
+  padding:8px 10px;
+}
+#cashCounterNative .reconcile-warning{
+  margin:9px 0 10px;
+  padding:9px 10px;
+  border:1px solid #fedf89;
+  background:#fffaeb;
+  color:#93370d;
+  border-radius:10px;
+  font-size:11px;
+  line-height:1.35;
+  font-weight:700;
+}
+</style>
+
 </head>
 <body>
 <main class="app">
@@ -4413,16 +4469,57 @@ body > .hero{
           <button id="notNowBtn" class="inventory-close-btn" type="button">Close</button>
         </div>
 
-        <button id="editInventoryBtn" class="inventory-edit-btn" type="button">Edit Cash Counter</button>
+        <button id="editInventoryBtn" class="inventory-edit-btn" type="button">Reconcile Cash Counter</button>
 
         <div id="editInventoryPanel">
-          <div style="font-size:14px;font-weight:950;color:#172033;margin-bottom:4px">Correct Saved Pieces</div>
+          <div style="font-size:14px;font-weight:950;color:#172033;margin-bottom:4px">Reconcile Cash Counter</div>
           <div style="font-size:12px;color:#667085;margin-bottom:10px">
-            This changes only the Cash Counter inventory. It does not change your main GCash/Maya Tracker.
+            Use this only when the saved bills and coins do not match the cash you physically have.
+            This changes only the Cash Counter inventory. It does not change GCash, Maya, Cash on Hand,
+            Current Capital, or Earnings.
           </div>
+
+          <div id="reconcilePreview" class="reconcile-preview">
+            <div class="reconcile-preview-item">
+              <span>Cash on Hand</span>
+              <strong id="reconcileTrackerCash">₱0.00</strong>
+            </div>
+            <div class="reconcile-preview-item">
+              <span>Saved Counter</span>
+              <strong id="reconcileBeforeTotal">₱0.00</strong>
+            </div>
+            <div class="reconcile-preview-item">
+              <span>New Counter</span>
+              <strong id="reconcileAfterTotal">₱0.00</strong>
+            </div>
+            <div class="reconcile-preview-item full" id="reconcileDifferenceCard">
+              <span>Difference After Correction</span>
+              <strong id="reconcileDifference">₱0.00</strong>
+            </div>
+          </div>
+
+          <label class="label" for="reconcileReason" style="margin-top:10px">Reason for correction</label>
+          <select id="reconcileReason" class="reconcile-reason">
+            <option value="">Select a reason</option>
+            <option value="Physical recount">Physical recount</option>
+            <option value="Counting error">Counting error</option>
+            <option value="Missing or extra change">Missing or extra change</option>
+            <option value="Wrong denomination recorded">Wrong denomination recorded</option>
+            <option value="Old balance correction">Old balance correction</option>
+            <option value="Other">Other</option>
+          </select>
+
+          <label class="label" for="reconcileNote" style="margin-top:8px">Note (optional)</label>
+          <input id="reconcileNote" class="reconcile-note" type="text" maxlength="120"
+                 placeholder="Example: Recounted cash box after closing">
+
+          <div class="reconcile-warning">
+            A reconciliation record will be saved in Cash Counter History so the adjustment can be reviewed later.
+          </div>
+
           <div id="editInventoryGrid" class="edit-money-grid"></div>
           <div class="edit-save-row">
-            <button id="saveInventoryCorrection" type="button">Save Correction</button>
+            <button id="saveInventoryCorrection" type="button">Save Reconciliation</button>
             <button id="cancelInventoryCorrection" type="button">Cancel</button>
           </div>
         </div>
@@ -8045,8 +8142,37 @@ function readInventoryEditor(){
   return out;
 }
 
+function reconcileTrackerCashValue(){
+  if(current && current.trackerCashOnHand!==null && current.trackerCashOnHand!==undefined){
+    return Number(current.trackerCashOnHand)||0;
+  }
+  const raw=String(($('trackerCashAuto') && $('trackerCashAuto').textContent)||'').replace(/[^0-9.-]/g,'');
+  return Number(raw)||0;
+}
+
+function refreshReconcilePreview(){
+  const before=(current && current.pieces && typeof current.pieces==='object') ? total(current.pieces) : 0;
+  const after=total(readInventoryEditor());
+  const tracker=reconcileTrackerCashValue();
+  const diff=after-tracker;
+
+  $('reconcileTrackerCash').textContent=money(tracker);
+  $('reconcileBeforeTotal').textContent=money(before);
+  $('reconcileAfterTotal').textContent=money(after);
+  $('reconcileDifference').textContent=(diff>0?'+':'')+money(diff);
+
+  const card=$('reconcileDifferenceCard');
+  card.classList.remove('matched','short','over');
+  if(Math.abs(diff)<0.005) card.classList.add('matched');
+  else if(diff<0) card.classList.add('short');
+  else card.classList.add('over');
+}
+
 $('editInventoryBtn').addEventListener('click',()=>{
   renderInventoryEditor();
+  $('reconcileReason').value='';
+  $('reconcileNote').value='';
+  refreshReconcilePreview();
   $('editInventoryPanel').classList.add('show');
   $('editInventoryPanel').scrollIntoView({behavior:'smooth',block:'start'});
 });
@@ -8068,14 +8194,40 @@ document.addEventListener('click',e=>{
   if(plus) n+=1;
   if(minus) n=Math.max(0,n-1);
   input.value=n;
+  refreshReconcilePreview();
+});
+
+$('editInventoryGrid').addEventListener('input',e=>{
+  if(e.target && e.target.matches('input[data-edit-key]')) refreshReconcilePreview();
 });
 
 $('saveInventoryCorrection').addEventListener('click',()=>{
   const corrected=readInventoryEditor();
+  const reason=String($('reconcileReason').value||'').trim();
+  const note=String($('reconcileNote').value||'').trim();
 
-  if(!confirm('Save this Cash Counter correction? This will NOT change your main GCash/Maya Tracker.')){
+  if(!reason){
+    showMsg('Choose a reason before saving the reconciliation.','err');
+    $('reconcileReason').focus();
     return;
   }
+
+  const before=(current && current.pieces && typeof current.pieces==='object') ? total(current.pieces) : 0;
+  const after=total(corrected);
+  const tracker=reconcileTrackerCashValue();
+  const diff=after-tracker;
+
+  const message=
+    'Save this Cash Counter reconciliation?\n\n'+
+    'Cash on Hand: '+money(tracker)+'\n'+
+    'Saved Counter: '+money(before)+'\n'+
+    'New Counter: '+money(after)+'\n'+
+    'Difference after: '+(diff>0?'+':'')+money(diff)+'\n\n'+
+    'Reason: '+reason+
+    (note ? '\nNote: '+note : '')+
+    '\n\nThis will NOT change GCash, Maya, Cash on Hand, Capital, or Earnings.';
+
+  if(!confirm(message)) return;
 
   const btn=$('saveInventoryCorrection');
   btn.disabled=true;
@@ -8088,16 +8240,16 @@ $('saveInventoryCorrection').addEventListener('click',()=>{
       setTimeout(sendCashCounterStatusToTracker,80);
       $('editInventoryPanel').classList.remove('show');
       btn.disabled=false;
-      btn.textContent='Save Correction';
-      showMsg('Cash Counter correction saved.','ok');
+      btn.textContent='Save Reconciliation';
+      showMsg('Cash Counter reconciliation saved with history.','ok');
       loadHistory();
     })
     .withFailureHandler(e=>{
       btn.disabled=false;
-      btn.textContent='Save Correction';
-      showMsg((e&&e.message)?e.message:'Could not save correction.','err');
+      btn.textContent='Save Reconciliation';
+      showMsg((e&&e.message)?e.message:'Could not save reconciliation.','err');
     })
-    .saveManualCashCounterCorrection(corrected);
+    .saveManualCashCounterCorrection(corrected, reason, note);
 });
 
 $('notNowBtn').addEventListener('click',()=>{
