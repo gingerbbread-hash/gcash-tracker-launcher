@@ -1725,6 +1725,13 @@ body{padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom,0px))}
   color:#00b14f !important;
   font-weight:900 !important;
 }
+#homeMaribankBalance,
+.home-wallet-maribank .wallet-name-line small{
+  color:#f15a00 !important;
+  font-weight:900 !important;
+}
+.maribank-balance{background:#fff5ed !important;border-color:#ffd7bd !important}
+.maribank-balance strong{color:#d94800 !important}
 </style>
 
 
@@ -1739,7 +1746,7 @@ label[for="capitalSaripayInput"],
   display:none !important;
 }
 
-/* Current active wallets: Cash, GCash, Maya */
+/* Current active wallets: Cash, GCash, Maya, MariBank */
 #homeBalanceStrip{
   grid-template-columns:repeat(3,minmax(0,1fr)) !important;
 }
@@ -1826,6 +1833,7 @@ label[for="capitalSaripayInput"],
 }
 .history-wallet-gcash::after{content:"GCash";color:rgba(0,102,255,.065)}
 .history-wallet-maya::after{content:"Maya";color:rgba(0,177,79,.075)}
+.history-wallet-maribank::after{content:"MariBank";color:rgba(241,90,0,.075)}
 </style>
 
 
@@ -4441,6 +4449,10 @@ body > .hero{
         <div class="wallet-name-line"><img class="wallet-logo" src="https://www.maya.ph/hubfs/Maya/Change%20in%20Management/maya%20consumer%20logo.svg" alt="Maya"><small>Maya</small></div>
         <strong id="homeMayaBalance">₱0.00</strong>
       </div>
+      <div class="home-balance-mini home-wallet-maribank">
+        <div class="wallet-name-line"><img class="wallet-logo" src="https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/67/3b/b9/673bb951-fb4c-f6d5-656c-b771b7b80c82/AppIcon-PH-0-0-1x_U007emarketing-0-8-0-0-85-220.png/512x512bb.png" alt="MariBank"><small>MariBank</small></div>
+        <strong id="homeMaribankBalance">₱0.00</strong>
+      </div>
     </div>
     <section class="card today-dashboard" id="todayDashboard">
       <div class="today-head">
@@ -4486,7 +4498,7 @@ body > .hero{
 <section class="card">
     <label class="label">Tracker Cash on Hand</label>
     <div id="trackerCashAuto" class="cash-input" style="display:flex;align-items:center;font-weight:900;background:#f8fafc;">Loading…</div>
-    <div class="msg">Automatically read from your main GCash/Maya Tracker. This Cash Counter cannot change it.</div>
+    <div class="msg">Automatically read from your main GCash/Maya/MariBank Tracker. This Cash Counter cannot change it.</div>
   </section>
 
   <section class="card">
@@ -4527,7 +4539,7 @@ body > .hero{
           <div style="font-size:14px;font-weight:950;color:#172033;margin-bottom:4px">Reconcile Cash Counter</div>
           <div style="font-size:12px;color:#667085;margin-bottom:10px">
             Use this only when the saved bills and coins do not match the cash you physically have.
-            This changes only the Cash Counter inventory. It does not change GCash, Maya, Cash on Hand,
+            This changes only the Cash Counter inventory. It does not change GCash, Maya, MariBank, Cash on Hand,
             Current Capital, or Earnings.
           </div>
 
@@ -4632,6 +4644,11 @@ body > .hero{
         <strong id="mayaAvailable">₱0.00</strong>
         <span>Maya Balance</span>
       </div>
+      <div class="capital-balance maribank-balance">
+        <div class="wallet-name-line"><img class="wallet-logo" src="https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/67/3b/b9/673bb951-fb4c-f6d5-656c-b771b7b80c82/AppIcon-PH-0-0-1x_U007emarketing-0-8-0-0-85-220.png/512x512bb.png" alt="MariBank"><small>MariBank</small></div>
+        <strong id="maribankAvailable">₱0.00</strong>
+        <span>MariBank Balance</span>
+      </div>
       <div class="capital-balance cash-balance">
         <div class="wallet-name-line"><small>Cash on Hand</small></div>
         <strong id="cashOutAvailable">₱0.00</strong>
@@ -4640,7 +4657,7 @@ body > .hero{
       <button type="button" id="mayaTransferBtn" class="wallet-transfer-card">
         <span>Transfer Money</span>
         <strong>Move Money</strong>
-        <small>Cash · GCash · Maya</small>
+        <small>Cash · GCash · Maya · MariBank</small>
       </button>
     </div>
 
@@ -4656,7 +4673,7 @@ body > .hero{
     </div>
 
     <div class="wallet-health-note" id="walletHealthNote">
-      Move Money between Cash on Hand, GCash, and Maya does not change Current Capital or Earnings.
+      Move Money between Cash on Hand, GCash, Maya, and MariBank does not change Current Capital or Earnings.
     </div>
 
     <div class="capital-action-grid">
@@ -4796,6 +4813,7 @@ body > .hero{
       <button type="button" class="capital-wallet-choice active" data-capital-wallet="Cash on Hand">Cash on Hand</button>
       <button type="button" class="capital-wallet-choice" data-capital-wallet="GCash">GCash</button>
       <button type="button" class="capital-wallet-choice" data-capital-wallet="Maya">Maya</button>
+      <button type="button" class="capital-wallet-choice" data-capital-wallet="MariBank">MariBank</button>
     </div>
 
     <div class="field-gap"></div>
@@ -4904,6 +4922,7 @@ body > .hero{
       <div class="cashout-wallet-actions">
         <button type="button" id="cashInFromGcash" class="cashout-wallet-choice wallet-gcash">GCash</button>
         <button type="button" id="cashInFromMaya" class="cashout-wallet-choice" style="background:#ecfdf3;color:#067647;border-color:#abefc6">Maya</button>
+        <button type="button" id="cashInFromMaribank" class="cashout-wallet-choice" style="background:#fff5ed;color:#d94800;border-color:#ffd7bd">MariBank</button>
       </div>
     </div>
 
@@ -4941,6 +4960,9 @@ body > .hero{
     <div class="field-gap"></div>
     <label class="label" for="capitalMayaInput">Maya Balance</label>
     <input id="capitalMayaInput" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+    <div class="field-gap"></div>
+    <label class="label" for="capitalMaribankInput">MariBank Balance</label>
+    <input id="capitalMaribankInput" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
 
     <label class="label" for="capitalSaripayInput">Saripay Balance</label>
     <input id="capitalSaripayInput" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
@@ -4956,11 +4978,11 @@ body > .hero{
 <div id="mayaTransferModal" class="capital-modal" aria-hidden="true">
   <div class="capital-modal-card" role="dialog" aria-modal="true">
     <div class="capital-modal-title">Transfer Money</div>
-    <div class="capital-modal-help">Move your own business money between Cash on Hand, GCash, and Maya.</div>
+    <div class="capital-modal-help">Move your own business money between Cash on Hand, GCash, Maya, and MariBank.</div>
     <label class="label" for="transferFromWallet">From</label>
-    <select id="transferFromWallet" class="select"><option>Cash on Hand</option><option selected>GCash</option><option>Maya</option></select>
+    <select id="transferFromWallet" class="select"><option>Cash on Hand</option><option selected>GCash</option><option>Maya</option><option>MariBank</option></select>
     <label class="label" for="transferToWallet" style="margin-top:10px">To</label>
-    <select id="transferToWallet" class="select"><option>Cash on Hand</option><option>GCash</option><option selected>Maya</option></select>
+    <select id="transferToWallet" class="select"><option>Cash on Hand</option><option>GCash</option><option selected>Maya</option><option>MariBank</option></select>
     <label class="label" for="mayaTransferAmount" style="margin-top:10px">Transfer Amount</label>
     <input id="mayaTransferAmount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00">
     <div id="moveMoneyPreview" class="transfer-preview" style="margin-top:10px"></div>
@@ -5234,6 +5256,7 @@ body > .hero{
   const cashInWalletStep = $('cashInWalletStep');
   const cashInFromGcash = $('cashInFromGcash');
   const cashInFromMaya = $('cashInFromMaya');
+  const cashInFromMaribank = $('cashInFromMaribank');
   const cashOutWalletStep = $('cashOutWalletStep');
   const cashOutToGcash = $('cashOutToGcash');
   const cashOutToMaya = $('cashOutToMaya');
@@ -5250,6 +5273,7 @@ body > .hero{
   const cashOutAvailable = $('cashOutAvailable');
   const cashInAvailable = $('cashInAvailable');
   const mayaAvailable=$('mayaAvailable'), homeMayaBalance=$('homeMayaBalance'), capitalMayaInput=$('capitalMayaInput');
+  const maribankAvailable=$('maribankAvailable'), homeMaribankBalance=$('homeMaribankBalance'), capitalMaribankInput=$('capitalMaribankInput');
   const mayaTransferBtn=$('mayaTransferBtn'), mayaTransferModal=$('mayaTransferModal'), mayaTransferAmount=$('mayaTransferAmount'), mayaTransferStatus=$('mayaTransferStatus');
   const transferFromWallet=$('transferFromWallet'), transferToWallet=$('transferToWallet'), cancelMayaTransferBtn=$('cancelMayaTransferBtn'), saveMayaTransferBtn=$('saveMayaTransferBtn');
   const mayaTransferHistoryToggle=$('mayaTransferHistoryToggle'), mayaTransferHistorySection=$('mayaTransferHistorySection'), mayaTransferHistoryEmpty=$('mayaTransferHistoryEmpty'), mayaTransferHistoryList=$('mayaTransferHistoryList');
@@ -5423,6 +5447,7 @@ body > .hero{
     const wallet=(tx.walletDestination||'GCash');
     let walletName='GCash', before=tx.previousGcash, after=tx.newGcash;
     if(wallet==='Maya'){ walletName='Maya'; before=tx.previousMaya; after=tx.newMaya; }
+    else if(wallet==='MariBank'){ walletName='MariBank'; before=tx.previousMaribank; after=tx.newMaribank; }
     else if(wallet==='Saripay'){ walletName='SariPay'; before=tx.previousSaripay; after=tx.newSaripay; }
 
     const valid=v=>v!==null && v!==undefined && v!=='';
@@ -5465,7 +5490,7 @@ body > .hero{
     const ci=txs.filter(x=>x.type==='Cash In').reduce((s,x)=>s+Number(x.amount||0),0);
     const co=txs.filter(x=>x.type==='Cash Out').reduce((s,x)=>s+Number(x.amount||0),0);
     const q=key.split('-').map(Number), d=new Date(q[0],q[1]-1,q[2]);
-    const txhtml=txs.map(tx=>`<div class="history-tx-card ${transactionWalletLabel(tx)==='Maya'?'history-wallet-maya':'history-wallet-gcash'}">
+    const txhtml=txs.map(tx=>`<div class="history-tx-card ${transactionWalletLabel(tx)==='Maya'?'history-wallet-maya':transactionWalletLabel(tx)==='MariBank'?'history-wallet-maribank':'history-wallet-gcash'}">
       <div class="history-tx-head">
         <div>
           <div class="history-tx-kind">
@@ -5558,6 +5583,7 @@ body > .hero{
       cashOutAvailable.textContent = money(0);
       cashInAvailable.textContent = money(0);
       mayaAvailable.textContent=money(0); if(homeMayaBalance)homeMayaBalance.textContent=money(0);
+      if(maribankAvailable)maribankAvailable.textContent=money(0); if(homeMaribankBalance)homeMaribankBalance.textContent=money(0);
       saripayAvailable.textContent = money(0);
       totalCapital.textContent = money(0);
       netEarnings.textContent = money(0);
@@ -5574,6 +5600,7 @@ body > .hero{
     cashOutAvailable.textContent = money(data.cashOnHand);
     cashInAvailable.textContent = money(data.gcashBalance);
     mayaAvailable.textContent=money(data.mayaBalance||0); if(homeMayaBalance)homeMayaBalance.textContent=money(data.mayaBalance||0);
+    if(maribankAvailable)maribankAvailable.textContent=money(data.maribankBalance||0); if(homeMaribankBalance)homeMaribankBalance.textContent=money(data.maribankBalance||0);
     saripayAvailable.textContent = money(data.saripayBalance || 0);
     totalCapital.textContent = money(data.currentCapital ?? data.totalCapital ?? data.baseCapital);
     netEarnings.textContent = money(data.netEarnings || 0);
@@ -5608,6 +5635,7 @@ body > .hero{
     capitalCashInput.value = capitalData && capitalData.initialized ? Number(capitalData.cashOnHand || 0).toFixed(2) : '';
     capitalGcashInput.value = capitalData && capitalData.initialized ? Number(capitalData.gcashBalance || 0).toFixed(2) : '';
     capitalMayaInput.value=capitalData&&capitalData.initialized?Number(capitalData.mayaBalance||0).toFixed(2):'';
+    capitalMaribankInput.value=capitalData&&capitalData.initialized?Number(capitalData.maribankBalance||0).toFixed(2):'';
     capitalSaripayInput.value = capitalData && capitalData.initialized ? Number(capitalData.saripayBalance || 0).toFixed(2) : '';
     capitalModalStatus.textContent = '';
     capitalModal.classList.add('show');
@@ -5632,9 +5660,10 @@ body > .hero{
     const cash = Number(capitalCashInput.value);
     const gcash = Number(capitalGcashInput.value);
     const maya=Number(capitalMayaInput.value);
+    const maribank=Number(capitalMaribankInput.value);
     const saripay = Number((capitalData && capitalData.saripayBalance) || 0);
 
-    if(!isFinite(cash) || cash < 0 || !isFinite(gcash) || gcash < 0 || !isFinite(maya) || maya < 0 || !isFinite(saripay) || saripay < 0){
+    if(!isFinite(cash) || cash < 0 || !isFinite(gcash) || gcash < 0 || !isFinite(maya) || maya < 0 || !isFinite(maribank) || maribank < 0 || !isFinite(saripay) || saripay < 0){
       capitalModalStatus.textContent='Enter valid balances.';
       capitalModalStatus.className='status err';
       return;
@@ -5655,7 +5684,7 @@ body > .hero{
         capitalModalStatus.textContent=err.message || 'Could not save capital.';
         capitalModalStatus.className='status err';
       })
-      .setCapitalBySession(getSessionToken(),cash,gcash,saripay,maya);
+      .setCapitalBySession(getSessionToken(),cash,gcash,saripay,maya,maribank);
   });
 
   function renderExpenses(){
@@ -5729,7 +5758,9 @@ body > .hero{
       ? Number(c.gcashBalance||0)
       : capitalActionWallet==='Maya'
         ? Number(c.mayaBalance||0)
-        : Number(c.cashOnHand||0);
+        : capitalActionWallet==='MariBank'
+          ? Number(c.maribankBalance||0)
+          : Number(c.cashOnHand||0);
 
     if(capitalActionType==='ADD_CAPITAL'){
       capitalActionAvailable.innerHTML='The amount will be added to <strong>'+escapeHtml(capitalActionWallet)+'</strong> and Current Capital.';
@@ -5891,13 +5922,14 @@ body > .hero{
     expensePaidGcash.classList.toggle('active', expensePaidFrom === 'GCash');
   }
 
-  function renderMayaTransfers(){mayaTransferHistoryList.innerHTML='';mayaTransferHistoryEmpty.style.display=mayaTransfers.length?'none':'block';mayaTransfers.forEach(t=>{const item=document.createElement('div');item.className='maya-transfer-item';let balances=`GCash: ${money(t.previousGcash)} → ${money(t.newGcash)} · Maya: ${money(t.previousMaya)} → ${money(t.newMaya)}`;if(t.previousCash!==null&&t.previousCash!==undefined)balances=`Cash: ${money(t.previousCash)} → ${money(t.newCash)} · `+balances;item.innerHTML=`<div class="maya-transfer-top"><span>${escapeHtml(t.fromWallet)} → ${escapeHtml(t.toWallet)}</span><span>${money(t.amount)}</span></div><div class="maya-transfer-meta">${escapeHtml(t.date||'')}</div><div class="maya-transfer-meta">${balances}</div><div style="text-align:right"><button type="button" class="link-btn" data-remove-maya-transfer="${escapeHtml(t.id)}">Remove</button></div>`;mayaTransferHistoryList.appendChild(item);});}
+  function renderMayaTransfers(){mayaTransferHistoryList.innerHTML='';mayaTransferHistoryEmpty.style.display=mayaTransfers.length?'none':'block';mayaTransfers.forEach(t=>{const item=document.createElement('div');item.className='maya-transfer-item';let balances=`GCash: ${money(t.previousGcash)} → ${money(t.newGcash)} · Maya: ${money(t.previousMaya)} → ${money(t.newMaya)} · MariBank: ${money(t.previousMaribank||0)} → ${money(t.newMaribank||0)}`;if(t.previousCash!==null&&t.previousCash!==undefined)balances=`Cash: ${money(t.previousCash)} → ${money(t.newCash)} · `+balances;item.innerHTML=`<div class="maya-transfer-top"><span>${escapeHtml(t.fromWallet)} → ${escapeHtml(t.toWallet)}</span><span>${money(t.amount)}</span></div><div class="maya-transfer-meta">${escapeHtml(t.date||'')}</div><div class="maya-transfer-meta">${balances}</div><div style="text-align:right"><button type="button" class="link-btn" data-remove-maya-transfer="${escapeHtml(t.id)}">Remove</button></div>`;mayaTransferHistoryList.appendChild(item);});}
   function loadMayaTransfers(){if(!unlocked)return;google.script.run.withSuccessHandler(d=>{mayaTransfers=d||[];renderMayaTransfers();renderCapitalActivity();}).withFailureHandler(()=>{}).getMayaTransfersBySession(getSessionToken());}
   function moveMoneyBalances(){
     return {
       'Cash on Hand':Number((capitalData&&capitalData.cashOnHand)||0),
       'GCash':Number((capitalData&&capitalData.gcashBalance)||0),
-      'Maya':Number((capitalData&&capitalData.mayaBalance)||0)
+      'Maya':Number((capitalData&&capitalData.mayaBalance)||0),
+      'MariBank':Number((capitalData&&capitalData.maribankBalance)||0)
     };
   }
   function updateMoveMoneyPreview(){
@@ -5924,7 +5956,7 @@ body > .hero{
   }
   mayaTransferBtn.addEventListener('click',()=>{mayaTransferAmount.value='';mayaTransferStatus.textContent='';transferFromWallet.value='GCash';transferToWallet.value='Maya';mayaTransferModal.classList.add('show');mayaTransferModal.style.display='flex';updateMoveMoneyPreview();});
   cancelMayaTransferBtn.addEventListener('click',()=>{mayaTransferModal.classList.remove('show');mayaTransferModal.style.display='none';});
-  transferFromWallet.addEventListener('change',()=>{if(transferToWallet.value===transferFromWallet.value){transferToWallet.value=['Cash on Hand','GCash','Maya'].find(x=>x!==transferFromWallet.value);}mayaTransferStatus.textContent='';updateMoveMoneyPreview();});
+  transferFromWallet.addEventListener('change',()=>{if(transferToWallet.value===transferFromWallet.value){transferToWallet.value=['Cash on Hand','GCash','Maya','MariBank'].find(x=>x!==transferFromWallet.value);}mayaTransferStatus.textContent='';updateMoveMoneyPreview();});
   transferToWallet.addEventListener('change',()=>{if(transferToWallet.value===transferFromWallet.value){mayaTransferStatus.textContent='Choose a different destination wallet.';mayaTransferStatus.className='status err';}else mayaTransferStatus.textContent='';updateMoveMoneyPreview();});
   mayaTransferAmount.addEventListener('input',updateMoveMoneyPreview);
   mayaTransferHistoryToggle.addEventListener('click',()=>{const o=mayaTransferHistorySection.style.display==='none';mayaTransferHistorySection.style.display=o?'block':'none';mayaTransferHistoryToggle.textContent=o?'Hide Transfer History':'View Transfer History';if(o)loadMayaTransfers();});
@@ -6382,7 +6414,7 @@ body > .hero{
     if(!c.initialized) throw new Error('Set your capital balances first while online.');
     const wallet=payload.wallet;
     const amount=Number(payload.amount||0);
-    const key=wallet==='GCash'?'gcashBalance':wallet==='Maya'?'mayaBalance':'cashOnHand';
+    const key=wallet==='GCash'?'gcashBalance':wallet==='Maya'?'mayaBalance':wallet==='MariBank'?'maribankBalance':'cashOnHand';
     const prev=Number(c[key]||0);
     const currentCap=Number(c.currentCapital ?? c.totalCapital ?? 0);
     const available=Number(c.availableEarnings ?? c.netEarnings ?? 0);
@@ -6416,7 +6448,7 @@ body > .hero{
   function applyLocalMoveMoney(payload,id){
     const c={...(capitalData||{})};
     if(!c.initialized) throw new Error('Set your capital balances first while online.');
-    const map={'Cash on Hand':'cashOnHand','GCash':'gcashBalance','Maya':'mayaBalance'};
+    const map={'Cash on Hand':'cashOnHand','GCash':'gcashBalance','Maya':'mayaBalance','MariBank':'maribankBalance'};
     const from=payload.fromWallet,to=payload.toWallet,amount=Number(payload.amount||0);
     const fk=map[from],tk=map[to];
     if(!fk||!tk||from===to) throw new Error('Choose two different wallets.');
@@ -6431,6 +6463,8 @@ body > .hero{
       newGcash:Number(c.gcashBalance||0),
       previousMaya:Number((capitalData&&capitalData.mayaBalance)||0),
       newMaya:Number(c.mayaBalance||0),
+      previousMaribank:Number((capitalData&&capitalData.maribankBalance)||0),
+      newMaribank:Number(c.maribankBalance||0),
       previousCash:Number((capitalData&&capitalData.cashOnHand)||0),
       newCash:Number(c.cashOnHand||0)
     };
@@ -6714,12 +6748,13 @@ body > .hero{
     const sari=document.getElementById('homeSaripayBalance')?.closest('.home-balance-mini');
     const gcash=document.getElementById('homeGcashBalance')?.closest('.home-balance-mini');
     const maya=document.getElementById('homeMayaBalance')?.closest('.home-balance-mini');
+    const mari=document.getElementById('homeMaribankBalance')?.closest('.home-balance-mini');
     const grid=cash?.parentElement;
     if(!grid) return;
     grid.style.setProperty('display','grid','important');
     grid.style.setProperty('grid-template-columns','minmax(0,1fr) minmax(0,1fr)','important');
     grid.style.setProperty('gap','8px','important');
-    [cash,sari,gcash,maya].forEach(card=>{
+    [cash,sari,gcash,maya,mari].forEach(card=>{
       if(card){
         card.style.setProperty('width','100%','important');
         card.style.setProperty('min-width','0','important');
@@ -6736,12 +6771,13 @@ body > .hero{
     // Home: GCash | Maya, then Cash wide.
     const hg=document.getElementById('homeGcashBalance')?.closest('.home-balance-mini');
     const hm=document.getElementById('homeMayaBalance')?.closest('.home-balance-mini');
+    const hmb=document.getElementById('homeMaribankBalance')?.closest('.home-balance-mini');
     const hc=document.getElementById('homeCashBalance')?.closest('.home-balance-mini');
     const homeGrid=hg?.parentElement;
     if(homeGrid){
       homeGrid.style.setProperty('display','grid','important');
       homeGrid.style.setProperty('grid-template-columns','repeat(2,minmax(0,1fr))','important');
-      [hg,hm,hc].forEach(x=>{if(x) homeGrid.appendChild(x);});
+      [hg,hm,hmb,hc].forEach(x=>{if(x) homeGrid.appendChild(x);});
       if(hc){
         hc.style.setProperty('grid-column','1 / -1','important');
         hc.style.setProperty('background','#fff7ed','important');
@@ -6752,12 +6788,13 @@ body > .hero{
     // Wallets: GCash | Maya, then Cash on Hand wide.
     const wg=document.getElementById('cashInAvailable')?.closest('.capital-balance');
     const wm=document.getElementById('mayaAvailable')?.closest('.capital-balance');
+    const wmb=document.getElementById('maribankAvailable')?.closest('.capital-balance');
     const wc=document.getElementById('cashOutAvailable')?.closest('.capital-balance');
     const walletGrid=wg?.parentElement;
     if(walletGrid){
       walletGrid.style.setProperty('display','grid','important');
       walletGrid.style.setProperty('grid-template-columns','repeat(2,minmax(0,1fr))','important');
-      [wg,wm,wc].forEach(x=>{if(x) walletGrid.appendChild(x);});
+      [wg,wm,wmb,wc].forEach(x=>{if(x) walletGrid.appendChild(x);});
       if(wc){
         wc.style.setProperty('grid-column','1 / -1','important');
         wc.style.setProperty('background','#fff7ed','important');
@@ -7011,25 +7048,29 @@ body > .hero{
     const beforeCash = Number((capitalData && capitalData.cashOnHand) || 0);
     const beforeGcash = Number((capitalData && capitalData.gcashBalance) || 0);
     const beforeMaya = Number((capitalData && capitalData.mayaBalance) || 0);
+    const beforeMaribank = Number((capitalData && capitalData.maribankBalance) || 0);
     const beforeSaripay = Number((capitalData && capitalData.saripayBalance) || 0);
 
     let afterCash = beforeCash;
     let afterGcash = beforeGcash;
     let afterMaya = beforeMaya;
+    let afterMaribank = beforeMaribank;
     let afterSaripay = beforeSaripay;
 
     if(payload.type === 'Cash In'){
       if(payload.feeLocation === 'Cash on Hand') afterCash += txTotal;
       else afterCash += txAmount;
 
-      if(payload.walletDestination === 'Maya') afterMaya -= txAmount;
+      if(payload.walletDestination === 'MariBank') afterMaribank -= txAmount;
+      else if(payload.walletDestination === 'Maya') afterMaya -= txAmount;
       else afterGcash -= txAmount;
 
       if(payload.feeLocation === 'Maya') afterMaya += feeValue;
       else if(payload.feeLocation === 'GCash') afterGcash += feeValue;
     }else{
       afterCash -= txAmount;
-      if(payload.walletDestination === 'Maya') afterMaya += txAmount;
+      if(payload.walletDestination === 'MariBank') afterMaribank += txAmount;
+      else if(payload.walletDestination === 'Maya') afterMaya += txAmount;
       else afterGcash += txAmount;
 
       if(payload.feeLocation === 'Cash on Hand') afterCash += feeValue;
@@ -7057,6 +7098,7 @@ body > .hero{
       previousCash: beforeCash, newCash: afterCash,
       previousGcash: beforeGcash, newGcash: afterGcash,
       previousMaya: beforeMaya, newMaya: afterMaya,
+      previousMaribank: beforeMaribank, newMaribank: afterMaribank,
       previousSaripay: beforeSaripay, newSaripay: afterSaripay,
       _pendingSync: true
     };
@@ -7067,7 +7109,7 @@ body > .hero{
     window.__gcashTransactions = history;
 
     // Make the newly recorded transaction immediately visible in Calendar History.
-    // This applies to both GCash and Maya Cash In/Cash Out.
+    // This applies to GCash, Maya, and MariBank Cash In, plus GCash/Maya Cash Out.
     const newTxDate = dateKey(tx);
     if(newTxDate){
       const parts = newTxDate.split('-').map(Number);
@@ -7079,6 +7121,7 @@ body > .hero{
       capitalData.cashOnHand = Number(tx.newCash);
       capitalData.gcashBalance = Number(tx.newGcash);
       capitalData.mayaBalance = Number(tx.newMaya ?? capitalData.mayaBalance ?? 0);
+      capitalData.maribankBalance = Number(tx.newMaribank ?? capitalData.maribankBalance ?? 0);
       capitalData.saripayBalance = Number(tx.newSaripay);
       capitalData.grossFees = Number(capitalData.grossFees || 0) + Number(tx.fee || 0);
       capitalData.netEarnings = Number(capitalData.netEarnings || 0) + Number(tx.fee || 0);
@@ -7697,6 +7740,7 @@ body > .hero{
 
   cashInFromGcash.addEventListener('click',()=>chooseCashInWallet('GCash'));
   cashInFromMaya.addEventListener('click',()=>chooseCashInWallet('Maya'));
+  cashInFromMaribank.addEventListener('click',()=>chooseCashInWallet('MariBank'));
 
   confirmCashOut.addEventListener('click',()=>{
     if(!pendingPayload) return;
@@ -7996,12 +8040,13 @@ document.addEventListener('DOMContentLoaded', function(){
     if(homeCash) homeCash.textContent=numText('cashOutAvailable');
     if(homeGcash) homeGcash.textContent=numText('cashInAvailable');
     if(homeMayaBalance) homeMayaBalance.textContent=numText('mayaAvailable');
+    if(homeMaribankBalance) homeMaribankBalance.textContent=numText('maribankAvailable');
     if(homeSari) homeSari.textContent=numText('saripayAvailable');
 
   }
 
   const obs=new MutationObserver(refreshTabMirrors);
-  ['cashOutAvailable','cashInAvailable','mayaAvailable','saripayAvailable']
+  ['cashOutAvailable','cashInAvailable','mayaAvailable','maribankAvailable','saripayAvailable']
     .forEach(id=>{
       const el=document.getElementById(id);
       if(el) obs.observe(el,{childList:true,subtree:true,characterData:true});
@@ -8019,9 +8064,10 @@ document.addEventListener('DOMContentLoaded', function(){
 <script id="wallet-order-final-override">
 (function(){
   function finalWalletOrder(){
-    // HOME: GCash | Maya, then Cash on Hand | Cash Balance Check
+    // HOME: GCash | Maya, MariBank | Cash on Hand, then Cash Balance Check
     const hg=document.getElementById('homeGcashBalance')?.closest('.home-balance-mini');
     const hm=document.getElementById('homeMayaBalance')?.closest('.home-balance-mini');
+    const hmb=document.getElementById('homeMaribankBalance')?.closest('.home-balance-mini');
     const hc=document.getElementById('homeCashBalance')?.closest('.home-balance-mini');
     const hb=document.getElementById('homeBalanceCheck');
     const home=hg && hg.parentElement;
@@ -8030,17 +8076,22 @@ document.addEventListener('DOMContentLoaded', function(){
       home.style.setProperty('grid-template-columns','repeat(2,minmax(0,1fr))','important');
       hg.style.setProperty('order','1','important');
       hm.style.setProperty('order','2','important');
-      hc.style.setProperty('order','3','important');
+      if(hmb){
+        hmb.style.setProperty('order','3','important');
+        hmb.style.setProperty('grid-column','auto','important');
+      }
+      hc.style.setProperty('order','4','important');
       hc.style.setProperty('grid-column','auto','important');
       if(hb){
-        hb.style.setProperty('order','4','important');
-        hb.style.setProperty('grid-column','auto','important');
+        hb.style.setProperty('order','5','important');
+        hb.style.setProperty('grid-column','1 / -1','important');
       }
     }
 
-    // WALLETS: GCash | Maya, then Cash on Hand | Transfer Money
+    // WALLETS: GCash | Maya, MariBank | Cash on Hand, then Transfer Money
     const wg=document.getElementById('cashInAvailable')?.closest('.capital-balance');
     const wm=document.getElementById('mayaAvailable')?.closest('.capital-balance');
+    const wmb=document.getElementById('maribankAvailable')?.closest('.capital-balance');
     const wc=document.getElementById('cashOutAvailable')?.closest('.capital-balance');
     const wt=document.getElementById('mayaTransferBtn');
     const wallets=wg && wg.parentElement;
@@ -8049,11 +8100,15 @@ document.addEventListener('DOMContentLoaded', function(){
       wallets.style.setProperty('grid-template-columns','repeat(2,minmax(0,1fr))','important');
       wg.style.setProperty('order','1','important');
       wm.style.setProperty('order','2','important');
-      wc.style.setProperty('order','3','important');
+      if(wmb){
+        wmb.style.setProperty('order','3','important');
+        wmb.style.setProperty('grid-column','auto','important');
+      }
+      wc.style.setProperty('order','4','important');
       wc.style.setProperty('grid-column','auto','important');
       if(wt){
-        wt.style.setProperty('order','4','important');
-        wt.style.setProperty('grid-column','auto','important');
+        wt.style.setProperty('order','5','important');
+        wt.style.setProperty('grid-column','1 / -1','important');
       }
     }
   }
