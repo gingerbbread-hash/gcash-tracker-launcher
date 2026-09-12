@@ -941,7 +941,8 @@ body.app-locked #historyToggle{
   .fee-location-step{display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
   .fee-location-step.show{display:block}
   .fee-location-title{text-align:center;font-size:14px;font-weight:900;margin-bottom:10px;color:var(--text)}
-  .fee-location-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .fee-location-actions{display:flex;gap:8px}
+  .fee-location-actions .fee-location-choice{flex:1;min-width:0}
   .fee-location-choice{min-height:50px;border-radius:13px;border:1px solid var(--border);background:#fff;color:var(--text);font-size:13px;font-weight:900;cursor:pointer}
   .fee-location-choice.gcash{color:#0b57d0;background:#e8f0fe;border-color:#bfd3fb}
   .fee-location-choice.maya{color:#067647;background:#ecfdf3;border-color:#abefc6}
@@ -7369,13 +7370,27 @@ body > .hero{
     if(cashOutWalletStep) cashOutWalletStep.classList.remove('show');
 
     const title=feeLocationStep ? feeLocationStep.querySelector('.fee-location-title') : null;
-    if(title) title.textContent=`Where did the ${type} fee go?`;
+    if(title) title.textContent='Where did the Cash Out fee go?';
+
+    // Cash Out fee can only go to the SAME digital wallet used for
+    // the transaction, or to Cash on Hand.
+    if(feeToGcash) feeToGcash.style.display = wallet==='GCash' ? '' : 'none';
+    if(feeToMaya) feeToMaya.style.display = wallet==='Maya' ? '' : 'none';
+    if(feeToCash) feeToCash.style.display = '';
 
     feeLocationStep.classList.add('show');
   }
 
-  cashInFromGcash.addEventListener('click',()=>openFeeLocationStep('Cash In','GCash'));
-  cashInFromMaya.addEventListener('click',()=>openFeeLocationStep('Cash In','Maya'));
+  function chooseCashInWallet(wallet){
+    if(!pendingPayload) return;
+    selectedTransactionWallet=wallet;
+    pendingPayload.walletDestination=wallet;
+    pendingPayload.feeLocation='Cash on Hand';
+    savePendingTransaction('Cash In');
+  }
+
+  cashInFromGcash.addEventListener('click',()=>chooseCashInWallet('GCash'));
+  cashInFromMaya.addEventListener('click',()=>chooseCashInWallet('Maya'));
 
   confirmCashOut.addEventListener('click',()=>{
     if(!pendingPayload) return;
