@@ -6611,7 +6611,31 @@ body > .hero{
   const CASH_PIECES_QUEUE_KEY = 'gcash_tracker_pending_cash_pieces_v1';
   let txSyncBusy = false;
   let cashPiecesSyncBusy = false;
+  let txRetryDelay = 1500;
+  let cashPiecesRetryDelay = 1200;
   const cashPiecesPromptIds = new Set();
+
+  function pendingSyncCount(){
+    return loadPendingTxQueue().length + loadPendingCashPiecesQueue().length;
+  }
+
+  function refreshFastSyncStatus(){
+    const n = pendingSyncCount();
+    if(n > 0) showSync(`SYNCING ${n} record${n===1?'':'s'}…`);
+    else showSync('Synced.', true);
+  }
+
+  function scheduleTxRetry(){
+    const wait = txRetryDelay;
+    txRetryDelay = Math.min(Math.round(txRetryDelay * 1.8), 30000);
+    setTimeout(processPendingTxQueue, wait);
+  }
+
+  function scheduleCashPiecesRetry(transactionId){
+    const wait = cashPiecesRetryDelay;
+    cashPiecesRetryDelay = Math.min(Math.round(cashPiecesRetryDelay * 1.8), 20000);
+    setTimeout(()=>processPendingCashPiecesQueue(transactionId), wait);
+  }
 
   function loadPendingCashPiecesQueue(){
     try{
@@ -6624,6 +6648,7 @@ body > .hero{
     try{
       localStorage.setItem(CASH_PIECES_QUEUE_KEY, JSON.stringify(q || []));
     }catch(e){}
+    try{ refreshFastSyncStatus(); }catch(e){}
   }
 
   function queueCashPieces(payload){
@@ -6682,6 +6707,7 @@ body > .hero{
         );
         savePendingCashPiecesQueue(latest);
         cashPiecesSyncBusy = false;
+        cashPiecesRetryDelay = 1200;
 
         if(typeof window.loadCashCounterLatestStatus === 'function'){
           setTimeout(window.loadCashCounterLatestStatus, 100);
@@ -6699,12 +6725,12 @@ body > .hero{
           msg.toLowerCase().includes('transaction not found') ||
           msg.toLowerCase().includes('not found')
         ){
-          setTimeout(()=>processPendingCashPiecesQueue(payload.transactionId), 2500);
+          scheduleCashPiecesRetry(payload.transactionId);
           return;
         }
 
-        // Keep it queued and retry later for temporary connection failures.
-        setTimeout(()=>processPendingCashPiecesQueue(payload.transactionId), 10000);
+        // Keep it queued and retry quickly with a gentle backoff.
+        scheduleCashPiecesRetry(payload.transactionId);
       })
       .recordTransactionCashPiecesBySession(
         getSessionToken(),
@@ -6725,6 +6751,7 @@ body > .hero{
 
   function savePendingTxQueue(q){
     try{ localStorage.setItem(TX_QUEUE_KEY, JSON.stringify(q || [])); }catch(e){}
+    try{ refreshFastSyncStatus(); }catch(e){}
   }
 
   function makeOptimisticTransaction(payload){
@@ -6822,7 +6849,9 @@ body > .hero{
     if(txSyncBusy || !unlocked) return;
     const q = loadPendingTxQueue();
     if(!q.length){
-      showSync('Synced.', true);
+      // A Cash Pieces record may already be waiting for its parent transaction.
+      setTimeout(()=>processPendingCashPiecesQueue(), 0);
+      refreshFastSyncStatus();
       // Reconcile only after all queued transactions have reached Google Sheets.
       loadCapital();
       return;
@@ -6842,6 +6871,7 @@ body > .hero{
         q.shift();
         savePendingTxQueue(q);
         txSyncBusy = false;
+        txRetryDelay = 1500;
 
         const syncedDate = dateKey(serverTx);
         if(syncedDate){
@@ -6880,8 +6910,8 @@ body > .hero{
         }
 
         showSync(msg + ' Transaction is safe on this device and will retry.');
-        // Keep the queue intact. Retry later without creating duplicates.
-        setTimeout(processPendingTxQueue, 15000);
+        // Keep the queue intact. Retry quickly without creating duplicates.
+        scheduleTxRetry();
       })
       .addTransactionBySession(getSessionToken(), payload);
   }
@@ -6900,6 +6930,20 @@ body > .hero{
     setTimeout(processPendingTxQueue, 300);
     setTimeout(processPendingCashPiecesQueue, 700);
   }
+
+  function kickFastSync(){
+    if(!unlocked) return;
+    txRetryDelay = 1500;
+    cashPiecesRetryDelay = 1200;
+    processPendingTxQueue();
+    processPendingCashPiecesQueue();
+  }
+
+  window.addEventListener('online', kickFastSync);
+  window.addEventListener('focus', kickFastSync);
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible') kickFastSync();
+  });
 
   function setTransactionSaving(on){
     transactionSaving = !!on;
@@ -7243,6 +7287,19 @@ body > .hero{
     // Save immediately on this device first.
     queueCashPieces(piecePayload);
 
+    // Update the Cash Counter on-screen immediately too. Google Sheets confirms it
+    // in the background, but the user can continue recording the next transaction now.
+    try{
+      window.dispatchEvent(new CustomEvent('gcash-local-cash-pieces',{
+        detail:{
+          transactionId:String(tx.id||''),
+          received:{...cashPiecesReceived},
+          given:{...cashPiecesGiven},
+          expectedCashMovement:expectedCashMovement(tx)
+        }
+      }));
+    }catch(e){}
+
     if(isTransactionStillPending(tx.id) || tx._pendingSync){
       save.textContent='Saved';
       if(stat){
@@ -7253,8 +7310,9 @@ body > .hero{
       // Do not wait for Google Sheets. Close immediately and let background sync finish.
       setTimeout(()=>{
         closeCashPiecesRecorder();
+        processPendingTxQueue();
         processPendingCashPiecesQueue(piecePayload.transactionId);
-      },350);
+      },120);
       return;
     }
 
@@ -7273,8 +7331,8 @@ body > .hero{
         stat.className='ok';
       }
       save.textContent='Saved';
-      setTimeout(closeCashPiecesRecorder,250);
-    },250);
+      setTimeout(closeCashPiecesRecorder,100);
+    },100);
   });
 
   function savePendingTransaction(type){
@@ -7310,8 +7368,8 @@ body > .hero{
     cashPiecesPromptIds.add(String(optimisticTx.id||''));
     setTimeout(()=>showCashPiecesOffer(optimisticTx), 40);
 
-    // Google Sheets sync happens quietly in the background.
-    setTimeout(processPendingTxQueue, 0);
+    // Google Sheets sync happens quietly in the background immediately.
+    processPendingTxQueue();
   }
 
   form.addEventListener('submit', e => {
@@ -8319,6 +8377,41 @@ $('saveInventoryCorrection').addEventListener('click',()=>{
       showMsg((e&&e.message)?e.message:'Could not save reconciliation.','err');
     })
     .saveManualCashCounterCorrection(corrected, reason, note);
+});
+
+window.addEventListener('gcash-local-cash-pieces',function(e){
+  const d=(e&&e.detail)||{};
+  if(!current || !current.pieces || typeof current.pieces!=='object') return;
+
+  const next={...current.pieces};
+  const received=d.received||{};
+  const given=d.given||{};
+  let valid=true;
+
+  D.forEach(function(row){
+    const k=row[0];
+    const n=Number(next[k]||0)+Number(received[k]||0)-Number(given[k]||0);
+    if(!isFinite(n) || n<0) valid=false;
+    next[k]=Math.max(0,Math.floor(isFinite(n)?n:0));
+  });
+
+  if(!valid) return;
+
+  const physical=total(next);
+  const tracker=trackerCashValue();
+  current={
+    ...(current||{}),
+    pieces:next,
+    physicalCash:physical,
+    trackerCashOnHand:tracker,
+    difference:physical-tracker,
+    status:Math.abs(physical-tracker)<=0.01?'MATCHED':(physical-tracker<0?'SHORT':'OVER'),
+    _localPending:true
+  };
+
+  renderCashCounterInventory(current);
+  renderSummary(current);
+  setTimeout(sendCashCounterStatusToTracker,0);
 });
 
 function load(){
