@@ -1935,6 +1935,35 @@ label[for="capitalSaripayInput"],
 }
 </style>
 
+<style id="maribank-history-logo-fix">
+.history-tx-card.history-wallet-maribank{
+  position:relative!important;
+  overflow:hidden!important;
+}
+.history-tx-card.history-wallet-maribank::after{
+  content:""!important;
+  position:absolute!important;
+  z-index:1!important;
+  left:50%!important;
+  right:auto!important;
+  top:50%!important;
+  bottom:auto!important;
+  transform:translate(-50%,-50%)!important;
+  width:135px!important;
+  height:82px!important;
+  background-image:url("https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/67/3b/b9/673bb951-fb4c-f6d5-656c-b771b7b80c82/AppIcon-PH-0-0-1x_U007emarketing-0-8-0-0-85-220.png/512x512bb.png")!important;
+  background-position:center center!important;
+  background-size:contain!important;
+  background-repeat:no-repeat!important;
+  opacity:.10!important;
+  pointer-events:none!important;
+}
+.history-tx-card.history-wallet-maribank > *{
+  position:relative!important;
+  z-index:2!important;
+}
+</style>
+
 
 <style id="cash-pieces-bottom-nav-fix">
 /* Keep Cash Pieces action buttons fully above the fixed Home / Wallets / History bar */
