@@ -1,4 +1,4 @@
-const CACHE_NAME='gcash-tracker-pwa-v3';
+const CACHE_NAME='gcash-tracker-pwa-v4';
 
 const APP_SHELL=[
   './',
@@ -9,6 +9,7 @@ const APP_SHELL=[
 ];
 
 const OFFLINE_IMAGE_ASSETS=[
+  'https://is1-ssl.mzstatic.com/image/thumb/Purple221/v4/67/3b/b9/673bb951-fb4c-f6d5-656c-b771b7b80c82/AppIcon-PH-0-0-1x_U007emarketing-0-8-0-0-85-220.png/512x512bb.png',
   'https://www.maya.ph/hubfs/Maya/Change%20in%20Management/maya%20consumer%20logo.svg',
   'https://www.bsp.gov.ph/Coins%20and%20Notes/Polymer/1000banknote.png',
   'https://www.bsp.gov.ph/Coins%20and%20Notes/Polymer/500banknote.png',
@@ -24,17 +25,10 @@ const OFFLINE_IMAGE_ASSETS=[
 
 async function cacheRemoteImage(cache,url){
   try{
-    const res=await fetch(url,{
-      mode:'no-cors',
-      cache:'reload'
-    });
-
-    if(res){
-      await cache.put(url,res);
-    }
+    const res=await fetch(url,{mode:'no-cors',cache:'reload'});
+    if(res) await cache.put(url,res);
   }catch(e){
-    // Do not fail service-worker installation
-    // if one remote image is unavailable.
+    // Do not fail service-worker installation if one remote image is unavailable.
   }
 }
 
@@ -45,9 +39,7 @@ self.addEventListener('install',event=>{
     await cache.addAll(APP_SHELL);
 
     await Promise.allSettled(
-      OFFLINE_IMAGE_ASSETS.map(
-        url=>cacheRemoteImage(cache,url)
-      )
+      OFFLINE_IMAGE_ASSETS.map(url=>cacheRemoteImage(cache,url))
     );
 
     await self.skipWaiting();
@@ -71,9 +63,7 @@ self.addEventListener('activate',event=>{
 self.addEventListener('fetch',event=>{
   const req=event.request;
 
-  if(req.method!=='GET'){
-    return;
-  }
+  if(req.method!=='GET') return;
 
   const url=new URL(req.url);
 
@@ -91,9 +81,7 @@ self.addEventListener('fetch',event=>{
     url.pathname.endsWith('/index.html')
   ){
     event.respondWith(
-      fetch(req,{
-        cache:'no-store'
-      })
+      fetch(req,{cache:'no-store'})
         .then(res=>{
           const copy=res.clone();
 
@@ -103,40 +91,35 @@ self.addEventListener('fetch',event=>{
 
           return res;
         })
-        .catch(
-          ()=>caches.match('./index.html')
-        )
+        .catch(()=>caches.match('./index.html'))
     );
 
     return;
   }
 
   // Images:
-  // use cached copy first.
-  // When online, save images for offline use.
+  // Cached copy first.
+  // When online, save any image response,
+  // including cross-origin opaque responses.
   if(
     req.destination==='image' ||
     OFFLINE_IMAGE_ASSETS.includes(req.url)
   ){
     event.respondWith(
-      caches.match(req)
-        .then(cached=>{
-          if(cached){
-            return cached;
-          }
+      caches.match(req).then(cached=>{
+        if(cached) return cached;
 
-          return fetch(req)
-            .then(res=>{
-              const copy=res.clone();
+        return fetch(req).then(res=>{
+          const copy=res.clone();
 
-              caches
-                .open(CACHE_NAME)
-                .then(c=>c.put(req,copy))
-                .catch(()=>{});
+          caches
+            .open(CACHE_NAME)
+            .then(c=>c.put(req,copy))
+            .catch(()=>{});
 
-              return res;
-            });
-        })
+          return res;
+        });
+      })
     );
 
     return;
@@ -144,28 +127,21 @@ self.addEventListener('fetch',event=>{
 
   // Other static app assets.
   event.respondWith(
-    caches.match(req)
-      .then(cached=>{
-        if(cached){
-          return cached;
+    caches.match(req).then(cached=>{
+      if(cached) return cached;
+
+      return fetch(req).then(res=>{
+        if(res && res.status===200){
+          const copy=res.clone();
+
+          caches
+            .open(CACHE_NAME)
+            .then(c=>c.put(req,copy))
+            .catch(()=>{});
         }
 
-        return fetch(req)
-          .then(res=>{
-            if(
-              res &&
-              res.status===200
-            ){
-              const copy=res.clone();
-
-              caches
-                .open(CACHE_NAME)
-                .then(c=>c.put(req,copy))
-                .catch(()=>{});
-            }
-
-            return res;
-          });
-      })
+        return res;
+      });
+    })
   );
 });
