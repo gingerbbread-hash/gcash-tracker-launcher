@@ -4683,8 +4683,30 @@ label[for="capitalSaripayInput"],
   function render(){
     if(emptyEl)emptyEl.style.display='none';
     if(historyEl)historyEl.innerHTML='';
-    renderCalendar();
+
+    // Home/Wallet actions should not rebuild the whole calendar.
+    const historyPage = document.getElementById('tabHistoryPage');
+    if(historyPage && historyPage.classList.contains('active')){
+      renderCalendar();
+      window.__gcashHistoryDirty = false;
+    }else{
+      window.__gcashHistoryDirty = true;
+    }
+
+    // Update the small Home Today summary from the same in-memory transaction list.
+    if(typeof window.refreshTodayDashboard === 'function'){
+      window.refreshTodayDashboard();
+    }
   }
+
+  // Allow the tab controller to render History only when the user opens it.
+  window.__renderGcashHistory = function(){
+    renderCalendar();
+    window.__gcashHistoryDirty = false;
+    if(typeof window.refreshHistoryDaySummary === 'function'){
+      window.refreshHistoryDaySummary();
+    }
+  };
 
   function showSync(text, ok=false){
     syncStatus.textContent = text;
@@ -6822,6 +6844,18 @@ document.addEventListener('DOMContentLoaded', function(){
     Object.entries(pages).forEach(([k,p])=>p && p.classList.toggle('active',k===name));
     buttons.forEach(b=>b.classList.toggle('active',b.dataset.mainTab===name));
     try{localStorage.setItem('gcashMainTabV2',name)}catch(e){}
+
+    if(name==='history' && typeof window.__renderGcashHistory==='function'){
+      window.__renderGcashHistory();
+    }
+    if(name==='home' && typeof window.refreshTodayDashboard==='function'){
+      window.refreshTodayDashboard();
+    }
+    if((name==='home' || name==='cashcounter') &&
+       typeof window.loadCashCounterLatestStatus==='function'){
+      window.loadCashCounterLatestStatus();
+    }
+
     window.scrollTo(0,0);
   }
 
@@ -7109,24 +7143,19 @@ document.addEventListener('DOMContentLoaded', function(){
     holder.classList.add('show');
   }
 
+  window.refreshTodayDashboard = refreshToday;
+  window.refreshHistoryDaySummary = refreshHistorySummary;
+
   document.addEventListener('DOMContentLoaded',()=>{
     refreshToday(); mirrorCashCheck(); addHistorySummary(); refreshHistorySummary();
-
-    const cc=document.getElementById('cashCounterLatestCard');
-    if(cc)new MutationObserver(mirrorCashCheck).observe(cc,{subtree:true,childList:true,characterData:true});
-
-    const hist=document.getElementById('historySection');
-    if(hist)new MutationObserver(()=>{refreshToday();refreshHistorySummary()}).observe(hist,{subtree:true,childList:true});
 
     // Watch the sync status. A successful sync is a safe point for a brief confirmation.
     const sync=document.getElementById('syncStatus');
     if(sync)new MutationObserver(()=>{
       const t=String(sync.textContent||'').trim().toLowerCase();
       if(t==='synced.' || t==='synced') flashSaved();
-      refreshToday();
     }).observe(sync,{subtree:true,childList:true,characterData:true});
 
-    setInterval(()=>{refreshToday();refreshHistorySummary()},3000);
   });
 })();
 </script>
