@@ -4336,6 +4336,79 @@ body > .hero{
 }
 </style>
 
+
+<style id="cash-counter-action-layout">
+#cashCounterNative .cash-counter-main-actions{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:6px;
+  margin-top:9px;
+}
+#cashCounterNative .cash-counter-main-actions button{
+  width:100%;
+  min-width:0;
+  min-height:44px !important;
+  margin:0 !important;
+  padding:7px 5px !important;
+  border-radius:11px !important;
+  font-size:11px !important;
+  line-height:1.15 !important;
+  white-space:normal;
+}
+#cashCounterNative .cash-check-quick-btn{
+  background:#f2f4f7;
+  color:#344054;
+  border:1px solid #d0d5dd;
+  font-weight:800;
+}
+#cashCounterNative .cash-counter-main-actions #startNewCheck{
+  font-weight:900 !important;
+}
+#cashCounterNative .cash-counter-main-actions #editInventoryBtn{
+  position:static !important;
+  display:block !important;
+}
+#cashCounterNative .cash-counter-history-row{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:7px;
+  margin-top:7px;
+}
+#cashCounterNative .cash-history-quick-btn{
+  min-height:36px !important;
+  padding:6px 12px !important;
+  border-radius:10px !important;
+  background:#fff;
+  color:#344054;
+  border:1px solid #d0d5dd;
+  font-size:11px !important;
+  font-weight:800;
+}
+#cashCounterNative .cash-counter-last-count-quick{
+  min-width:0;
+  color:#667085;
+  font-size:10px;
+  line-height:1.2;
+  text-align:left;
+}
+#cashCounterNative .cash-counter-close-btn{
+  min-height:36px !important;
+  padding:6px 10px !important;
+  font-size:10px !important;
+}
+@media(max-width:380px){
+  #cashCounterNative .cash-counter-main-actions{
+    gap:4px;
+  }
+  #cashCounterNative .cash-counter-main-actions button{
+    font-size:10px !important;
+    padding-left:3px !important;
+    padding-right:3px !important;
+  }
+}
+</style>
+
 </head>
 <body>
 <main class="app">
@@ -4464,12 +4537,17 @@ body > .hero{
           <strong id="cashCounterInventoryTotalBottom">₱0.00</strong>
         </div>
 
-        <div class="inventory-actions">
+        <div class="cash-counter-main-actions">
+          <button id="cashCheckQuickBtn" class="cash-check-quick-btn" type="button">Cash Check</button>
           <button id="startNewCheck" class="inventory-count-btn" type="button">Count Physical Cash</button>
-          <button id="notNowBtn" class="inventory-close-btn" type="button">Close</button>
+          <button id="editInventoryBtn" class="inventory-edit-btn" type="button">Reconcile</button>
         </div>
 
-        <button id="editInventoryBtn" class="inventory-edit-btn" type="button">Reconcile Cash Counter</button>
+        <div class="cash-counter-history-row">
+          <button id="cashHistoryQuickBtn" class="cash-history-quick-btn" type="button">History</button>
+          <span id="cashCounterLastCountQuick" class="cash-counter-last-count-quick"></span>
+          <button id="notNowBtn" class="inventory-close-btn cash-counter-close-btn" type="button">Close</button>
+        </div>
 
         <div id="editInventoryPanel">
           <div style="font-size:14px;font-weight:950;color:#172033;margin-bottom:4px">Reconcile Cash Counter</div>
@@ -8142,6 +8220,19 @@ function readInventoryEditor(){
   return out;
 }
 
+
+function refreshCashCounterLastCountQuick(){
+  const out=$('cashCounterLastCountQuick');
+  if(!out) return;
+  const candidates=[
+    document.querySelector('#cashCounterNative #latestCheckTime'),
+    document.querySelector('#cashCounterNative .latest-check-time'),
+    document.querySelector('#cashCounterNative [data-latest-check-time]')
+  ].filter(Boolean);
+  const txt=candidates.length ? String(candidates[0].textContent||'').trim() : '';
+  out.textContent=txt ? ('Last count: '+txt) : '';
+}
+
 function reconcileTrackerCashValue(){
   if(current && current.trackerCashOnHand!==null && current.trackerCashOnHand!==undefined){
     return Number(current.trackerCashOnHand)||0;
@@ -8167,6 +8258,23 @@ function refreshReconcilePreview(){
   else if(diff<0) card.classList.add('short');
   else card.classList.add('over');
 }
+
+
+$('cashCheckQuickBtn').addEventListener('click',()=>{
+  const btn=document.querySelector('#cashCounterNative button[data-tab="count"]');
+  if(btn) btn.click();
+  const target=document.querySelector('#cashCounterNative [data-panel="count"], #cashCounterNative #countTab, #cashCounterNative #countPanel');
+  if(target) target.scrollIntoView({behavior:'smooth',block:'start'});
+});
+
+$('cashHistoryQuickBtn').addEventListener('click',()=>{
+  const btn=document.querySelector('#cashCounterNative button[data-tab="history"]');
+  if(btn) btn.click();
+  setTimeout(()=>{
+    const target=document.querySelector('#cashCounterNative [data-panel="history"], #cashCounterNative #historyTab, #cashCounterNative #historyPanel');
+    if(target) target.scrollIntoView({behavior:'smooth',block:'start'});
+  },40);
+});
 
 $('editInventoryBtn').addEventListener('click',()=>{
   renderInventoryEditor();
