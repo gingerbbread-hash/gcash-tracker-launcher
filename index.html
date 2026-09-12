@@ -3774,6 +3774,153 @@ body > .hero{
 }
 </style>
 
+
+<style id="compact-wallets-redesign">
+/* ===== COMPACT WALLETS REDESIGN =====
+   Visual/layout only. Accounting, transfer, capital and earnings logic unchanged.
+*/
+
+#tabWalletsPage{
+  padding-top:8px !important;
+  padding-left:8px !important;
+  padding-right:8px !important;
+}
+
+/* Use the same compact card language as Home */
+#tabWalletsPage .card{
+  margin-bottom:9px !important;
+  padding:10px !important;
+  border-radius:15px !important;
+}
+
+#tabWalletsPage .section-title{
+  margin-bottom:7px !important;
+}
+
+/* Wallet action cards: 2 x 2 compact grid */
+#tabWalletsPage .wallet-grid,
+#tabWalletsPage .wallet-cards,
+#tabWalletsPage .balance-strip{
+  gap:7px !important;
+}
+
+#tabWalletsPage .wallet-card,
+#tabWalletsPage .balance-card{
+  min-height:76px !important;
+  padding:9px 10px !important;
+  border-radius:13px !important;
+}
+
+#tabWalletsPage .wallet-card .label,
+#tabWalletsPage .wallet-card small,
+#tabWalletsPage .balance-card .label,
+#tabWalletsPage .balance-card small{
+  font-size:10px !important;
+  line-height:1.15 !important;
+}
+
+#tabWalletsPage .wallet-card strong,
+#tabWalletsPage .balance-card strong{
+  font-size:17px !important;
+  line-height:1.15 !important;
+}
+
+/* Make Current Capital visually primary */
+#tabWalletsPage #currentCapital,
+#tabWalletsPage .current-capital,
+#tabWalletsPage [data-role="current-capital"]{
+  font-size:24px !important;
+  line-height:1.05 !important;
+  font-weight:900 !important;
+}
+
+/* Compact money summary cards */
+#tabWalletsPage .capital-grid,
+#tabWalletsPage .earnings-grid,
+#tabWalletsPage .summary-grid,
+#tabWalletsPage .stats-grid{
+  gap:6px !important;
+}
+
+#tabWalletsPage .metric,
+#tabWalletsPage .stat-card,
+#tabWalletsPage .summary-card{
+  padding:8px !important;
+  min-height:58px !important;
+  border-radius:11px !important;
+}
+
+#tabWalletsPage .metric span,
+#tabWalletsPage .stat-card span,
+#tabWalletsPage .summary-card span{
+  font-size:9px !important;
+}
+
+#tabWalletsPage .metric strong,
+#tabWalletsPage .stat-card strong,
+#tabWalletsPage .summary-card strong{
+  font-size:15px !important;
+}
+
+/* Actions: preserve touch targets but reduce dead space */
+#tabWalletsPage button{
+  min-height:42px !important;
+}
+
+#tabWalletsPage .actions{
+  gap:7px !important;
+  margin-top:8px !important;
+}
+
+#tabWalletsPage .row{
+  gap:7px !important;
+}
+
+#tabWalletsPage input,
+#tabWalletsPage select{
+  min-height:44px !important;
+}
+
+/* Wallet history uses less vertical space */
+#tabWalletsPage .history-card,
+#tabWalletsPage .wallet-history-item,
+#tabWalletsPage .transaction-card{
+  padding:9px !important;
+  margin-bottom:7px !important;
+  border-radius:12px !important;
+}
+
+#tabWalletsPage .note,
+#tabWalletsPage .hint,
+#tabWalletsPage .muted{
+  line-height:1.25 !important;
+}
+
+/* If Device Pairing/Tools are in Wallets, keep them visually secondary */
+#tabWalletsPage .device-pairing,
+#tabWalletsPage #devicePairingCard,
+#tabWalletsPage .tools-card{
+  opacity:.92;
+}
+
+@media(max-width:600px){
+  #tabWalletsPage .card{
+    padding:9px !important;
+  }
+
+  #tabWalletsPage .wallet-card,
+  #tabWalletsPage .balance-card{
+    min-height:70px !important;
+    padding:8px !important;
+  }
+
+  #tabWalletsPage .wallet-card strong,
+  #tabWalletsPage .balance-card strong{
+    font-size:16px !important;
+  }
+}
+</style>
+
 </head>
 <body>
 <main class="app">
