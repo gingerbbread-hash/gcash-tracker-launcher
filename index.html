@@ -7852,6 +7852,25 @@ document.addEventListener('DOMContentLoaded', function(){
   color:#6436b8 !important;
 }
 #mayaTransferBtn *{color:#6436b8 !important;}
+
+/* Detailed Cash Counter audit history */
+#cashCounterNative .cc-audit-item{border:1px solid var(--border);border-radius:14px;background:#fff;margin-bottom:8px;overflow:hidden}
+#cashCounterNative .cc-audit-summary{width:100%;border:0;background:#fff;padding:11px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;cursor:pointer}
+#cashCounterNative .cc-audit-main{min-width:0}
+#cashCounterNative .cc-audit-title{font-size:12px;font-weight:950;color:#172033}
+#cashCounterNative .cc-audit-date{font-size:10px;color:#667085;margin-top:2px}
+#cashCounterNative .cc-audit-amount{font-size:12px;font-weight:950;white-space:nowrap}
+#cashCounterNative .cc-audit-arrow{font-size:11px;color:#98a2b3;margin-left:5px}
+#cashCounterNative .cc-audit-details{display:none;border-top:1px solid var(--border);padding:10px 12px;background:#fafafa}
+#cashCounterNative .cc-audit-item.open .cc-audit-details{display:block}
+#cashCounterNative .cc-audit-item.open .cc-audit-arrow{transform:rotate(180deg)}
+#cashCounterNative .cc-audit-section{font-size:10px;font-weight:950;color:#475467;margin:8px 0 5px}
+#cashCounterNative .cc-audit-section:first-child{margin-top:0}
+#cashCounterNative .cc-piece-row,#cashCounterNative .cc-total-row{display:flex;justify-content:space-between;gap:12px;padding:4px 0;font-size:11px;color:#344054}
+#cashCounterNative .cc-piece-row strong,#cashCounterNative .cc-total-row strong{color:#172033}
+#cashCounterNative .cc-total-row{border-top:1px dashed #d0d5dd;margin-top:5px;padding-top:7px}
+#cashCounterNative .cc-audit-note{font-size:10px;line-height:1.45;color:#667085;margin-top:7px}
+
 </style>
 
 <script id="wallet-cash-transfer-color-fix">
@@ -8525,58 +8544,136 @@ $('saveCount').addEventListener('click',()=>{
 function loadHistory(){
   $('historyList').innerHTML='Loading…';
 
+  const denomMeta=[
+    ['1000','₱1,000'],['500','₱500'],['200','₱200'],['100','₱100'],['50','₱50'],
+    ['20b','₱20 bill'],['20c','₱20 coin'],['10','₱10'],['5','₱5'],['1','₱1']
+  ];
+
+  const esc=s=>String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+
+  function pieceRows(obj, verb){
+    obj=obj||{};
+    const rows=denomMeta
+      .filter(([k])=>Number(obj[k]||0)>0)
+      .map(([k,label])=>`<div class="cc-piece-row"><span>${label} × ${Number(obj[k]||0)}</span><strong>${verb}</strong></div>`);
+    return rows.join('');
+  }
+
+  function inventoryChanges(details){
+    if(!details) return '';
+    const changes=details.changes||null;
+    if(changes){
+      const rows=denomMeta.filter(([k])=>changes[k]).map(([k,label])=>{
+        const c=changes[k];
+        return `<div class="cc-piece-row"><span>${label}</span><strong>${Number(c.from||0)} → ${Number(c.to||0)}</strong></div>`;
+      });
+      return rows.join('');
+    }
+    return '';
+  }
+
+  function titleFor(r,d){
+    if(r.action==='COUNT') return 'Cash Check';
+    if(r.action==='MANUAL_CORRECTION') return 'Reconciliation';
+    if(r.action==='WALLET_TRANSFER_PIECES'){
+      return d&&d.fromWallet&&d.toWallet ? `${d.fromWallet} → ${d.toWallet}` : 'Move Money';
+    }
+    if(r.action==='TRANSACTION_PIECES' || r.action==='CASH_IN_PIECES' || r.action==='CASH_OUT_PIECES'){
+      return (d&&d.transactionType) || (r.note.indexOf('Cash Out')>=0?'Cash Out':'Cash In');
+    }
+    return String(r.action||'Cash Counter').replace(/_/g,' ');
+  }
+
+  function headlineAmount(r,d){
+    if(d&&Number(d.amount||0)) return money(Number(d.amount||0));
+    if(d&&Number(d.netCashMovement||0)){
+      const n=Number(d.netCashMovement||0);
+      return `${n>0?'+':''}${money(n)}`;
+    }
+    if(r.action==='COUNT') return money(Number(r.physicalTotal||0));
+    if(r.action==='MANUAL_CORRECTION' && d && d.beforeTotal!=null && d.afterTotal!=null){
+      const delta=Number(d.afterTotal)-Number(d.beforeTotal);
+      return `${delta>0?'+':''}${money(delta)}`;
+    }
+    return money(Number(r.physicalTotal||0));
+  }
+
+  function detailsHtml(r){
+    const d=r.details||{};
+    let out='';
+
+    if(r.action==='COUNT'){
+      const pieces=(d.inventory||d);
+      const rows=pieceRows(pieces,'counted');
+      if(rows) out+=`<div class="cc-audit-section">Physical pieces counted</div>${rows}`;
+    }
+
+    if(r.action==='TRANSACTION_PIECES' || r.action==='CASH_IN_PIECES' || r.action==='CASH_OUT_PIECES' || r.action==='WALLET_TRANSFER_PIECES'){
+      const received=pieceRows(d.received,'added');
+      const given=pieceRows(d.given,'removed');
+      if(received) out+=`<div class="cc-audit-section">Cash added</div>${received}`;
+      if(given) out+=`<div class="cc-audit-section">Cash removed</div>${given}`;
+      if(d.receivedTotal!=null || d.givenTotal!=null){
+        out+=`<div class="cc-total-row"><span>Money Added</span><strong>${money(Number(d.receivedTotal||0))}</strong></div>`;
+        out+=`<div class="cc-piece-row"><span>Money Removed</span><strong>${money(Number(d.givenTotal||0))}</strong></div>`;
+        out+=`<div class="cc-piece-row"><span>Net Cash Movement</span><strong>${Number(d.netCashMovement||0)>0?'+':''}${money(Number(d.netCashMovement||0))}</strong></div>`;
+      }
+      if(d.fromWallet&&d.toWallet){
+        out+=`<div class="cc-audit-note">${esc(d.fromWallet)} → ${esc(d.toWallet)}</div>`;
+      }
+    }
+
+    if(r.action==='MANUAL_CORRECTION'){
+      const changes=inventoryChanges(d);
+      if(changes) out+=`<div class="cc-audit-section">Denominations corrected</div>${changes}`;
+      else out+=`<div class="cc-audit-note">This is an older reconciliation record. Exact before-and-after denomination changes were not stored in the older format.</div>`;
+      if(d.reason) out+=`<div class="cc-audit-note"><strong>Reason:</strong> ${esc(d.reason)}</div>`;
+      if(d.userNote) out+=`<div class="cc-audit-note"><strong>Note:</strong> ${esc(d.userNote)}</div>`;
+      if(d.beforeTotal!=null && d.afterTotal!=null){
+        out+=`<div class="cc-total-row"><span>Cash Counter Before</span><strong>${money(Number(d.beforeTotal||0))}</strong></div>`;
+        out+=`<div class="cc-piece-row"><span>Cash Counter After</span><strong>${money(Number(d.afterTotal||0))}</strong></div>`;
+      }
+    }
+
+    out+=`<div class="cc-audit-section">Balance check after this record</div>
+      <div class="cc-piece-row"><span>Cash Counter</span><strong>${money(Number(r.physicalTotal||0))}</strong></div>
+      <div class="cc-piece-row"><span>Cash on Hand</span><strong>${money(Number(r.trackerCashOnHand||0))}</strong></div>
+      <div class="cc-piece-row"><span>Difference</span><strong>${Number(r.difference||0)>0?'+':''}${money(Number(r.difference||0))}</strong></div>`;
+
+    if(r.note && r.action!=='MANUAL_CORRECTION'){
+      out+=`<div class="cc-audit-note">${esc(r.note)}</div>`;
+    }
+    return out;
+  }
+
   google.script.run
     .withSuccessHandler(rows=>{
-      const counts=(rows||[]).filter(r=>r.action==='COUNT');
+      rows=(rows||[]).filter(r=>[
+        'COUNT','MANUAL_CORRECTION','TRANSACTION_PIECES',
+        'CASH_IN_PIECES','CASH_OUT_PIECES','WALLET_TRANSFER_PIECES'
+      ].includes(r.action));
 
-      if(!counts.length){
-        $('historyList').innerHTML='No Cash Check history yet.';
+      if(!rows.length){
+        $('historyList').innerHTML='No Cash Counter history yet.';
         return;
       }
 
-      $('historyList').innerHTML=counts.map(r=>{
-        const physical=Number(r.physicalTotal||0);
-        const tracker=Number(r.trackerCashOnHand||0);
-        const diff=Number(r.difference||0);
-
-        let status='MATCHED';
-        let statusClass='matched';
-
-        if(diff < -0.01){
-          status='SHORT';
-          statusClass='short';
-        }else if(diff > 0.01){
-          status='OVER';
-          statusClass='over';
-        }
-
-        const differenceRow=Math.abs(diff)>.01
-          ? `<div class="history-row history-difference">
-               <span>Difference</span>
-               <strong>${diff<0?'-':'+'}${money(Math.abs(diff))}</strong>
-             </div>`
-          : '';
-
-        return `<div class="history-item">
-          <div class="history-head">
-            <div>
-              <div class="history-title">CASH CHECK</div>
-              <div class="history-date">${r.date}</div>
+      $('historyList').innerHTML=rows.map((r,i)=>{
+        const d=r.details||{};
+        return `<div class="cc-audit-item" data-cc-audit="${i}">
+          <button type="button" class="cc-audit-summary">
+            <div class="cc-audit-main">
+              <div class="cc-audit-title">${esc(titleFor(r,d))}</div>
+              <div class="cc-audit-date">${esc(r.date)}</div>
             </div>
-            <div class="history-status ${statusClass}">${status}</div>
-          </div>
-
-          <div class="history-values">
-            <div class="history-row">
-              <span>Physical Cash</span>
-              <strong>${money(physical)}</strong>
+            <div style="display:flex;align-items:center">
+              <div class="cc-audit-amount">${esc(headlineAmount(r,d))}</div>
+              <div class="cc-audit-arrow">▼</div>
             </div>
-            <div class="history-row">
-              <span>Tracker Cash on Hand</span>
-              <strong>${money(tracker)}</strong>
-            </div>
-            ${differenceRow}
-          </div>
+          </button>
+          <div class="cc-audit-details">${detailsHtml(r)}</div>
         </div>`;
       }).join('');
     })
@@ -8585,6 +8682,13 @@ function loadHistory(){
     })
     .getCashCountHistory();
 }
+
+$('historyList').addEventListener('click',e=>{
+  const btn=e.target.closest('.cc-audit-summary');
+  if(!btn) return;
+  const item=btn.closest('.cc-audit-item');
+  if(item) item.classList.toggle('open');
+});
 
 $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
 
