@@ -4089,6 +4089,197 @@ body > .hero{
 }
 </style>
 
+
+<style id="compact-history-redesign">
+/* ===== COMPACT HISTORY REDESIGN =====
+   Visual/layout only. Transaction data, delete/reverse behavior,
+   snapshots, sync state, and accounting logic are unchanged.
+*/
+
+#tabHistoryPage{
+  padding-top:8px !important;
+  padding-left:8px !important;
+  padding-right:8px !important;
+}
+
+/* Match the same card language used across Home, Wallets and Cash Counter */
+#tabHistoryPage .card{
+  margin-bottom:9px !important;
+  padding:10px !important;
+  border-radius:15px !important;
+}
+
+#tabHistoryPage .section-title{
+  margin-bottom:7px !important;
+}
+
+/* Compact filters */
+#tabHistoryPage .filters,
+#tabHistoryPage .filter-row,
+#tabHistoryPage .history-filters{
+  gap:6px !important;
+  margin-bottom:8px !important;
+}
+
+#tabHistoryPage .filters button,
+#tabHistoryPage .filter-row button,
+#tabHistoryPage .history-filters button{
+  min-height:38px !important;
+  padding-top:7px !important;
+  padding-bottom:7px !important;
+  font-size:12px !important;
+}
+
+/* Calendar */
+#tabHistoryPage .calendar,
+#tabHistoryPage .calendar-card{
+  padding:8px !important;
+  border-radius:13px !important;
+}
+
+#tabHistoryPage .calendar-header{
+  margin-bottom:6px !important;
+}
+
+#tabHistoryPage .calendar-grid{
+  gap:4px !important;
+}
+
+#tabHistoryPage .calendar-day,
+#tabHistoryPage .day-cell{
+  min-height:34px !important;
+  border-radius:9px !important;
+  font-size:11px !important;
+  padding:4px !important;
+}
+
+/* Daily summary cards */
+#tabHistoryPage .history-summary,
+#tabHistoryPage .daily-summary,
+#tabHistoryPage .summary-grid{
+  gap:6px !important;
+}
+
+#tabHistoryPage .history-summary .metric,
+#tabHistoryPage .daily-summary .metric,
+#tabHistoryPage .summary-card{
+  min-height:54px !important;
+  padding:7px !important;
+  border-radius:11px !important;
+}
+
+#tabHistoryPage .history-summary span,
+#tabHistoryPage .daily-summary span,
+#tabHistoryPage .summary-card span{
+  font-size:9px !important;
+}
+
+#tabHistoryPage .history-summary strong,
+#tabHistoryPage .daily-summary strong,
+#tabHistoryPage .summary-card strong{
+  font-size:14px !important;
+}
+
+/* Transaction cards */
+#tabHistoryPage .history-card,
+#tabHistoryPage .transaction-card,
+#tabHistoryPage .history-item{
+  padding:9px !important;
+  margin-bottom:7px !important;
+  border-radius:12px !important;
+}
+
+#tabHistoryPage .history-card .title,
+#tabHistoryPage .transaction-card .title,
+#tabHistoryPage .history-item .title{
+  font-size:13px !important;
+  line-height:1.2 !important;
+}
+
+#tabHistoryPage .history-card .meta,
+#tabHistoryPage .transaction-card .meta,
+#tabHistoryPage .history-item .meta,
+#tabHistoryPage .muted{
+  font-size:10px !important;
+  line-height:1.25 !important;
+}
+
+/* BEFORE | AMOUNT | AFTER balance snapshots */
+#tabHistoryPage .snapshot-row,
+#tabHistoryPage .balance-snapshot,
+#tabHistoryPage .before-after{
+  gap:5px !important;
+  margin-top:6px !important;
+}
+
+#tabHistoryPage .snapshot-row > *,
+#tabHistoryPage .balance-snapshot > *,
+#tabHistoryPage .before-after > *{
+  padding:6px !important;
+  min-height:42px !important;
+  border-radius:9px !important;
+}
+
+#tabHistoryPage .snapshot-row span,
+#tabHistoryPage .balance-snapshot span,
+#tabHistoryPage .before-after span{
+  font-size:9px !important;
+}
+
+#tabHistoryPage .snapshot-row strong,
+#tabHistoryPage .balance-snapshot strong,
+#tabHistoryPage .before-after strong{
+  font-size:12px !important;
+}
+
+/* Keep delete/reverse usable without dominating each card */
+#tabHistoryPage .actions{
+  gap:6px !important;
+  margin-top:7px !important;
+}
+
+#tabHistoryPage .actions button{
+  min-height:36px !important;
+  padding-top:6px !important;
+  padding-bottom:6px !important;
+  font-size:11px !important;
+}
+
+/* Sync state badges */
+#tabHistoryPage .badge,
+#tabHistoryPage .sync-badge{
+  font-size:9px !important;
+  padding:3px 6px !important;
+  border-radius:999px !important;
+}
+
+/* Empty state */
+#tabHistoryPage .empty,
+#tabHistoryPage #historyEmpty{
+  padding:18px 10px !important;
+  font-size:12px !important;
+}
+
+/* Mobile */
+@media(max-width:600px){
+  #tabHistoryPage .card{
+    padding:9px !important;
+  }
+
+  #tabHistoryPage .calendar-day,
+  #tabHistoryPage .day-cell{
+    min-height:32px !important;
+    font-size:10px !important;
+  }
+
+  #tabHistoryPage .history-card,
+  #tabHistoryPage .transaction-card,
+  #tabHistoryPage .history-item{
+    padding:8px !important;
+  }
+}
+</style>
+
 </head>
 <body>
 <main class="app">
