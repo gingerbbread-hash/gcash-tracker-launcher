@@ -4385,6 +4385,12 @@ body > .hero{
 }
 </style>
 
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="GCash Tracker">
+  <link rel="apple-touch-icon" href="./icon-192.png">
 </head>
 <body>
 <main class="app">
@@ -4706,6 +4712,14 @@ body > .hero{
     <div class="small-note" style="margin-top:7px">The calculator works without signing in. Sign in to save or view your records.</div>
   </div>
   <div id="syncStatus" class="sync"></div>
+  <button id="pendingSyncBtn" type="button" class="pending-sync-btn" style="display:none">Pending Sync</button>
+  <div id="pendingSyncModal" class="pending-sync-modal" aria-hidden="true">
+    <div class="pending-sync-card">
+      <div class="pending-sync-head"><strong>Pending Sync</strong><button id="pendingSyncClose" type="button">Close</button></div>
+      <div id="pendingSyncNetwork" class="pending-sync-network"></div>
+      <div id="pendingSyncList"></div>
+    </div>
+  </div>
 </section>
 
   <section class="card results-card">
@@ -5786,30 +5800,28 @@ body > .hero{
       return;
     }
 
-    saveCapitalActionBtn.disabled=true;
-    capitalActionStatus.textContent='Saving…';
-    capitalActionStatus.className='status';
+    const id=offlineActionId('CAP');
+    const payload={
+      type:capitalActionType,
+      amount:amount,
+      wallet:capitalActionWallet,
+      note:capitalActionNote.value,
+      clientActionId:id
+    };
 
-    google.script.run
-      .withSuccessHandler(data=>{
-        saveCapitalActionBtn.disabled=false;
-        if(data&&data.movement) capitalMovements.unshift(data.movement);
-        if(data&&data.capital) renderCapital(data.capital);
-        renderCapitalActivity();
-        saveLocalTrackerCache();
-        closeCapitalAction();
-      })
-      .withFailureHandler(err=>{
-        saveCapitalActionBtn.disabled=false;
-        capitalActionStatus.textContent=(err&&err.message)||'Could not save.';
-        capitalActionStatus.className='status err';
-      })
-      .addCapitalMovementBySession(getSessionToken(),{
-        type:capitalActionType,
-        amount:amount,
-        wallet:capitalActionWallet,
-        note:capitalActionNote.value
-      });
+    try{
+      applyLocalCapitalAction(payload,id);
+    }catch(err){
+      capitalActionStatus.textContent=(err&&err.message)||'Could not save.';
+      capitalActionStatus.className='status err';
+      return;
+    }
+
+    queueOfflineAction({id:id,method:'addCapitalMovementBySession',payload:payload});
+    saveCapitalActionBtn.disabled=false;
+    capitalActionStatus.textContent=navigator.onLine?'Saved. Syncing…':'Saved offline. Waiting to sync.';
+    capitalActionStatus.className='status ok';
+    closeCapitalAction();
   });
 
   if(capitalActivityList) capitalActivityList.addEventListener('click',e=>{
@@ -5923,8 +5935,13 @@ body > .hero{
     const b=moveMoneyBalances();
     if(amount>b[fromWallet]+0.001){mayaTransferStatus.textContent='Not enough '+fromWallet+' balance.';mayaTransferStatus.className='status err';return;}
     if(fromWallet==='Cash on Hand'||toWallet==='Cash on Hand'){openMoveMoneyCashPiecesDraft(amount,fromWallet,toWallet);return;}
-    saveMayaTransferBtn.disabled=true;mayaTransferStatus.textContent='Transferring…';
-    google.script.run.withSuccessHandler(d=>{saveMayaTransferBtn.disabled=false;if(d&&d.transfer)mayaTransfers.unshift(d.transfer);if(d&&d.capital)renderCapital(d.capital);renderMayaTransfers();renderCapitalActivity();saveLocalTrackerCache();cancelMayaTransferBtn.click();}).withFailureHandler(e=>{saveMayaTransferBtn.disabled=false;mayaTransferStatus.textContent=(e&&e.message)||'Could not transfer funds.';mayaTransferStatus.className='status err';}).addMayaTransferBySession(getSessionToken(),{amount,fromWallet,toWallet});
+    const id=offlineActionId('MOVE');
+    const payload={amount,fromWallet,toWallet,clientActionId:id};
+    try{applyLocalMoveMoney(payload,id);}catch(e){mayaTransferStatus.textContent=(e&&e.message)||'Could not transfer funds.';mayaTransferStatus.className='status err';return;}
+    queueOfflineAction({id:id,method:'addMayaTransferBySession',payload:payload});
+    mayaTransferStatus.textContent=navigator.onLine?'Saved. Syncing…':'Saved offline. Waiting to sync.';
+    mayaTransferStatus.className='status ok';
+    cancelMayaTransferBtn.click();
   });
   mayaTransferHistoryList.addEventListener('click',e=>{const b=e.target.closest('[data-remove-maya-transfer]');if(!b)return;const id=b.getAttribute('data-remove-maya-transfer');if(!confirm('Reverse this wallet transfer? Linked Cash Counter pieces will also be reversed.'))return;google.script.run.withSuccessHandler(d=>{mayaTransfers=(d&&d.transfers)||mayaTransfers.filter(x=>String(x.id)!==String(id));if(d&&d.capital)renderCapital(d.capital);renderMayaTransfers();renderCapitalActivity();saveLocalTrackerCache();if(typeof window.loadCashCounterLatestStatus==='function')setTimeout(window.loadCashCounterLatestStatus,100);}).withFailureHandler(e=>alert((e&&e.message)||'Could not reverse transfer.')).deleteMayaTransferBySession(getSessionToken(),id);});
 
@@ -6208,6 +6225,232 @@ body > .hero{
   }
 
   const LOCAL_CACHE_KEY = 'gcashTrackerAllRecordsV2';
+
+  const OFFLINE_ACTION_QUEUE_KEY='gcashTrackerOfflineActionsV1';
+  let offlineActionBusy=false;
+  let offlineActionRetry=1400;
+
+  function offlineActionId(prefix){
+    return String(prefix||'ACT')+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,10);
+  }
+
+  function loadOfflineActionQueue(){
+    try{
+      const q=JSON.parse(localStorage.getItem(OFFLINE_ACTION_QUEUE_KEY)||'[]');
+      return Array.isArray(q)?q:[];
+    }catch(e){ return []; }
+  }
+
+  function saveOfflineActionQueue(q){
+    try{localStorage.setItem(OFFLINE_ACTION_QUEUE_KEY,JSON.stringify(q||[]));}catch(e){}
+    renderPendingSyncPanel();
+    try{refreshFastSyncStatus();}catch(e){}
+  }
+
+  function queueOfflineAction(action){
+    const q=loadOfflineActionQueue();
+    q.push({...action,queuedAt:Date.now()});
+    saveOfflineActionQueue(q);
+    setTimeout(processOfflineActionQueue,0);
+  }
+
+  window.addEventListener('gcash-queue-offline-action',function(e){
+    const d=(e&&e.detail)||{};
+    if(!d.id||!d.method) return;
+    queueOfflineAction({id:String(d.id),method:String(d.method),payload:d.payload||{}});
+  });
+
+  function queuedTotalCount(){
+    let n=loadOfflineActionQueue().length;
+    try{n+=loadPendingTxQueue().length;}catch(e){}
+    try{n+=loadPendingCashPiecesQueue().length;}catch(e){}
+    return n;
+  }
+
+  function actionLabel(a){
+    const p=(a&&a.payload)||{};
+    if(a.method==='addCapitalMovementBySession'){
+      if(p.type==='ADD_CAPITAL') return 'Add Capital';
+      if(p.type==='WITHDRAW_CAPITAL') return 'Withdraw Capital';
+      return 'Withdraw Earnings';
+    }
+    if(a.method==='addMayaTransferBySession'||a.method==='addMayaTransferWithCashPiecesBySession') return 'Move Money';
+    if(a.method==='saveCashCount') return 'Cash Check';
+    if(a.method==='saveManualCashCounterCorrection') return 'Cash Counter Reconciliation';
+    return a.method||'Record';
+  }
+
+  function renderPendingSyncPanel(){
+    const btn=document.getElementById('pendingSyncBtn');
+    const list=document.getElementById('pendingSyncList');
+    const net=document.getElementById('pendingSyncNetwork');
+    if(!btn||!list||!net) return;
+    const actions=loadOfflineActionQueue();
+    let tx=[], cp=[];
+    try{tx=loadPendingTxQueue();}catch(e){}
+    try{cp=loadPendingCashPiecesQueue();}catch(e){}
+    const total=actions.length+tx.length+cp.length;
+    btn.style.display=total?'block':'none';
+    btn.textContent=total?`Pending Sync (${total})`:'Pending Sync';
+    net.innerHTML=navigator.onLine
+      ? 'Internet available. Pending records will sync automatically.'
+      : 'You are offline. Records are safe on this device and will sync when internet returns.';
+
+    const rows=[];
+    actions.forEach(a=>rows.push(`<div class="pending-sync-item"><strong>${escapeHtml(actionLabel(a))}</strong><small>${escapeHtml(new Date(a.queuedAt||Date.now()).toLocaleString())}</small></div>`));
+    tx.forEach(a=>rows.push(`<div class="pending-sync-item"><strong>${escapeHtml((a.payload&&a.payload.type)||'Cash transaction')}</strong><small>Transaction waiting for Google Sheets</small></div>`));
+    cp.forEach(a=>rows.push(`<div class="pending-sync-item"><strong>Cash Counter pieces</strong><small>Waiting for transaction/Cash Counter sync</small></div>`));
+    list.innerHTML=rows.join('')||'<div class="pending-sync-item"><strong>Nothing waiting to sync.</strong></div>';
+  }
+
+  function replacePendingById(arr, id, serverObj){
+    const idx=arr.findIndex(x=>String(x.id||'')===String(id||''));
+    if(idx>=0) arr[idx]=serverObj;
+    else if(serverObj) arr.unshift(serverObj);
+  }
+
+  function handleOfflineActionSuccess(a,data){
+    if(a.method==='addCapitalMovementBySession'){
+      if(data&&data.movement) replacePendingById(capitalMovements,a.id,data.movement);
+      if(data&&data.capital) renderCapital(data.capital);
+      renderCapitalActivity(); saveLocalTrackerCache();
+    }else if(a.method==='addMayaTransferBySession'||a.method==='addMayaTransferWithCashPiecesBySession'){
+      if(data&&data.transfer) replacePendingById(mayaTransfers,a.id,data.transfer);
+      if(data&&data.capital) renderCapital(data.capital);
+      renderMayaTransfers(); renderCapitalActivity(); saveLocalTrackerCache();
+      window.dispatchEvent(new CustomEvent('offline-wallet-action-synced',{detail:{action:a,data:data}}));
+    }else if(a.method==='saveCashCount'||a.method==='saveManualCashCounterCorrection'){
+      window.dispatchEvent(new CustomEvent('offline-cashcounter-action-synced',{detail:{action:a,data:data}}));
+    }
+  }
+
+  function scheduleOfflineActionRetry(){
+    const wait=offlineActionRetry;
+    offlineActionRetry=Math.min(Math.round(offlineActionRetry*1.8),30000);
+    setTimeout(processOfflineActionQueue,wait);
+  }
+
+  function processOfflineActionQueue(){
+    if(offlineActionBusy||!navigator.onLine) { renderPendingSyncPanel(); return; }
+    const q=loadOfflineActionQueue();
+    if(!q.length){offlineActionRetry=1400;renderPendingSyncPanel();return;}
+    const a=q[0];
+    offlineActionBusy=true;
+
+    let runner=google.script.run
+      .withSuccessHandler(data=>{
+        const latest=loadOfflineActionQueue();
+        const idx=latest.findIndex(x=>String(x.id)===String(a.id));
+        if(idx>=0) latest.splice(idx,1);
+        saveOfflineActionQueue(latest);
+        offlineActionBusy=false;
+        offlineActionRetry=1400;
+        handleOfflineActionSuccess(a,data);
+        setTimeout(processOfflineActionQueue,0);
+      })
+      .withFailureHandler(err=>{
+        offlineActionBusy=false;
+        renderPendingSyncPanel();
+        scheduleOfflineActionRetry();
+      });
+
+    try{
+      if(a.method==='addCapitalMovementBySession'){
+        runner.addCapitalMovementBySession(getSessionToken(),a.payload);
+      }else if(a.method==='addMayaTransferBySession'){
+        runner.addMayaTransferBySession(getSessionToken(),a.payload);
+      }else if(a.method==='addMayaTransferWithCashPiecesBySession'){
+        runner.addMayaTransferWithCashPiecesBySession(getSessionToken(),a.payload);
+      }else if(a.method==='saveCashCount'){
+        runner.saveCashCount(a.payload.pieces,a.id);
+      }else if(a.method==='saveManualCashCounterCorrection'){
+        runner.saveManualCashCounterCorrection(a.payload.pieces,a.payload.reason,a.payload.note,a.id);
+      }else{
+        const latest=loadOfflineActionQueue();
+        latest.shift(); saveOfflineActionQueue(latest);
+        offlineActionBusy=false;
+        setTimeout(processOfflineActionQueue,0);
+      }
+    }catch(e){
+      offlineActionBusy=false;
+      scheduleOfflineActionRetry();
+    }
+  }
+
+  function applyLocalCapitalAction(payload,id){
+    const c={...(capitalData||{})};
+    if(!c.initialized) throw new Error('Set your capital balances first while online.');
+    const wallet=payload.wallet;
+    const amount=Number(payload.amount||0);
+    const key=wallet==='GCash'?'gcashBalance':wallet==='Maya'?'mayaBalance':'cashOnHand';
+    const prev=Number(c[key]||0);
+    const currentCap=Number(c.currentCapital ?? c.totalCapital ?? 0);
+    const available=Number(c.availableEarnings ?? c.netEarnings ?? 0);
+    if(payload.type!=='ADD_CAPITAL' && amount>prev+0.001) throw new Error('Not enough '+wallet+' balance.');
+    if(payload.type==='WITHDRAW_CAPITAL' && amount>currentCap+0.001) throw new Error('Withdrawal is more than your current capital.');
+    if(payload.type==='WITHDRAW_EARNINGS' && amount>available+0.001) throw new Error('Withdrawal is more than your available earnings.');
+
+    c[key]=payload.type==='ADD_CAPITAL'?prev+amount:prev-amount;
+    if(payload.type==='ADD_CAPITAL') c.currentCapital=currentCap+amount;
+    else if(payload.type==='WITHDRAW_CAPITAL') c.currentCapital=currentCap-amount;
+    else c.currentCapital=currentCap;
+
+    c.availableEarnings=payload.type==='WITHDRAW_EARNINGS'?available-amount:available;
+    c.withdrawnEarnings=Number(c.withdrawnEarnings||0)+(payload.type==='WITHDRAW_EARNINGS'?amount:0);
+    c.expectedTotalMoney=Number(c.currentCapital||0)+Number(c.availableEarnings||0);
+
+    const now=new Date();
+    const movement={
+      id:id,timestamp:now.toISOString(),date:now.toLocaleString(),
+      type:payload.type,amount:amount,wallet:wallet,note:payload.note||'',
+      previousWallet:prev,newWallet:Number(c[key]||0),
+      previousCurrentCapital:currentCap,newCurrentCapital:Number(c.currentCapital||0),
+      previousAvailableEarnings:available,newAvailableEarnings:Number(c.availableEarnings||0),
+      _pendingSync:true
+    };
+    capitalMovements.unshift(movement);
+    renderCapital(c); renderCapitalActivity(); saveLocalTrackerCache();
+    return movement;
+  }
+
+  function applyLocalMoveMoney(payload,id){
+    const c={...(capitalData||{})};
+    if(!c.initialized) throw new Error('Set your capital balances first while online.');
+    const map={'Cash on Hand':'cashOnHand','GCash':'gcashBalance','Maya':'mayaBalance'};
+    const from=payload.fromWallet,to=payload.toWallet,amount=Number(payload.amount||0);
+    const fk=map[from],tk=map[to];
+    if(!fk||!tk||from===to) throw new Error('Choose two different wallets.');
+    const beforeFrom=Number(c[fk]||0),beforeTo=Number(c[tk]||0);
+    if(amount>beforeFrom+0.001) throw new Error('Not enough '+from+' balance.');
+    c[fk]=beforeFrom-amount; c[tk]=beforeTo+amount;
+    const now=new Date();
+    const t={
+      id:id,timestamp:now.toISOString(),date:now.toLocaleString(),
+      fromWallet:from,toWallet:to,amount:amount,_pendingSync:true,
+      previousGcash:Number((capitalData&&capitalData.gcashBalance)||0),
+      newGcash:Number(c.gcashBalance||0),
+      previousMaya:Number((capitalData&&capitalData.mayaBalance)||0),
+      newMaya:Number(c.mayaBalance||0),
+      previousCash:Number((capitalData&&capitalData.cashOnHand)||0),
+      newCash:Number(c.cashOnHand||0)
+    };
+    mayaTransfers.unshift(t);
+    renderCapital(c); renderMayaTransfers(); renderCapitalActivity(); saveLocalTrackerCache();
+    return t;
+  }
+
+  const pendingSyncBtn=document.getElementById('pendingSyncBtn');
+  const pendingSyncModal=document.getElementById('pendingSyncModal');
+  const pendingSyncClose=document.getElementById('pendingSyncClose');
+  if(pendingSyncBtn) pendingSyncBtn.addEventListener('click',()=>{renderPendingSyncPanel();pendingSyncModal.classList.add('show');pendingSyncModal.setAttribute('aria-hidden','false');});
+  if(pendingSyncClose) pendingSyncClose.addEventListener('click',()=>{pendingSyncModal.classList.remove('show');pendingSyncModal.setAttribute('aria-hidden','true');});
+  if(pendingSyncModal) pendingSyncModal.addEventListener('click',e=>{if(e.target===pendingSyncModal) pendingSyncClose.click();});
+  window.addEventListener('online',()=>{renderPendingSyncPanel();processOfflineActionQueue();});
+  window.addEventListener('offline',renderPendingSyncPanel);
+  window.addEventListener('focus',processOfflineActionQueue);
+  setTimeout(()=>{renderPendingSyncPanel();processOfflineActionQueue();},300);
+
+
 
   function saveLocalTrackerCache(){
     try{
@@ -6616,7 +6859,9 @@ body > .hero{
   const cashPiecesPromptIds = new Set();
 
   function pendingSyncCount(){
-    return loadPendingTxQueue().length + loadPendingCashPiecesQueue().length;
+    let n=loadPendingTxQueue().length + loadPendingCashPiecesQueue().length;
+    try{ n += loadOfflineActionQueue().length; }catch(e){}
+    return n;
   }
 
   function refreshFastSyncStatus(){
@@ -7262,25 +7507,28 @@ body > .hero{
     save.disabled=true;
 
     if(tx._walletTransferDraft){
-      save.textContent='Transferring…';
-      if(stat){stat.textContent='Saving transfer and Cash Counter together…';stat.className='';}
-      google.script.run
-        .withSuccessHandler(d=>{
-          save.disabled=false; save.textContent='Save Cash Pieces';
-          if(d&&d.transfer) mayaTransfers.unshift(d.transfer);
-          if(d&&d.capital) renderCapital(d.capital);
-          renderMayaTransfers(); renderCapitalActivity(); saveLocalTrackerCache();
-          if(typeof window.loadCashCounterLatestStatus==='function')setTimeout(window.loadCashCounterLatestStatus,100);
-          closeCashPiecesRecorder();
-        })
-        .withFailureHandler(e=>{
-          save.disabled=false; save.textContent='Save Cash Pieces';
-          if(stat){stat.textContent=(e&&e.message)||'Could not save transfer and Cash Counter.';stat.className='err';}
-        })
-        .addMayaTransferWithCashPiecesBySession(getSessionToken(),{
-          amount:Number(tx.amount||0), fromWallet:tx.fromWallet, toWallet:tx.toWallet,
-          received:{...cashPiecesReceived}, given:{...cashPiecesGiven}
-        });
+      const id=offlineActionId('MOVECASH');
+      const payload={
+        amount:Number(tx.amount||0), fromWallet:tx.fromWallet, toWallet:tx.toWallet,
+        received:{...cashPiecesReceived}, given:{...cashPiecesGiven}, clientActionId:id
+      };
+
+      try{applyLocalMoveMoney(payload,id);}catch(e){
+        save.disabled=false; save.textContent='Save Cash Pieces';
+        if(stat){stat.textContent=(e&&e.message)||'Could not save transfer.';stat.className='err';}
+        return;
+      }
+
+      try{
+        window.dispatchEvent(new CustomEvent('gcash-local-cash-pieces',{
+          detail:{transactionId:id,received:{...cashPiecesReceived},given:{...cashPiecesGiven},expectedCashMovement:(tx.toWallet==='Cash on Hand'?Number(tx.amount||0):-Number(tx.amount||0))}
+        }));
+      }catch(e){}
+
+      queueOfflineAction({id:id,method:'addMayaTransferWithCashPiecesBySession',payload:payload});
+      save.disabled=false; save.textContent='Saved';
+      if(stat){stat.textContent=navigator.onLine?'Saved. Syncing transfer and Cash Counter…':'Saved offline. Waiting to sync.';stat.className='ok';}
+      setTimeout(closeCashPiecesRecorder,100);
       return;
     }
 
@@ -7929,6 +8177,20 @@ document.addEventListener('DOMContentLoaded', function(){
 #cashCounterNative .cc-total-row{border-top:1px dashed #d0d5dd;margin-top:5px;padding-top:7px}
 #cashCounterNative .cc-audit-note{font-size:10px;line-height:1.45;color:#667085;margin-top:7px}
 
+
+/* Offline-first PWA status */
+.pending-sync-btn{display:block;margin:6px auto 0;border:1px solid #d0d5dd;background:#fff;border-radius:999px;padding:5px 10px;font-size:10px;font-weight:900;color:#344054}
+.pending-sync-modal{display:none;position:fixed;inset:0;background:rgba(16,24,40,.45);z-index:999999;align-items:flex-end;justify-content:center}
+.pending-sync-modal.show{display:flex}
+.pending-sync-card{width:min(100%,560px);max-height:76vh;overflow:auto;background:#fff;border-radius:18px 18px 0 0;padding:14px;box-shadow:0 -12px 36px rgba(0,0,0,.16)}
+.pending-sync-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px}
+.pending-sync-head button{border:1px solid #d0d5dd;background:#fff;border-radius:10px;padding:7px 10px;font-weight:800}
+.pending-sync-network{font-size:11px;color:#667085;margin-bottom:8px}
+.pending-sync-item{border:1px solid #e4e7ec;border-radius:12px;padding:9px 10px;margin:7px 0;background:#fafafa}
+.pending-sync-item strong{display:block;font-size:11px;color:#172033}
+.pending-sync-item small{display:block;font-size:9px;color:#667085;margin-top:2px}
+.offline-badge{display:inline-block;border-radius:999px;padding:3px 7px;font-size:9px;font-weight:950;background:#fff1f0;color:#b42318;border:1px solid #fecdca;margin-left:6px}
+
 </style>
 
 <script id="wallet-cash-transfer-color-fix">
@@ -8339,7 +8601,8 @@ $('saveInventoryCorrection').addEventListener('click',()=>{
     return;
   }
 
-  const before=(current && current.pieces && typeof current.pieces==='object') ? total(current.pieces) : 0;
+  const beforePieces=(current&&current.pieces)?{...current.pieces}:zero();
+  const before=total(beforePieces);
   const after=total(corrected);
   const tracker=reconcileTrackerCashValue();
   const diff=after-tracker;
@@ -8356,27 +8619,32 @@ $('saveInventoryCorrection').addEventListener('click',()=>{
 
   if(!confirm(message)) return;
 
-  const btn=$('saveInventoryCorrection');
-  btn.disabled=true;
-  btn.textContent='Saving…';
+  const id='RECON_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+  current={
+    ...(current||{}),pieces:{...corrected},physicalCash:after,physicalTotal:after,
+    trackerCashOnHand:tracker,difference:diff,status:Math.abs(diff)<=0.01?'MATCHED':(diff<0?'SHORT':'OVER'),
+    _localPending:true
+  };
+  renderCashCounterInventory(current); renderSummary(current); setTimeout(sendCashCounterStatusToTracker,0);
+  try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(e){}
 
-  google.script.run
-    .withSuccessHandler(x=>{
-      current=x;
-      renderCashCounterInventory(current);
-      setTimeout(sendCashCounterStatusToTracker,80);
-      setCashCounterMode('cash');
-      btn.disabled=false;
-      btn.textContent='Save Reconciliation';
-      showMsg('Cash Counter reconciliation saved with history.','ok');
-      loadHistory();
-    })
-    .withFailureHandler(e=>{
-      btn.disabled=false;
-      btn.textContent='Save Reconciliation';
-      showMsg((e&&e.message)?e.message:'Could not save reconciliation.','err');
-    })
-    .saveManualCashCounterCorrection(corrected, reason, note);
+  window.dispatchEvent(new CustomEvent('gcash-queue-offline-action',{detail:{
+    id:id,method:'saveManualCashCounterCorrection',
+    payload:{pieces:{...corrected},reason:reason,note:note,beforePieces:beforePieces}
+  }}));
+
+  setCashCounterMode('cash');
+  showMsg(navigator.onLine?'Reconciliation saved. Syncing…':'Reconciliation saved offline. Waiting to sync.','ok');
+});
+
+window.addEventListener('offline-cashcounter-action-synced',function(e){
+  const d=(e&&e.detail)||{};
+  if(d.data){
+    current=d.data;
+    try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(_e){}
+    renderCashCounterInventory(current); renderSummary(current); setTimeout(sendCashCounterStatusToTracker,0);
+    if(document.getElementById('historyView')?.classList.contains('mode-open')) loadHistory();
+  }
 });
 
 window.addEventListener('gcash-local-cash-pieces',function(e){
@@ -8419,6 +8687,7 @@ function load(){
   google.script.run
     .withSuccessHandler(x=>{
       current=x;
+      try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(e){}
       renderCashCounterInventory(current);
       setTimeout(sendCashCounterStatusToTracker,80);
 
@@ -8431,8 +8700,21 @@ function load(){
       showMsg('Cash Counter inventory loaded. Count physical cash only if you want to verify it.');
     })
     .withFailureHandler(e=>{
-      $('trackerCashAuto').textContent='Unable to read';
-      showMsg((e&&e.message)?e.message:'Could not load Cash Counter.','err');
+      let restored=false;
+      try{
+        const raw=localStorage.getItem('gcashCashCounterCurrentV1');
+        if(raw){
+          current=JSON.parse(raw);
+          renderCashCounterInventory(current); renderSummary(current);
+          $('countGrid').innerHTML=grid('count',zero()); refreshCount();
+          setCashCounterMode('cash'); restored=true;
+        }
+      }catch(_e){}
+      if(restored) showMsg('Offline. Saved Cash Counter loaded from this device.','ok');
+      else{
+        $('trackerCashAuto').textContent='Unable to read';
+        showMsg((e&&e.message)?e.message:'Could not load Cash Counter.','err');
+      }
     })
     .getCashCounter();
 }
@@ -8591,46 +8873,24 @@ $('saveCount').addEventListener('click',()=>{
     return;
   }
 
-  const btn=$('saveCount');
-  btn.disabled=true;
-  btn.textContent='Saving…';
-  showMsg('Saving Cash Check…');
+  const tracker=trackerCashValue();
+  const diff=physical-tracker;
+  current={
+    ...(current||{}),pieces:{...pieces},physicalCash:physical,physicalTotal:physical,
+    trackerCashOnHand:tracker,difference:diff,status:Math.abs(diff)<=0.01?'MATCHED':(diff<0?'SHORT':'OVER'),
+    _localPending:true
+  };
+  renderCashCounterInventory(current); renderSummary(current);
+  try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(e){}
 
-  google.script.run
-    .withSuccessHandler(x=>{
-      btn.disabled=false;
-      btn.textContent='Save Physical Cash Check';
-      current=x;
+  const id='COUNT_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+  window.dispatchEvent(new CustomEvent('gcash-queue-offline-action',{detail:{
+    id:id,method:'saveCashCount',payload:{pieces:{...pieces}}
+  }}));
 
-      // Keep the just-saved numbers visible and show the final result.
-      const tracker=Number(x.trackerCashOnHand||0);
-      const diff=physical-tracker;
-      const cls=Math.abs(diff)<.01?'matched':diff<0?'short':'over';
-      const status=Math.abs(diff)<.01
-        ? 'MATCHED'
-        : diff<0
-          ? 'SHORT '+money(Math.abs(diff))
-          : 'OVER '+money(diff);
-
-      $('summary').innerHTML=`
-        <div class="metric"><small>Physical Cash</small><strong>${money(physical)}</strong></div>
-        <div class="metric"><small>Tracker Cash on Hand</small><strong>${money(tracker)}</strong></div>
-        <div class="metric statusbox ${cls}"><small>Cash Check</small><strong>${status}</strong></div>`;
-
-      showMsg('Cash check saved ✓','ok');
-      loadHistory();
-      renderCashCounterInventory(current);
-      setTimeout(sendCashCounterStatusToTracker,80);
-      setCashCounterMode('cash');
-      
-      
-    })
-    .withFailureHandler(e=>{
-      btn.disabled=false;
-      btn.textContent='Save Physical Cash Check';
-      showMsg((e&&e.message)?e.message:'Could not save Daily Cash Check.','err');
-    })
-    .saveCashCount(pieces);
+  showMsg(navigator.onLine?'Cash check saved. Syncing…':'Cash check saved offline. Waiting to sync.','ok');
+  setCashCounterMode('cash');
+  setTimeout(sendCashCounterStatusToTracker,0);
 });
 
 
@@ -8743,6 +9003,7 @@ function loadHistory(){
 
   google.script.run
     .withSuccessHandler(rows=>{
+      try{localStorage.setItem('gcashCashCounterHistoryV1',JSON.stringify(rows||[]));}catch(e){}
       rows=(rows||[]).filter(r=>[
         'COUNT','MANUAL_CORRECTION','TRANSACTION_PIECES',
         'CASH_IN_PIECES','CASH_OUT_PIECES','WALLET_TRANSFER_PIECES'
@@ -8771,7 +9032,16 @@ function loadHistory(){
       }).join('');
     })
     .withFailureHandler(e=>{
-      $('historyList').textContent=(e&&e.message)?e.message:'Could not load history.';
+      try{
+        const cached=JSON.parse(localStorage.getItem('gcashCashCounterHistoryV1')||'[]');
+        if(Array.isArray(cached)&&cached.length){
+          $('historyList').innerHTML='<div class="cc-audit-note">Offline. Showing last synced Cash Counter history.</div>';
+          // Retry the normal renderer with cached rows by temporarily rendering compact summaries.
+          $('historyList').innerHTML += cached.slice(0,50).map(r=>`<div class="cc-audit-item"><div class="cc-audit-summary"><div class="cc-audit-main"><div class="cc-audit-title">${esc(titleFor(r,r.details||{}))}</div><div class="cc-audit-date">${esc(r.date||'')}</div></div><div class="cc-audit-amount">${esc(headlineAmount(r,r.details||{}))}</div></div></div>`).join('');
+          return;
+        }
+      }catch(_e){}
+      $('historyList').textContent='Offline. No saved Cash Counter history is available yet.';
     })
     .getCashCountHistory();
 }
@@ -8789,5 +9059,16 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
 
 
 </script>
+
+<script>
+(function(){
+  if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost')){
+    window.addEventListener('load',function(){
+      navigator.serviceWorker.register('./sw.js').catch(function(){});
+    });
+  }
+})();
+</script>
+
 </body>
 </html>
