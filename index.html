@@ -941,9 +941,10 @@ body.app-locked #historyToggle{
   .fee-location-step{display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
   .fee-location-step.show{display:block}
   .fee-location-title{text-align:center;font-size:14px;font-weight:900;margin-bottom:10px;color:var(--text)}
-  .fee-location-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .fee-location-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
   .fee-location-choice{min-height:50px;border-radius:13px;border:1px solid var(--border);background:#fff;color:var(--text);font-size:13px;font-weight:900;cursor:pointer}
   .fee-location-choice.gcash{color:#0b57d0;background:#e8f0fe;border-color:#bfd3fb}
+  .fee-location-choice.maya{color:#067647;background:#ecfdf3;border-color:#abefc6}
   .fee-location-choice.cash{color:#137333;background:#e6f4ea;border-color:#b7dfc4}
 
 
@@ -4900,9 +4901,10 @@ body > .hero{
     </div>
 
     <div id="feeLocationStep" class="fee-location-step">
-      <div class="fee-location-title">Where did the Cash Out fee go?</div>
+      <div class="fee-location-title">Where did the fee go?</div>
       <div class="fee-location-actions">
-        <button type="button" id="feeToGcash" class="fee-location-choice gcash">Wallet</button>
+        <button type="button" id="feeToGcash" class="fee-location-choice gcash">GCash</button>
+        <button type="button" id="feeToMaya" class="fee-location-choice maya">Maya</button>
         <button type="button" id="feeToCash" class="fee-location-choice cash">Cash on Hand</button>
       </div>
     </div>
@@ -5212,6 +5214,7 @@ body > .hero{
   const typeChoiceActions = $('typeChoiceActions');
   const feeLocationStep = $('feeLocationStep');
   const feeToGcash = $('feeToGcash');
+  const feeToMaya = $('feeToMaya');
   const feeToCash = $('feeToCash');
   const cashInWalletStep = $('cashInWalletStep');
   const cashInFromGcash = $('cashInFromGcash');
@@ -5219,7 +5222,7 @@ body > .hero{
   const cashOutWalletStep = $('cashOutWalletStep');
   const cashOutToGcash = $('cashOutToGcash');
   const cashOutToMaya = $('cashOutToMaya');
-  let selectedCashOutWallet = '';
+  let selectedTransactionWallet = '';
   const adjustCapitalBtn = $('adjustCapitalBtn');
   const capitalModal = $('capitalModal');
   const capitalCashInput = $('capitalCashInput');
@@ -6600,7 +6603,7 @@ body > .hero{
     if(cashInWalletStep) cashInWalletStep.classList.remove('show');
     if(cashOutWalletStep) cashOutWalletStep.classList.remove('show');
     if(feeLocationStep) feeLocationStep.classList.remove('show');
-    selectedCashOutWallet='';
+    selectedTransactionWallet='';
   }
 
   const TX_QUEUE_KEY = 'gcash_tracker_pending_tx_v1';
@@ -6743,9 +6746,14 @@ body > .hero{
     let afterSaripay = beforeSaripay;
 
     if(payload.type === 'Cash In'){
-      afterCash += txTotal;
+      if(payload.feeLocation === 'Cash on Hand') afterCash += txTotal;
+      else afterCash += txAmount;
+
       if(payload.walletDestination === 'Maya') afterMaya -= txAmount;
       else afterGcash -= txAmount;
+
+      if(payload.feeLocation === 'Maya') afterMaya += feeValue;
+      else if(payload.feeLocation === 'GCash') afterGcash += feeValue;
     }else{
       afterCash -= txAmount;
       if(payload.walletDestination === 'Maya') afterMaya += txAmount;
@@ -6753,7 +6761,7 @@ body > .hero{
 
       if(payload.feeLocation === 'Cash on Hand') afterCash += feeValue;
       else if(payload.feeLocation === 'Maya') afterMaya += feeValue;
-      else afterGcash += feeValue;
+      else if(payload.feeLocation === 'GCash') afterGcash += feeValue;
     }
 
     const now = new Date();
@@ -7347,57 +7355,50 @@ body > .hero{
     pendingPayload.type='Cash In';
     pendingPayload.feeLocation='';
     pendingPayload.walletDestination='';
+    selectedTransactionWallet='';
     if(typeChoiceActions) typeChoiceActions.style.display='none';
     if(cashInWalletStep) cashInWalletStep.classList.add('show');
   });
 
-  cashInFromGcash.addEventListener('click',()=>{
+  function openFeeLocationStep(type, wallet){
     if(!pendingPayload) return;
-    pendingPayload.walletDestination='GCash';
-    savePendingTransaction('Cash In');
-  });
+    selectedTransactionWallet=wallet;
+    pendingPayload.walletDestination=wallet;
 
-  cashInFromMaya.addEventListener('click',()=>{
-    if(!pendingPayload) return;
-    pendingPayload.walletDestination='Maya';
-    savePendingTransaction('Cash In');
-  });
+    if(cashInWalletStep) cashInWalletStep.classList.remove('show');
+    if(cashOutWalletStep) cashOutWalletStep.classList.remove('show');
+
+    const title=feeLocationStep ? feeLocationStep.querySelector('.fee-location-title') : null;
+    if(title) title.textContent=`Where did the ${type} fee go?`;
+
+    feeLocationStep.classList.add('show');
+  }
+
+  cashInFromGcash.addEventListener('click',()=>openFeeLocationStep('Cash In','GCash'));
+  cashInFromMaya.addEventListener('click',()=>openFeeLocationStep('Cash In','Maya'));
 
   confirmCashOut.addEventListener('click',()=>{
     if(!pendingPayload) return;
     pendingPayload.type='Cash Out';
     pendingPayload.feeLocation='';
     pendingPayload.walletDestination='';
-    selectedCashOutWallet='';
+    selectedTransactionWallet='';
     if(typeChoiceActions) typeChoiceActions.style.display='none';
     if(cashOutWalletStep) cashOutWalletStep.classList.add('show');
   });
 
-  function chooseCashOutWallet(wallet){
-    if(!pendingPayload) return;
-    selectedCashOutWallet = wallet;
-    pendingPayload.walletDestination = wallet;
-    cashOutWalletStep.classList.remove('show');
-    feeToGcash.textContent = wallet;
-    feeToGcash.classList.toggle('gcash', wallet === 'GCash');
-    feeToGcash.classList.toggle('cash', wallet === 'Maya');
-    feeLocationStep.classList.add('show');
+  cashOutToGcash.addEventListener('click',()=>openFeeLocationStep('Cash Out','GCash'));
+  cashOutToMaya.addEventListener('click',()=>openFeeLocationStep('Cash Out','Maya'));
+
+  function chooseFeeLocation(location){
+    if(!pendingPayload || !selectedTransactionWallet) return;
+    pendingPayload.feeLocation=location;
+    savePendingTransaction(pendingPayload.type);
   }
 
-  cashOutToGcash.addEventListener('click',()=>chooseCashOutWallet('GCash'));
-  cashOutToMaya.addEventListener('click',()=>chooseCashOutWallet('Maya'));
-
-  feeToGcash.addEventListener('click',()=>{
-    if(!pendingPayload || !selectedCashOutWallet) return;
-    pendingPayload.feeLocation=selectedCashOutWallet;
-    savePendingTransaction('Cash Out');
-  });
-
-  feeToCash.addEventListener('click',()=>{
-    if(!pendingPayload) return;
-    pendingPayload.feeLocation='Cash on Hand';
-    savePendingTransaction('Cash Out');
-  });
+  feeToGcash.addEventListener('click',()=>chooseFeeLocation('GCash'));
+  feeToMaya.addEventListener('click',()=>chooseFeeLocation('Maya'));
+  feeToCash.addEventListener('click',()=>chooseFeeLocation('Cash on Hand'));
 
   cancelTypeChoice.addEventListener('click',()=>{
     pendingPayload=null;
