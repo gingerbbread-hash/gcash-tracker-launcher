@@ -4337,121 +4337,49 @@ body > .hero{
 </style>
 
 
-<style id="cash-counter-action-layout">
-#cashCounterNative .cash-counter-main-actions{
+<style id="cash-counter-four-exclusive-tabs">
+#cashCounterNative .cash-counter-mode-tabs{
   display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:6px;
-  margin-top:9px;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:4px;
+  margin-bottom:10px;
 }
-#cashCounterNative .cash-counter-main-actions button{
+#cashCounterNative .cash-counter-mode-tabs button{
   width:100%;
   min-width:0;
-  min-height:44px !important;
-  margin:0 !important;
-  padding:7px 5px !important;
-  border-radius:11px !important;
-  font-size:11px !important;
-  line-height:1.15 !important;
-  white-space:normal;
-}
-#cashCounterNative .cash-check-quick-btn{
-  background:#f2f4f7;
-  color:#344054;
+  min-height:42px;
+  padding:6px 2px;
   border:1px solid #d0d5dd;
-  font-weight:800;
-}
-#cashCounterNative .cash-counter-main-actions #startNewCheck{
-  font-weight:900 !important;
-}
-#cashCounterNative .cash-counter-main-actions #editInventoryBtn{
-  position:static !important;
-  display:block !important;
-}
-#cashCounterNative .cash-counter-history-row{
-  display:grid;
-  grid-template-columns:auto 1fr auto;
-  align-items:center;
-  gap:7px;
-  margin-top:7px;
-}
-#cashCounterNative .cash-history-quick-btn{
-  min-height:36px !important;
-  padding:6px 12px !important;
-  border-radius:10px !important;
+  border-radius:10px;
   background:#fff;
   color:#344054;
-  border:1px solid #d0d5dd;
-  font-size:11px !important;
-  font-weight:800;
+  font-size:9.5px;
+  line-height:1.15;
+  font-weight:850;
+  white-space:normal;
 }
-#cashCounterNative .cash-counter-last-count-quick{
-  min-width:0;
-  color:#667085;
-  font-size:10px;
-  line-height:1.2;
-  text-align:left;
-}
-#cashCounterNative .cash-counter-close-btn{
-  min-height:36px !important;
-  padding:6px 10px !important;
-  font-size:10px !important;
-}
-@media(max-width:380px){
-  #cashCounterNative .cash-counter-main-actions{
-    gap:4px;
-  }
-  #cashCounterNative .cash-counter-main-actions button{
-    font-size:10px !important;
-    padding-left:3px !important;
-    padding-right:3px !important;
-  }
-}
-</style>
-
-
-<style id="cash-counter-exclusive-panels">
-#cashCounterNative .cash-counter-main-actions{
-  display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:6px;
-  margin:0 0 10px !important;
-}
-#cashCounterNative .cash-counter-main-actions button{
-  min-width:0;
-  width:100%;
-  min-height:44px !important;
-  margin:0 !important;
-  padding:7px 5px !important;
-  border-radius:11px !important;
-  font-size:11px !important;
-  line-height:1.15 !important;
-}
-#cashCounterNative .cash-counter-main-actions button.mode-active{
+#cashCounterNative .cash-counter-mode-tabs button.active{
   background:#1477df !important;
   border-color:#1477df !important;
   color:#fff !important;
 }
 #cashCounterNative #cashCounterInventoryCard,
 #cashCounterNative #dailyCountForm,
-#cashCounterNative #editInventoryPanel{
+#cashCounterNative #editInventoryPanel,
+#cashCounterNative #historyView{
   display:none !important;
 }
 #cashCounterNative #cashCounterInventoryCard.mode-open,
 #cashCounterNative #dailyCountForm.mode-open,
-#cashCounterNative #editInventoryPanel.mode-open{
+#cashCounterNative #editInventoryPanel.mode-open,
+#cashCounterNative #historyView.mode-open{
+  display:block !important;
+}
+#cashCounterNative #countView{
   display:block !important;
 }
 #cashCounterNative #editInventoryPanel{
   margin-top:0 !important;
-}
-@media(max-width:380px){
-  #cashCounterNative .cash-counter-main-actions{gap:4px}
-  #cashCounterNative .cash-counter-main-actions button{
-    font-size:10px !important;
-    padding-left:3px !important;
-    padding-right:3px !important;
-  }
 }
 </style>
 
@@ -4558,19 +4486,14 @@ body > .hero{
   </section>
 
   <section class="card">
-    <div class="tabs">
-      <button class="active" data-tab="count">Cash Check</button>
-<button data-tab="history">History</button>
+    <div class="cash-counter-mode-tabs">
+      <button id="cashCheckModeBtn" class="active" type="button">Cash Check</button>
+      <button id="startNewCheck" type="button">Count Physical Cash</button>
+      <button id="editInventoryBtn" type="button">Reconcile</button>
+      <button id="historyModeBtn" type="button">History</button>
     </div>
 
     <div id="countView" class="view active">
-
-      <div class="cash-counter-main-actions">
-          <button id="cashCheckQuickBtn" class="cash-check-quick-btn" type="button">Cash Check</button>
-          <button id="startNewCheck" class="inventory-count-btn" type="button">Count Physical Cash</button>
-          <button id="editInventoryBtn" class="inventory-edit-btn" type="button">Reconcile</button>
-        </div>
-
 
       <div id="cashCounterInventoryCard" class="today-check-card">
         <div class="today-check-head">
@@ -8262,19 +8185,6 @@ function readInventoryEditor(){
   return out;
 }
 
-
-function refreshCashCounterLastCountQuick(){
-  const out=$('cashCounterLastCountQuick');
-  if(!out) return;
-  const candidates=[
-    document.querySelector('#cashCounterNative #latestCheckTime'),
-    document.querySelector('#cashCounterNative .latest-check-time'),
-    document.querySelector('#cashCounterNative [data-latest-check-time]')
-  ].filter(Boolean);
-  const txt=candidates.length ? String(candidates[0].textContent||'').trim() : '';
-  out.textContent=txt ? ('Last count: '+txt) : '';
-}
-
 function reconcileTrackerCashValue(){
   if(current && current.trackerCashOnHand!==null && current.trackerCashOnHand!==undefined){
     return Number(current.trackerCashOnHand)||0;
@@ -8300,43 +8210,6 @@ function refreshReconcilePreview(){
   else if(diff<0) card.classList.add('short');
   else card.classList.add('over');
 }
-
-
-});
-
-},40);
-});
-
-
-function setCashCounterMode(mode){
-  const cashPanel=$('cashCounterInventoryCard');
-  const countPanel=$('dailyCountForm');
-  const reconcilePanel=$('editInventoryPanel');
-
-  if(cashPanel) cashPanel.classList.toggle('mode-open',mode==='cash');
-  if(countPanel) countPanel.classList.toggle('mode-open',mode==='count');
-  if(reconcilePanel) reconcilePanel.classList.toggle('mode-open',mode==='reconcile');
-
-  [['cashCheckQuickBtn','cash'],['startNewCheck','count'],['editInventoryBtn','reconcile']]
-    .forEach(([id,key])=>{
-      const b=$(id);
-      if(b) b.classList.toggle('mode-active',key===mode);
-    });
-}
-
-$('cashCheckQuickBtn').addEventListener('click',()=>{
-  setCashCounterMode('cash');
-  showMsg('Cash Counter inventory.');
-});
-
-$('editInventoryBtn').addEventListener('click',()=>{
-  renderInventoryEditor();
-  $('reconcileReason').value='';
-  $('reconcileNote').value='';
-  refreshReconcilePreview();
-  setCashCounterMode('reconcile');
-  $('editInventoryPanel').scrollIntoView({behavior:'smooth',block:'start'});
-});
 
 $('cancelInventoryCorrection').addEventListener('click',()=>{
   setCashCounterMode('cash');
@@ -8411,20 +8284,6 @@ $('saveInventoryCorrection').addEventListener('click',()=>{
       showMsg((e&&e.message)?e.message:'Could not save reconciliation.','err');
     })
     .saveManualCashCounterCorrection(corrected, reason, note);
-});
-
-if($('notNowBtn')) $('notNowBtn').addEventListener('click',()=>{
-  setCashCounterMode('cash');
-  showMsg('Cash Counter inventory only.');
-});
-});
-
-$('startNewCheck').addEventListener('click',()=>{
-  setCashCounterMode('count');
-  $('countGrid').innerHTML=grid('count',zero());
-  refreshCount();
-  showMsg('Start from zero and count the physical money.');
-  $('dailyCountForm').scrollIntoView({behavior:'smooth',block:'start'});
 });
 
 function load(){
@@ -8543,11 +8402,57 @@ document.addEventListener('input',e=>{
 });
 
 
-document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{
-  document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));
-  ['count','history'].forEach(t=>$(t+'View').classList.toggle('active',b.dataset.tab===t));
-  if(b.dataset.tab==='history') loadHistory();
-}));
+
+
+
+function setCashCounterMode(mode){
+  const panels = {
+    cash: $('cashCounterInventoryCard'),
+    count: $('dailyCountForm'),
+    reconcile: $('editInventoryPanel'),
+    history: $('historyView')
+  };
+
+  Object.entries(panels).forEach(([key,panel])=>{
+    if(panel) panel.classList.toggle('mode-open', key===mode);
+  });
+
+  const buttons = {
+    cash: $('cashCheckModeBtn'),
+    count: $('startNewCheck'),
+    reconcile: $('editInventoryBtn'),
+    history: $('historyModeBtn')
+  };
+
+  Object.entries(buttons).forEach(([key,button])=>{
+    if(button) button.classList.toggle('active', key===mode);
+  });
+}
+
+$('cashCheckModeBtn').addEventListener('click',()=>{
+  setCashCounterMode('cash');
+  showMsg('Cash Counter inventory.');
+});
+
+$('startNewCheck').addEventListener('click',()=>{
+  setCashCounterMode('count');
+  $('countGrid').innerHTML=grid('count',zero());
+  refreshCount();
+  showMsg('Start from zero and count the physical money.');
+});
+
+$('editInventoryBtn').addEventListener('click',()=>{
+  renderInventoryEditor();
+  $('reconcileReason').value='';
+  $('reconcileNote').value='';
+  refreshReconcilePreview();
+  setCashCounterMode('reconcile');
+});
+
+$('historyModeBtn').addEventListener('click',()=>{
+  setCashCounterMode('history');
+  loadHistory();
+});
 
 $('saveCount').addEventListener('click',()=>{
   const pieces=read('count');
