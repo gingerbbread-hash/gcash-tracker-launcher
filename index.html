@@ -7649,6 +7649,8 @@ body > .hero{
 
     const piecePayload={
       transactionId:String(tx.id||''),
+      transactionType:String(tx.type||''),
+      amount:Number(tx.amount||tx.total||0),
       received:{...cashPiecesReceived},
       given:{...cashPiecesGiven}
     };
@@ -7691,6 +7693,13 @@ body > .hero{
         return;
       }
 
+      // Cash on Hand is about to change. Hide temporary OVER/SHORT until the
+      // matching Cash Counter denominations have been applied locally.
+      window.gcashCashCounterUpdatePending=true;
+      try{
+        window.dispatchEvent(new CustomEvent('gcash-cash-counter-updating'));
+      }catch(e){}
+
       // Apply wallet/earnings snapshots and History locally as one completed action.
       delete tx._transactionDraft;
       delete tx._transactionPayload;
@@ -7731,7 +7740,10 @@ body > .hero{
           expectedCashMovement:expectedCashMovement(tx)
         }
       }));
-    }catch(e){}
+    }catch(e){
+      window.gcashCashCounterUpdatePending=false;
+      try{ if(typeof loadCashCounterLatestStatus==='function') loadCashCounterLatestStatus(); }catch(_e){}
+    }
 
     if(isTransactionStillPending(tx.id) || tx._pendingSync){
       save.textContent='Saved';
@@ -8394,11 +8406,31 @@ document.addEventListener('DOMContentLoaded', function(){
     }
   }
 
+  function paintUpdating(){
+    const card=document.getElementById('homeBalanceCheck');
+    const value=document.getElementById('homeBalanceCheckValue');
+    const note=document.getElementById('homeBalanceCheckNote');
+    if(!card||!value||!note) return;
+
+    card.classList.remove('warn','matched');
+    value.textContent='UPDATING CASH COUNTER…';
+    note.textContent='Finishing the Cash Counter record. Please wait a moment.';
+  }
+
+  window.addEventListener('gcash-cash-counter-updating',function(){
+    paintUpdating();
+  });
+
   window.addEventListener('gcash-cash-counter-status',function(e){
+    window.gcashCashCounterUpdatePending=false;
     paint(e.detail||null);
   });
 
   window.loadCashCounterLatestStatus=function(){
+    if(window.gcashCashCounterUpdatePending){
+      paintUpdating();
+      return;
+    }
     if(lastStatus) paint(lastStatus);
     try{
       if(typeof sendCashCounterStatusToTracker==='function'){
@@ -8924,63 +8956,126 @@ window.addEventListener('offline-cashcounter-action-synced',function(e){
   }
 });
 
+const LOCAL_CASH_PIECES_APPLIED_KEY='gcashCashPiecesAppliedV1';
+
+function loadLocalCashPiecesAppliedIds(){
+  try{
+    const a=JSON.parse(localStorage.getItem(LOCAL_CASH_PIECES_APPLIED_KEY)||'[]');
+    return Array.isArray(a)?a.map(String):[];
+  }catch(e){ return []; }
+}
+
+function saveLocalCashPiecesAppliedIds(ids){
+  try{
+    localStorage.setItem(
+      LOCAL_CASH_PIECES_APPLIED_KEY,
+      JSON.stringify(Array.from(new Set((ids||[]).map(String))).slice(-500))
+    );
+  }catch(e){}
+}
+
+function ensureCashCounterCurrentLoaded(){
+  if(current && current.pieces && typeof current.pieces==='object') return true;
+  try{
+    const cached=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null');
+    if(cached && cached.pieces && typeof cached.pieces==='object'){
+      current=cached;
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+
 window.addEventListener('gcash-local-cash-pieces',function(e){
   const d=(e&&e.detail)||{};
-  if(!current || !current.pieces || typeof current.pieces!=='object') return;
+  const txId=String(d.transactionId||'');
 
-  const next={...current.pieces};
+  // Cash Counter must update even if the user never opened the Cash Counter tab.
+  // Load the last saved denomination inventory directly from this device.
+  if(!ensureCashCounterCurrentLoaded()) return;
+
   const received=d.received||{};
   const given=d.given||{};
-  let valid=true;
 
-  D.forEach(function(row){
-    const k=row[0];
-    const n=Number(next[k]||0)+Number(received[k]||0)-Number(given[k]||0);
-    if(!isFinite(n) || n<0) valid=false;
-    next[k]=Math.max(0,Math.floor(isFinite(n)?n:0));
+  let rows=[];
+  try{
+    rows=JSON.parse(localStorage.getItem('gcashCashCounterHistoryV1')||'[]');
+    if(!Array.isArray(rows)) rows=[];
+  }catch(_e){ rows=[]; }
+
+  const historyAlready=txId && rows.some(r=>{
+    const rd=(r&&r.details)||{};
+    return String(rd.transactionId||'')===txId ||
+           String((r&&r.note)||'').includes('TX:'+txId);
   });
 
-  if(!valid) return;
+  let appliedIds=loadLocalCashPiecesAppliedIds();
+  let alreadyApplied=!!(txId && appliedIds.includes(txId));
 
-  const physical=total(next);
-  const tracker=trackerCashValue();
-  current={
-    ...(current||{}),
-    pieces:next,
-    physicalCash:physical,
-    physicalTotal:physical,
-    trackerCashOnHand:tracker,
-    difference:physical-tracker,
-    status:Math.abs(physical-tracker)<=0.01?'MATCHED':(physical-tracker<0?'SHORT':'OVER'),
-    _localPending:true
-  };
+  // Older builds did not keep the applied-ID list. If the local Cash Counter
+  // History already has this transaction, treat its denominations as applied
+  // so reopening/retrying cannot subtract/add them a second time.
+  if(historyAlready && txId && !alreadyApplied){
+    alreadyApplied=true;
+    appliedIds.push(txId);
+    saveLocalCashPiecesAppliedIds(appliedIds);
+  }
 
-  // IMPORTANT: persist the denomination change immediately. Without this,
-  // reopening the PWA while offline can restore the old Cash Counter total.
-  try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(_e){}
+  let next={...current.pieces};
+  let valid=true;
 
-  // Also add an immediate local Cash Counter History record so the transaction
-  // remains visible offline while Google Sheets is still syncing.
-  try{
-    const txId=String(d.transactionId||'');
-    let rows=JSON.parse(localStorage.getItem('gcashCashCounterHistoryV1')||'[]');
-    if(!Array.isArray(rows)) rows=[];
-    const already=rows.some(r=>{
-      const rd=(r&&r.details)||{};
-      return String(rd.transactionId||'')===txId || String((r&&r.note)||'').includes('TX:'+txId);
+  if(!alreadyApplied){
+    D.forEach(function(row){
+      const k=row[0];
+      const n=Number(next[k]||0)+Number(received[k]||0)-Number(given[k]||0);
+      if(!isFinite(n) || n<0) valid=false;
+      next[k]=Math.max(0,Math.floor(isFinite(n)?n:0));
     });
-    if(txId && !already){
+
+    if(!valid) return;
+
+    const physical=total(next);
+    const tracker=trackerCashValue();
+
+    current={
+      ...(current||{}),
+      pieces:next,
+      physicalCash:physical,
+      physicalTotal:physical,
+      trackerCashOnHand:tracker,
+      difference:physical-tracker,
+      status:Math.abs(physical-tracker)<=0.01?'MATCHED':(physical-tracker<0?'SHORT':'OVER'),
+      _localPending:true
+    };
+
+    try{
+      localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));
+    }catch(_e){}
+
+    if(txId){
+      appliedIds.push(txId);
+      saveLocalCashPiecesAppliedIds(appliedIds);
+    }
+  }
+
+  // Cash Counter History is created independently from the denomination update.
+  // This makes the record visible immediately offline and prevents a missing
+  // History card from leaving Cash Balance Check inconsistent.
+  if(txId && !historyAlready){
+    try{
       const receivedTotal=total(received);
       const givenTotal=total(given);
       const netCashMovement=receivedTotal-givenTotal;
       const now=new Date();
-      const dateText=new Intl.DateTimeFormat('en-PH',{
-        month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'
-      }).format(now);
+      const physical=Number(current.physicalTotal||current.physicalCash||total(current.pieces||{}));
+      const tracker=trackerCashValue();
+
       rows.unshift({
         id:'LOCAL_PIECES_'+txId,
         timestamp:now.toISOString(),
-        date:dateText,
+        date:new Intl.DateTimeFormat('en-PH',{
+          month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'
+        }).format(now),
         action:'TRANSACTION_PIECES',
         note:(String(d.transactionType||'Transaction')+' cash pieces | TX:'+txId),
         physicalTotal:physical,
@@ -8992,26 +9087,64 @@ window.addEventListener('gcash-local-cash-pieces',function(e){
           amount:Number(d.amount||0),
           received:{...received},
           given:{...given},
-          inventory:{...next},
+          inventory:{...(current.pieces||{})},
           receivedTotal:receivedTotal,
           givenTotal:givenTotal,
           netCashMovement:netCashMovement,
           localPending:true
         }
       });
+
       localStorage.setItem('gcashCashCounterHistoryV1',JSON.stringify(rows.slice(0,100)));
-    }
-  }catch(_e){}
+    }catch(_e){}
+  }
 
   renderCashCounterInventory(current);
   renderSummary(current);
   setTimeout(sendCashCounterStatusToTracker,0);
 
-  // If Cash Counter History is open, refresh it immediately from the local cache.
   if(document.getElementById('historyView')?.classList.contains('mode-open')){
     try{loadHistory();}catch(_e){}
   }
 });
+
+
+function recoverMissingPendingCashPiecesLocalRecords(){
+  try{
+    if(!ensureCashCounterCurrentLoaded()) return;
+
+    const rows=JSON.parse(localStorage.getItem('gcashCashCounterHistoryV1')||'[]');
+    const historyRows=Array.isArray(rows)?rows:[];
+
+    loadPendingCashPiecesQueue().forEach(p=>{
+      const txId=String((p&&p.transactionId)||'');
+      if(!txId) return;
+
+      const hasHistory=historyRows.some(r=>{
+        const rd=(r&&r.details)||{};
+        return String(rd.transactionId||'')===txId ||
+               String((r&&r.note)||'').includes('TX:'+txId);
+      });
+
+      if(hasHistory) return;
+
+      // A queued Cash Pieces item with no local Cash Counter History means the
+      // old event was missed. Re-apply it locally now.
+      window.dispatchEvent(new CustomEvent('gcash-local-cash-pieces',{
+        detail:{
+          transactionId:txId,
+          transactionType:String(p.transactionType||'Transaction'),
+          amount:Number(p.amount||0),
+          received:{...(p.received||{})},
+          given:{...(p.given||{})}
+        }
+      }));
+    });
+  }catch(e){}
+}
+
+setTimeout(recoverMissingPendingCashPiecesLocalRecords,250);
+window.addEventListener('online',()=>setTimeout(recoverMissingPendingCashPiecesLocalRecords,150));
 
 
 window.reverseLocalCashPiecesForTransaction=function(transactionId){
