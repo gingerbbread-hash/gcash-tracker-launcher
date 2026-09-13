@@ -4875,11 +4875,10 @@ body > .hero{
   <div class="cash-pieces-offer-card">
     <div class="cash-pieces-offer-title">Record Cash Pieces?</div>
     <div id="cashPiecesOfferNote" class="cash-pieces-offer-note">
-      Optional. Record the actual Philippine bills and coins that moved so your Cash Counter stays accurate.
+      Record the actual Philippine bills and coins that moved. The transaction is not saved until Cash Pieces are completed.
     </div>
     <div id="cashPiecesOfferSummary" class="cash-pieces-offer-summary"></div>
     <div class="cash-pieces-offer-actions">
-      <button id="cashPiecesSkip" class="cash-pieces-skip" type="button">Skip</button>
       <button id="cashPiecesOpen" class="cash-pieces-open" type="button">Record Cash Pieces</button>
     </div>
   </div>
@@ -7369,10 +7368,23 @@ body > .hero{
           : 'Record the actual cash you gave the customer and any cash fee you received.';
     }
 
-    summary.innerHTML=
-      `Type: <strong>${tx.type}</strong><br>`+
-      `Transaction amount: <strong>${money(Number(tx.amount||tx.total||0))}</strong><br>`+
-      `Expected Cash on Hand change: <strong>${expected>=0?'+':''}${money(expected)}</strong>`;
+    const cashOutCashFee =
+      tx.type==='Cash Out' &&
+      String(tx.feeLocation||'')==='Cash on Hand' &&
+      Number(tx.fee||0)>0;
+
+    if(cashOutCashFee){
+      summary.innerHTML=
+        `Type: <strong>${tx.type}</strong><br>`+
+        `Transaction amount: <strong>${money(Number(tx.amount||0))}</strong><br>`+
+        `Cash given to customer: <strong>-${money(Number(tx.amount||0))}</strong><br>`+
+        `Cash fee received: <strong>+${money(Number(tx.fee||0))}</strong>`;
+    }else{
+      summary.innerHTML=
+        `Type: <strong>${tx.type}</strong><br>`+
+        `Transaction amount: <strong>${money(Number(tx.amount||tx.total||0))}</strong><br>`+
+        `Expected Cash on Hand change: <strong>${expected>=0?'+':''}${money(expected)}</strong>`;
+    }
 
     box.classList.add('show');
     box.setAttribute('aria-hidden','false');
@@ -7430,14 +7442,34 @@ body > .hero{
     if(b) b.textContent=money(givenTotal);
     if(c) c.textContent=(net>=0?'+':'')+money(net);
 
-    const ok=Math.abs(net-expected)<0.01;
-    if(match){
-      match.className='cash-pieces-match '+(ok?'ok':'bad');
-      if(ok){
-        match.textContent=cashPiecesPendingTx&&cashPiecesPendingTx.type==='Move Money'?'MATCHED. Cash pieces equal the transfer amount.':'MATCHED. Cash pieces equal the transaction.';
-      }else{
-        const diff=expected-net;
-        match.textContent=`Not matched. ${diff>0?'Need +':'Need '}${money(diff)} more net cash movement.`;
+    const specialCashOutCashFee =
+      cashPiecesPendingTx &&
+      cashPiecesPendingTx.type==='Cash Out' &&
+      String(cashPiecesPendingTx.feeLocation||'')==='Cash on Hand' &&
+      Number(cashPiecesPendingTx.fee||0)>0;
+
+    let ok;
+    if(specialCashOutCashFee){
+      const needGiven=Number(cashPiecesPendingTx.amount||0);
+      const needReceived=Number(cashPiecesPendingTx.fee||0);
+      ok=Math.abs(givenTotal-needGiven)<0.01 && Math.abs(receivedTotal-needReceived)<0.01;
+
+      if(match){
+        match.className='cash-pieces-match '+(ok?'ok':'bad');
+        match.textContent=ok
+          ? `MATCHED. Cash Given ${money(needGiven)} and Cash Fee Received ${money(needReceived)}.`
+          : `Enter Cash Given ${money(needGiven)} and Cash Fee Received ${money(needReceived)}.`;
+      }
+    }else{
+      ok=Math.abs(net-expected)<0.01;
+      if(match){
+        match.className='cash-pieces-match '+(ok?'ok':'bad');
+        if(ok){
+          match.textContent=cashPiecesPendingTx&&cashPiecesPendingTx.type==='Move Money'?'MATCHED. Cash pieces equal the transfer amount.':'MATCHED. Cash pieces equal the transaction.';
+        }else{
+          const diff=expected-net;
+          match.textContent=`Not matched. ${diff>0?'Need +':'Need '}${money(diff)} more net cash movement.`;
+        }
       }
     }
     if(save) save.disabled=!ok;
@@ -7484,12 +7516,28 @@ body > .hero{
     if(title) title.textContent=tx.type==='Move Money'?'Cash Counter for Move Money':'Record Cash Pieces';
     if(subtitle) subtitle.textContent=tx.type==='Move Money'
       ? `${tx.fromWallet} → ${tx.toWallet}. Select the exact cash denominations.`
-      : 'Use the actual Philippine bills and coins that physically moved.';
+      : 'Required. Enter the actual Philippine bills and coins that physically moved. Cancel will cancel the whole transaction.';
     if(txType) txType.textContent=tx.type==='Move Money'?`${tx.fromWallet} → ${tx.toWallet}`:tx.type;
     if(txAmount) txAmount.textContent=money(Number(tx.amount||tx.total||0));
 
     const exp=expectedCashMovement(tx);
-    if(expected) expected.textContent=(exp>=0?'+':'')+money(exp);
+    const specialCashOutCashFee =
+      tx.type==='Cash Out' &&
+      String(tx.feeLocation||'')==='Cash on Hand' &&
+      Number(tx.fee||0)>0;
+
+    if(expected){
+      const expectedBox=expected.closest('.cash-pieces-summary-box');
+      if(specialCashOutCashFee){
+        if(expectedBox) expectedBox.style.display='none';
+      }else{
+        if(expectedBox) expectedBox.style.display='';
+        expected.textContent=(exp>=0?'+':'')+money(exp);
+      }
+    }
+
+    const netRow=document.getElementById('cashPiecesNetTotal')?.closest('.cash-pieces-live-row');
+    if(netRow) netRow.style.display=specialCashOutCashFee?'none':'';
 
     if(recTab){
       recTab.textContent=tx.type==='Move Money'?'Cash Added':'Money Received';
@@ -7522,10 +7570,36 @@ body > .hero{
     cashPiecesPendingTx=null;
   }
 
-  document.getElementById('cashPiecesSkip')?.addEventListener('click',()=>closeCashPiecesOffer(true));
+  function cancelCashPiecesAndTransaction(){
+    const tx=cashPiecesPendingTx;
+
+    // Cash Pieces are mandatory. Cancel means cancel the whole unsaved
+    // Cash In / Cash Out / Move Money operation. Nothing is added to
+    // History, balances, Cash Counter, earnings, or Pending Sync.
+    const isDraft=!!(tx && (tx._transactionDraft || tx._walletTransferDraft));
+
+    closeCashPiecesRecorder();
+
+    if(isDraft){
+      pendingPayload=null;
+      selectedTransactionWallet='';
+      try{ closeTypeModal(); }catch(e){}
+
+      // A cancelled transaction should leave no partial entry behind.
+      amount.value='';
+      cashReceived.value='';
+      txType.value='';
+      resetChargeMode();
+      setTransactionSaving(false);
+
+      status.textContent='Cancelled. Nothing was recorded.';
+      status.className='status';
+    }
+  }
+
   document.getElementById('cashPiecesOpen')?.addEventListener('click',openCashPiecesRecorder);
-  document.getElementById('cashPiecesX')?.addEventListener('click',closeCashPiecesRecorder);
-  document.getElementById('cashPiecesCancel')?.addEventListener('click',closeCashPiecesRecorder);
+  document.getElementById('cashPiecesX')?.addEventListener('click',cancelCashPiecesAndTransaction);
+  document.getElementById('cashPiecesCancel')?.addEventListener('click',cancelCashPiecesAndTransaction);
 
   document.getElementById('cashPiecesReceivedTab')?.addEventListener('click',()=>{
     cashPiecesMode='received';
@@ -7607,7 +7681,41 @@ body > .hero{
       return;
     }
 
-    // Save immediately on this device first.
+    // Cash In / Cash Out draft:
+    // commit the transaction only now, after Cash Pieces are valid.
+    if(tx._transactionDraft){
+      const payloadToSave={...(tx._transactionPayload||{})};
+      if(!payloadToSave.clientTransactionId){
+        save.disabled=false;
+        if(stat){stat.textContent='Could not save transaction draft.';stat.className='err';}
+        return;
+      }
+
+      // Apply wallet/earnings snapshots and History locally as one completed action.
+      delete tx._transactionDraft;
+      delete tx._transactionPayload;
+      applyOptimisticTransaction(tx);
+
+      const q=loadPendingTxQueue();
+      if(!q.some(x=>String(x.clientTransactionId)===String(payloadToSave.clientTransactionId))){
+        q.push(payloadToSave);
+        savePendingTxQueue(q);
+      }
+
+      // Clear the entry form only after the transaction is truly completed.
+      amount.value='';
+      cashReceived.value='';
+      txType.value='';
+      pendingPayload=null;
+      selectedTransactionWallet='';
+      resetChargeMode();
+      setTransactionSaving(false);
+
+      status.textContent='Recorded ✓ Syncing to Google Sheets…';
+      status.className='status ok';
+    }
+
+    // Save Cash Pieces on this device as part of the same completed transaction.
     queueCashPieces(piecePayload);
 
     // Update the Cash Counter on-screen immediately too. Google Sheets confirms it
@@ -7628,11 +7736,12 @@ body > .hero{
     if(isTransactionStillPending(tx.id) || tx._pendingSync){
       save.textContent='Saved';
       if(stat){
-        stat.textContent='Cash pieces saved on this phone. Syncing automatically…';
+        stat.textContent='Transaction and Cash Pieces saved on this phone. Syncing automatically…';
         stat.className='ok';
       }
 
-      // Do not wait for Google Sheets. Close immediately and let background sync finish.
+      // Both the transaction and its Cash Pieces now exist locally as one
+      // completed operation. Sync them in the correct parent-then-pieces order.
       setTimeout(()=>{
         closeCashPiecesRecorder();
         processPendingTxQueue();
@@ -7663,38 +7772,19 @@ body > .hero{
   function savePendingTransaction(type){
     if(!pendingPayload) return;
 
-    pendingPayload.type = type;
-    const payloadToSave = {...pendingPayload};
+    pendingPayload.type=type;
+    const payloadToSave={...pendingPayload};
 
+    // Do NOT save balances, History, earnings, Cash Counter, or Pending Sync yet.
+    // Cash Pieces are mandatory and are now part of completing the transaction.
     closeTypeModal();
 
-    // Save to the phone immediately.
-    const optimisticTx = makeOptimisticTransaction(payloadToSave);
-    applyOptimisticTransaction(optimisticTx);
+    const draftTx=makeOptimisticTransaction(payloadToSave);
+    draftTx._transactionDraft=true;
+    draftTx._transactionPayload=payloadToSave;
 
-    const q = loadPendingTxQueue();
-    if(!q.some(x => String(x.clientTransactionId) === String(payloadToSave.clientTransactionId))){
-      q.push(payloadToSave);
-      savePendingTxQueue(q);
-    }
-
-    amount.value='';
-    cashReceived.value='';
-    txType.value='';
-    pendingPayload=null;
-    resetChargeMode();
-
-    status.textContent='Recorded ✓ Syncing to Google Sheets…';
-    status.className='status ok';
-    setTransactionSaving(false);
-
-    // Show Cash Pieces immediately. Do not wait for Google Sheets.
-    // The pieces can be entered while the transaction syncs in the background.
-    cashPiecesPromptIds.add(String(optimisticTx.id||''));
-    setTimeout(()=>showCashPiecesOffer(optimisticTx), 40);
-
-    // Google Sheets sync happens quietly in the background immediately.
-    processPendingTxQueue();
+    cashPiecesPendingTx=draftTx;
+    openCashPiecesRecorder();
   }
 
   form.addEventListener('submit', e => {
