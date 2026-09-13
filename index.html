@@ -7613,6 +7613,8 @@ body > .hero{
       window.dispatchEvent(new CustomEvent('gcash-local-cash-pieces',{
         detail:{
           transactionId:String(tx.id||''),
+          transactionType:String(tx.type||''),
+          amount:Number(tx.amount||tx.total||0),
           received:{...cashPiecesReceived},
           given:{...cashPiecesGiven},
           expectedCashMovement:expectedCashMovement(tx)
@@ -8755,15 +8757,69 @@ window.addEventListener('gcash-local-cash-pieces',function(e){
     ...(current||{}),
     pieces:next,
     physicalCash:physical,
+    physicalTotal:physical,
     trackerCashOnHand:tracker,
     difference:physical-tracker,
     status:Math.abs(physical-tracker)<=0.01?'MATCHED':(physical-tracker<0?'SHORT':'OVER'),
     _localPending:true
   };
 
+  // IMPORTANT: persist the denomination change immediately. Without this,
+  // reopening the PWA while offline can restore the old Cash Counter total.
+  try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(_e){}
+
+  // Also add an immediate local Cash Counter History record so the transaction
+  // remains visible offline while Google Sheets is still syncing.
+  try{
+    const txId=String(d.transactionId||'');
+    let rows=JSON.parse(localStorage.getItem('gcashCashCounterHistoryV1')||'[]');
+    if(!Array.isArray(rows)) rows=[];
+    const already=rows.some(r=>{
+      const rd=(r&&r.details)||{};
+      return String(rd.transactionId||'')===txId || String((r&&r.note)||'').includes('TX:'+txId);
+    });
+    if(txId && !already){
+      const receivedTotal=total(received);
+      const givenTotal=total(given);
+      const netCashMovement=receivedTotal-givenTotal;
+      const now=new Date();
+      const dateText=new Intl.DateTimeFormat('en-PH',{
+        month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'
+      }).format(now);
+      rows.unshift({
+        id:'LOCAL_PIECES_'+txId,
+        timestamp:now.toISOString(),
+        date:dateText,
+        action:'TRANSACTION_PIECES',
+        note:(String(d.transactionType||'Transaction')+' cash pieces | TX:'+txId),
+        physicalTotal:physical,
+        trackerCashOnHand:tracker,
+        difference:physical-tracker,
+        details:{
+          transactionId:txId,
+          transactionType:String(d.transactionType||''),
+          amount:Number(d.amount||0),
+          received:{...received},
+          given:{...given},
+          inventory:{...next},
+          receivedTotal:receivedTotal,
+          givenTotal:givenTotal,
+          netCashMovement:netCashMovement,
+          localPending:true
+        }
+      });
+      localStorage.setItem('gcashCashCounterHistoryV1',JSON.stringify(rows.slice(0,100)));
+    }
+  }catch(_e){}
+
   renderCashCounterInventory(current);
   renderSummary(current);
   setTimeout(sendCashCounterStatusToTracker,0);
+
+  // If Cash Counter History is open, refresh it immediately from the local cache.
+  if(document.getElementById('historyView')?.classList.contains('mode-open')){
+    try{loadHistory();}catch(_e){}
+  }
 });
 
 function load(){
