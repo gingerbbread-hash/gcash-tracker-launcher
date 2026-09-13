@@ -6338,6 +6338,7 @@ body > .hero{
     if(a.method==='addMayaTransferBySession'||a.method==='addMayaTransferWithCashPiecesBySession') return 'Move Money';
     if(a.method==='saveCashCount') return 'Cash Check';
     if(a.method==='saveManualCashCounterCorrection') return 'Cash Counter Reconciliation';
+    if(a.method==='deleteTransactionBySession') return 'Delete Transaction';
     return a.method||'Record';
   }
 
@@ -6426,6 +6427,8 @@ body > .hero{
         runner.saveCashCount(a.payload.pieces,a.id);
       }else if(a.method==='saveManualCashCounterCorrection'){
         runner.saveManualCashCounterCorrection(a.payload.pieces,a.payload.reason,a.payload.note,a.id);
+      }else if(a.method==='deleteTransactionBySession'){
+        runner.deleteTransactionBySession(getSessionToken(),a.payload.id);
       }else{
         const latest=loadOfflineActionQueue();
         latest.shift(); saveOfflineActionQueue(latest);
@@ -7834,6 +7837,83 @@ body > .hero{
   deleteTxModal.addEventListener('click', e=>{
     if(e.target === deleteTxModal) closeDeleteTxModal();
   });
+
+  function reverseLocalPendingTransactionState(id){
+    id=String(id||'');
+    const tx=history.find(x=>String(x.id||'')===id);
+    if(!tx) return;
+
+    if(capitalData && capitalData.initialized){
+      const reverseDelta=(key,prevKey,newKey)=>{
+        const prev=Number(tx[prevKey]);
+        const next=Number(tx[newKey]);
+        if(isFinite(prev) && isFinite(next)){
+          capitalData[key]=Number(capitalData[key]||0)-(next-prev);
+        }
+      };
+      reverseDelta('cashOnHand','previousCash','newCash');
+      reverseDelta('gcashBalance','previousGcash','newGcash');
+      reverseDelta('mayaBalance','previousMaya','newMaya');
+      reverseDelta('maribankBalance','previousMaribank','newMaribank');
+      reverseDelta('saripayBalance','previousSaripay','newSaripay');
+
+      const fee=Number(tx.fee||0);
+      if(isFinite(fee) && fee){
+        capitalData.grossFees=Math.max(0,Number(capitalData.grossFees||0)-fee);
+        capitalData.netEarnings=Math.max(0,Number(capitalData.netEarnings||0)-fee);
+        capitalData.availableEarnings=Number(capitalData.availableEarnings||0)-fee;
+        capitalData.expectedTotalMoney=Number(capitalData.currentCapital||capitalData.totalCapital||0)+Number(capitalData.availableEarnings||0);
+      }
+      renderCapital(capitalData);
+    }
+  }
+
+  function deleteTransactionLocallyAndQueue(id){
+    id=String(id||'');
+    if(!id) return;
+
+    // Reverse the optimistic wallet/earnings movement first.
+    reverseLocalPendingTransactionState(id);
+
+    // Reverse exact local Cash Counter pieces when this transaction already
+    // recorded denominations on this device. If none were recorded, this is a no-op.
+    try{
+      if(typeof window.reverseLocalCashPiecesForTransaction==='function'){
+        window.reverseLocalCashPiecesForTransaction(id);
+      }
+    }catch(e){}
+
+    // Stop the original transaction and its pieces from being synced later.
+    savePendingTxQueue(loadPendingTxQueue().filter(
+      x=>String(x.clientTransactionId||'')!==id
+    ));
+    removeQueuedCashPieces(id);
+    cashPiecesPromptIds.delete(id);
+
+    history=history.filter(x=>String(x.id||'')!==id);
+    window.__gcashTransactions=history;
+    render();
+    saveLocalTrackerCache();
+
+    // Tell the backend to mark the ID cancelled as soon as internet returns.
+    // This prevents a delayed/retried add from recreating the deleted record.
+    const deleteActionId='DELTX_'+id;
+    const alreadyQueued=loadOfflineActionQueue().some(a=>
+      a.method==='deleteTransactionBySession' && String((a.payload||{}).id||'')===id
+    );
+    if(!alreadyQueued){
+      queueOfflineAction({
+        id:deleteActionId,
+        method:'deleteTransactionBySession',
+        payload:{id:id}
+      });
+    }
+
+    if(typeof window.loadCashCounterLatestStatus==='function'){
+      setTimeout(window.loadCashCounterLatestStatus,100);
+    }
+  }
+
   deleteTxYes.addEventListener('click', ()=>{
     const id = pendingDeleteTxId;
     const kind = pendingDeleteKind;
@@ -7841,6 +7921,17 @@ body > .hero{
 
     deleteTxYes.disabled = true;
     deleteTxYes.textContent = 'Deleting…';
+
+    // Transactions are local-first. When offline, delete them locally now and
+    // queue the server cancellation instead of blocking the user on the network.
+    if(kind === 'transaction' && !navigator.onLine){
+      deleteTransactionLocallyAndQueue(id);
+      deleteTxYes.disabled = false;
+      deleteTxYes.textContent = 'Yes, Delete';
+      closeDeleteTxModal();
+      showSync('Deleted on this device. Server deletion will sync when online.', true);
+      return;
+    }
 
     const runner = google.script.run
       .withSuccessHandler(data=>{
@@ -7881,6 +7972,16 @@ body > .hero{
         closeDeleteTxModal();
       })
       .withFailureHandler(err=>{
+        // If connectivity disappeared while deleting a normal transaction,
+        // complete the local delete and safely queue server cancellation.
+        if(kind === 'transaction' && !navigator.onLine){
+          deleteTransactionLocallyAndQueue(id);
+          deleteTxYes.disabled = false;
+          deleteTxYes.textContent = 'Yes, Delete';
+          closeDeleteTxModal();
+          showSync('Deleted on this device. Server deletion will sync when online.', true);
+          return;
+        }
         deleteTxYes.disabled = false;
         deleteTxYes.textContent = 'Yes, Delete';
         alert((err && err.message) || (kind === 'transfer' ? 'Could not delete transfer.' : 'Could not delete transaction.'));
@@ -8821,6 +8922,59 @@ window.addEventListener('gcash-local-cash-pieces',function(e){
     try{loadHistory();}catch(_e){}
   }
 });
+
+
+window.reverseLocalCashPiecesForTransaction=function(transactionId){
+  const txId=String(transactionId||'');
+  if(!txId) return false;
+
+  let rows=[];
+  try{
+    rows=JSON.parse(localStorage.getItem('gcashCashCounterHistoryV1')||'[]');
+    if(!Array.isArray(rows)) rows=[];
+  }catch(e){ rows=[]; }
+
+  const idx=rows.findIndex(r=>{
+    const rd=(r&&r.details)||{};
+    return String(rd.transactionId||'')===txId || String((r&&r.note)||'').includes('TX:'+txId);
+  });
+  if(idx<0) return false;
+
+  const details=(rows[idx]&&rows[idx].details)||{};
+  const received=details.received||{};
+  const given=details.given||{};
+  if(!current || !current.pieces || typeof current.pieces!=='object') return false;
+
+  const next={...current.pieces};
+  let valid=true;
+  D.forEach(function(row){
+    const k=row[0];
+    const n=Number(next[k]||0)-Number(received[k]||0)+Number(given[k]||0);
+    if(!isFinite(n) || n<0) valid=false;
+    next[k]=Math.max(0,Math.floor(isFinite(n)?n:0));
+  });
+  if(!valid) return false;
+
+  rows.splice(idx,1);
+  try{localStorage.setItem('gcashCashCounterHistoryV1',JSON.stringify(rows.slice(0,100)));}catch(e){}
+
+  const physical=total(next);
+  const tracker=trackerCashValue();
+  current={
+    ...(current||{}),pieces:next,physicalCash:physical,physicalTotal:physical,
+    trackerCashOnHand:tracker,difference:physical-tracker,
+    status:Math.abs(physical-tracker)<=0.01?'MATCHED':(physical-tracker<0?'SHORT':'OVER'),
+    _localPending:true
+  };
+  try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(e){}
+  renderCashCounterInventory(current);
+  renderSummary(current);
+  setTimeout(sendCashCounterStatusToTracker,0);
+  if(document.getElementById('historyView')?.classList.contains('mode-open')){
+    try{loadHistory();}catch(e){}
+  }
+  return true;
+};
 
 function load(){
   showMsg('');
