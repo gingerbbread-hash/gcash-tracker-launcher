@@ -4428,6 +4428,16 @@ body > .hero{
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="GCash Tracker">
   <link rel="apple-touch-icon" href="./icon-192.png">
+
+<style id="fast-customer-confirmation-style">
+.last-tx-card{padding:10px 12px;margin-bottom:8px;border:2px solid #b7dfc4;background:#f2fbf5}
+.last-tx-head{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px}
+.last-tx-title{font-size:13px;font-weight:950;color:#137333}.last-tx-badge{font-size:11px;font-weight:950;color:#137333;background:#e6f4ea;border:1px solid #b7dfc4;border-radius:999px;padding:4px 8px}
+.last-tx-main{display:flex;justify-content:space-between;gap:10px;align-items:baseline}.last-tx-main strong{font-size:18px;color:#101828}.last-tx-main span{font-size:12px;font-weight:850;color:#475467}
+.last-tx-details{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin-top:7px;font-size:11px;color:#475467}.last-tx-details b{text-align:right;color:#101828}.last-tx-sync{margin-top:7px;padding-top:6px;border-top:1px solid #d8eadf;font-size:10px;font-weight:850;color:#667085}
+.recorded-now-flash{position:fixed;left:50%;top:12px;transform:translate(-50%,-18px);z-index:100000;width:min(92vw,520px);background:#137333;color:#fff;border-radius:14px;padding:11px 13px;box-shadow:0 10px 28px rgba(0,0,0,.22);opacity:0;pointer-events:none;transition:.18s ease}.recorded-now-flash.show{opacity:1;transform:translate(-50%,0)}.recorded-now-flash strong{display:block;font-size:16px}.recorded-now-flash span{display:block;font-size:11px;margin-top:3px;opacity:.95}
+@media(max-width:639px){.last-tx-card{padding:8px 9px;margin-bottom:6px;border-radius:12px}.last-tx-main strong{font-size:16px}.last-tx-details{font-size:10px}.recorded-now-flash{top:8px;padding:9px 11px}}
+</style>
 </head>
 <body>
 <main class="app">
@@ -4483,6 +4493,13 @@ body > .hero{
         <strong id="homeMaribankBalance">₱0.00</strong>
       </div>
     </div>
+
+    <section class="card last-tx-card" id="lastTransactionCard" style="display:none">
+      <div class="last-tx-head"><div class="last-tx-title">Last Transaction</div><div class="last-tx-badge">RECORDED ✓</div></div>
+      <div class="last-tx-main"><strong id="lastTxSummary">—</strong><span id="lastTxTime"></span></div>
+      <div class="last-tx-details" id="lastTxDetails"></div>
+      <div class="last-tx-sync" id="lastTxSync">Saved on this device • Syncing to Google Sheets…</div>
+    </section>
     <section class="card today-dashboard" id="todayDashboard">
       <div class="today-head">
         <div class="today-title">Today</div>
@@ -7745,6 +7762,9 @@ body > .hero{
       try{ if(typeof loadCashCounterLatestStatus==='function') loadCashCounterLatestStatus(); }catch(_e){}
     }
 
+    // Give the cashier an immediate, unmistakable confirmation before the next customer.
+    try{ if(typeof window.showRecordedTransaction==='function') window.showRecordedTransaction(tx); }catch(_e){}
+
     if(isTransactionStillPending(tx.id) || tx._pendingSync){
       save.textContent='Saved';
       if(stat){
@@ -8526,6 +8546,7 @@ document.addEventListener('DOMContentLoaded', function(){
 })();
 </script>
 <div id="savedFlash" class="saved-flash">Saved</div>
+<div id="recordedNowFlash" class="recorded-now-flash"><strong id="recordedNowTitle">RECORDED ✓</strong><span id="recordedNowDetail"></span></div>
 
 <script id="usability-upgrade-202609">
 (function(){
@@ -8536,6 +8557,52 @@ document.addEventListener('DOMContentLoaded', function(){
     return [x.getFullYear(),String(x.getMonth()+1).padStart(2,'0'),String(x.getDate()).padStart(2,'0')].join('-');
   };
   const todayKey = () => localKey(new Date());
+  const LAST_TX_KEY='gcashLastRecordedTransactionV1';
+  const walletName=tx=>String(tx.walletDestination||'GCash');
+  const bal=(a,b)=>peso(a)+' → '+peso(b);
+
+  function renderLastTransaction(tx){
+    const card=document.getElementById('lastTransactionCard');
+    if(!card||!tx) return;
+    const wallet=walletName(tx);
+    const summary=document.getElementById('lastTxSummary');
+    const time=document.getElementById('lastTxTime');
+    const details=document.getElementById('lastTxDetails');
+    const sync=document.getElementById('lastTxSync');
+    if(summary) summary.textContent=String(tx.type||'Transaction')+' • '+wallet+' • '+peso(tx.amount||tx.total||0);
+    if(time){
+      const d=new Date(tx.timestamp||Date.now());
+      time.textContent=isNaN(d)?'':new Intl.DateTimeFormat('en-PH',{hour:'numeric',minute:'2-digit'}).format(d);
+    }
+    let wb='';
+    if(wallet==='Maya') wb=bal(tx.previousMaya,tx.newMaya);
+    else if(wallet==='MariBank') wb=bal(tx.previousMaribank,tx.newMaribank);
+    else if(wallet==='SariPay'||wallet==='Saripay') wb=bal(tx.previousSaripay,tx.newSaripay);
+    else wb=bal(tx.previousGcash,tx.newGcash);
+    if(details) details.innerHTML='<span>Fee</span><b>'+peso(tx.fee||0)+'</b><span>'+wallet+'</span><b>'+wb+'</b><span>Cash on Hand</span><b>'+bal(tx.previousCash,tx.newCash)+'</b><span>Cash Counter</span><b>Updated ✓</b>';
+    if(sync) sync.textContent=tx._pendingSync===false?'Synced to Google Sheets ✓':'Saved on this device • Syncing to Google Sheets…';
+    card.style.display='block';
+  }
+
+  window.showRecordedTransaction=function(tx){
+    if(!tx) return;
+    try{localStorage.setItem(LAST_TX_KEY,JSON.stringify(tx));}catch(e){}
+    renderLastTransaction(tx);
+    const flash=document.getElementById('recordedNowFlash');
+    const title=document.getElementById('recordedNowTitle');
+    const detail=document.getElementById('recordedNowDetail');
+    if(title) title.textContent='RECORDED ✓';
+    if(detail) detail.textContent=String(tx.type||'Transaction')+' • '+walletName(tx)+' • '+peso(tx.amount||tx.total||0)+' • Cash Counter updated ✓';
+    if(flash){
+      flash.classList.add('show');
+      clearTimeout(window.__recordedNowTimer);
+      window.__recordedNowTimer=setTimeout(()=>flash.classList.remove('show'),2600);
+    }
+  };
+
+  function restoreLastTransaction(){
+    try{const tx=JSON.parse(localStorage.getItem(LAST_TX_KEY)||'null');if(tx)renderLastTransaction(tx);}catch(e){}
+  }
 
   function allTransactions(){
     try { return Array.isArray(window.history) ? window.history : (typeof history !== 'undefined' && Array.isArray(history) ? history : []); }
@@ -8612,13 +8679,17 @@ document.addEventListener('DOMContentLoaded', function(){
   window.refreshHistoryDaySummary = refreshHistorySummary;
 
   document.addEventListener('DOMContentLoaded',()=>{
-    refreshToday(); mirrorCashCheck(); addHistorySummary(); refreshHistorySummary();
+    refreshToday(); mirrorCashCheck(); addHistorySummary(); refreshHistorySummary(); restoreLastTransaction();
 
     // Watch the sync status. A successful sync is a safe point for a brief confirmation.
     const sync=document.getElementById('syncStatus');
     if(sync)new MutationObserver(()=>{
       const t=String(sync.textContent||'').trim().toLowerCase();
-      if(t==='synced.' || t==='synced') flashSaved();
+      if(t==='synced.' || t==='synced'){
+        flashSaved();
+        const lastSync=document.getElementById('lastTxSync');
+        if(lastSync) lastSync.textContent='Synced to Google Sheets ✓';
+      }
     }).observe(sync,{subtree:true,childList:true,characterData:true});
 
   });
