@@ -4443,6 +4443,19 @@ body > .hero{
 #cashCounterNative .card{margin-bottom:9px}
 #cashCounterNative .inventory-photo-wrap,#cashCounterNative .money-sample,#cashCounterNative .edit-money-photo{display:none!important}
 </style>
+<style id="cash-counter-simple-final">
+#cashCounterNative .cash-counter-native-heading .note{font-size:13px}
+#cashCounterNative .cc-simple-section{margin:12px 0 18px}
+#cashCounterNative .cc-simple-section h3{font-size:15px;margin:0 0 8px;font-weight:800}
+#cashCounterNative .cc-text-row{display:grid;grid-template-columns:minmax(0,1fr) 75px minmax(90px,auto);align-items:center;gap:8px;padding:11px 7px;border-bottom:1px solid #e8edf3;font-size:14px}
+#cashCounterNative .cc-text-row>span{text-align:center;color:#475569}
+#cashCounterNative .cc-text-row>strong:last-child{text-align:right;font-variant-numeric:tabular-nums}
+#cashCounterNative #setCashToCountedBtn,#cashCounterNative #setCashToCountedBtn+div{display:none!important}
+#cashCounterNative .cash-counter-mode-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#cashCounterNative .cash-counter-mode-tabs button{min-height:43px}
+#cashCounterNative .today-check-details{font-size:12px}
+@media(max-width:420px){#cashCounterNative .cc-text-row{grid-template-columns:minmax(0,1fr) 58px minmax(80px,auto);font-size:13px}}
+</style>
 </head>
 <body>
 <main class="app">
@@ -4893,13 +4906,13 @@ body > .hero{
 
 <div id="cashPiecesOffer" class="cash-pieces-offer" aria-hidden="true">
   <div class="cash-pieces-offer-card">
-    <div class="cash-pieces-offer-title">Record Cash Pieces?</div>
+    <div class="cash-pieces-offer-title">Enter bills and coins</div>
     <div id="cashPiecesOfferNote" class="cash-pieces-offer-note">
-      Record the actual Philippine bills and coins that moved. The transaction is not saved until Cash Pieces are completed.
+      Enter the bills and coins for the transaction you just entered on Home. This is not another Cash In or Cash Out.
     </div>
     <div id="cashPiecesOfferSummary" class="cash-pieces-offer-summary"></div>
     <div class="cash-pieces-offer-actions">
-      <button id="cashPiecesOpen" class="cash-pieces-open" type="button">Record Cash Pieces</button>
+      <button id="cashPiecesOpen" class="cash-pieces-open" type="button">Enter bills and coins</button>
     </div>
   </div>
 </div>
@@ -4909,7 +4922,7 @@ body > .hero{
     <div class="cash-pieces-head">
       <div class="cash-pieces-head-row">
         <div>
-          <div id="cashPiecesTitle" class="cash-pieces-title">Record Cash Pieces</div>
+          <div id="cashPiecesTitle" class="cash-pieces-title">Enter bills and coins</div>
           <div id="cashPiecesSubtitle" class="cash-pieces-subtitle"></div>
         </div>
         <button id="cashPiecesX" class="cash-pieces-x" type="button" aria-label="Close">×</button>
@@ -4951,7 +4964,7 @@ body > .hero{
 
       <div class="cash-pieces-actions">
         <button id="cashPiecesCancel" type="button">Cancel</button>
-        <button id="cashPiecesSave" type="button">Save Cash Pieces</button>
+        <button id="cashPiecesSave" type="button">Save bills and coins</button>
       </div>
     </div>
   </div>
@@ -7544,10 +7557,10 @@ body > .hero{
     const givTab=document.getElementById('cashPiecesGivenTab');
     const stat=document.getElementById('cashPiecesStatus');
 
-    if(title) title.textContent=tx.type==='Move Money'?'Cash Counter for Move Money':'Record Cash Pieces';
+    if(title) title.textContent=tx.type==='Move Money'?'Enter transfer bills and coins':'Enter bills and coins';
     if(subtitle) subtitle.textContent=tx.type==='Move Money'
       ? `${tx.fromWallet} → ${tx.toWallet}. Select the exact cash denominations.`
-      : 'Required. Enter the actual Philippine bills and coins that physically moved. Cancel will cancel the whole transaction.';
+      : 'This belongs to the transaction you entered on Home. Enter the actual bills and coins; cancelling cancels that transaction.';
     if(txType) txType.textContent=tx.type==='Move Money'?`${tx.fromWallet} → ${tx.toWallet}`:tx.type;
     if(txAmount) txAmount.textContent=money(Number(tx.amount||tx.total||0));
 
@@ -8738,7 +8751,10 @@ function renderCashCounterInventory(x){
   if(!current)return;
   const pieces=current.pieces||{};
   const rows=D.filter(d=>Number(pieces[d[0]]||0)>0);
-  $('cashCounterPiecesList').innerHTML=rows.length?rows.map(d=>`<div class="cc-text-row"><strong>${d[1]}</strong><span>${Math.floor(Number(pieces[d[0]]||0))} pcs</span><strong>${money(Number(pieces[d[0]]||0)*d[2])}</strong></div>`).join(''):'<p class="note">No saved denominations yet.</p>';
+  const billRows=rows.filter(d=>!String(d[0]).endsWith('c') && String(d[0])!=='1' && String(d[0])!=='5' && String(d[0])!=='10' && String(d[0])!=='25c' && String(d[0])!=='5c' && String(d[0])!=='1c');
+  const coinRows=rows.filter(d=>!billRows.includes(d));
+  const makeSection=(title,items)=>items.length?`<div class="cc-simple-section"><h3>${title}</h3>${items.map(d=>`<div class="cc-text-row"><strong>${d[1]}</strong><span>× ${Math.floor(Number(pieces[d[0]]||0))}</span><strong>${money(Number(pieces[d[0]]||0)*d[2])}</strong></div>`).join('')}</div>`:'';
+  $('cashCounterPiecesList').innerHTML=rows.length?makeSection('Bills',billRows)+makeSection('Coins',coinRows):'<p class="note">No saved denominations yet.</p>';
   $('cashCounterInventoryTotal').textContent=money(total(pieces));
   $('cashCounterInventoryTotalBottom').textContent=money(total(pieces));
 }
@@ -9477,7 +9493,7 @@ $('saveCount').addEventListener('click',()=>{
 
 
 function loadHistory(){
-  $('historyList').innerHTML='Loading…';
+  $('historyList').innerHTML='Loading saved history…';
 
   const denomMeta=[
     ['1000','₱1,000'],['500','₱500'],['200','₱200'],['100','₱100'],['50','₱50'],
@@ -9583,8 +9599,12 @@ function loadHistory(){
     return out;
   }
 
+  let historyPageSize=10;
+  let historyRows=[];
+  let historyOffline=false;
   function renderRows(rows, offlineMode){
     rows=Array.isArray(rows)?rows:[];
+    historyRows=rows;historyOffline=offlineMode;
       rows=(rows||[]).filter(r=>[
         'COUNT','MANUAL_CORRECTION','TRANSACTION_PIECES',
         'CASH_IN_PIECES','CASH_OUT_PIECES','WALLET_TRANSFER_PIECES'
@@ -9595,7 +9615,7 @@ function loadHistory(){
         return;
       }
 
-      $('historyList').innerHTML=rows.map((r,i)=>{
+      $('historyList').innerHTML=rows.slice(0,historyPageSize).map((r,i)=>{
         const d=r.details||{};
         return `<div class="cc-audit-item" data-cc-audit="${i}">
           <button type="button" class="cc-audit-summary">
@@ -9611,6 +9631,7 @@ function loadHistory(){
           <div class="cc-audit-details">${detailsHtml(r)}</div>
         </div>`;
       }).join('');
+      if(rows.length>historyPageSize) $('historyList').insertAdjacentHTML('beforeend',`<button type="button" id="ccHistoryLoadMore" class="btn btn-secondary" style="width:100%;margin-top:12px">Load more (${rows.length-historyPageSize} remaining)</button>`);
     if(offlineMode && rows.length){
       $('historyList').insertAdjacentHTML('afterbegin','<div class="cc-audit-note">Offline. Showing saved Cash Counter history from this device.</div>');
     }
@@ -9622,6 +9643,7 @@ function loadHistory(){
     if(!Array.isArray(cachedRows)) cachedRows=[];
   }catch(e){cachedRows=[];}
 
+  if(cachedRows.length) renderRows(cachedRows,!navigator.onLine);
   if(!navigator.onLine){
     if(cachedRows.length) renderRows(cachedRows,true);
     else $('historyList').innerHTML='<div class="cc-audit-note">Offline. No Cash Counter history has been cached yet. Connect once and open the app to cache it.</div>';
@@ -9648,6 +9670,7 @@ function loadHistory(){
 }
 
 $('historyList').addEventListener('click',e=>{
+  if(e.target.closest('#ccHistoryLoadMore')){historyPageSize+=10;renderRows(historyRows,historyOffline);return;}
   const btn=e.target.closest('.cc-audit-summary');
   if(!btn) return;
   const item=btn.closest('.cc-audit-item');
