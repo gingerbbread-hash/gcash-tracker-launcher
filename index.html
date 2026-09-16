@@ -4595,7 +4595,7 @@ body > .hero{
 
 <div id="cashCounterNative">
   <div class="cash-counter-native-heading">
-    <div class="cc-heading-row"><h2 class="section-title">Cash Counter</h2><button id="ccSettingsGear" type="button" aria-label="Cash Counter settings" aria-expanded="false">Settings</button></div>
+    <div class="cc-heading-row"><h2 class="section-title">Cash Counter</h2><button id="ccSettingsGear" type="button" aria-label="Cash Counter settings" aria-expanded="false" aria-controls="ccSettingsPanel">Settings</button></div>
     <p class="note">Count and manage the actual bills and coins in Cash on Hand.</p>
   </div>
 
@@ -4611,8 +4611,8 @@ body > .hero{
 
   <section class="card cc-counter-content-card">
     <div class="cc-minimal-actions">
-      <button id="ccEditCountMain" class="btn btn-primary" type="button">Edit Count</button>
-      <button id="ccHistoryLink" class="cc-history-link" type="button">View history</button>
+      <button id="ccEditCountMain" class="btn btn-primary" type="button" aria-expanded="false" aria-controls="editInventoryPanel">Edit Count</button>
+      <button id="ccHistoryLink" class="cc-history-link" type="button" aria-expanded="false" aria-controls="historyView">View history</button>
     </div>
     <div class="cash-counter-mode-tabs cc-simple-actions" style="display:none!important" aria-hidden="true">
       <button id="cashCheckModeBtn" class="active" type="button">Saved count</button>
@@ -9474,6 +9474,7 @@ function setCashCounterMode(mode){
   Object.entries(buttons).forEach(([key,button])=>{
     if(button) button.classList.toggle('active', key===mode);
   });
+  if(typeof syncCashCounterToggleLabels==='function') syncCashCounterToggleLabels();
 }
 
 const ccMoreBtn=$('ccMoreBtn');
@@ -9491,17 +9492,47 @@ $('ccSettingsBtn').addEventListener('click',()=>{
   ccMoreActions.hidden=true;
   ccMoreBtn.setAttribute('aria-expanded','false');
 });
-// Simple Cash Counter navigation: reuse existing handlers and preserve all saved data.
-$('ccEditCountMain').addEventListener('click',()=>$('editInventoryBtn').click());
-$('ccHistoryLink').addEventListener('click',()=>$('historyModeBtn').click());
+// Simple Cash Counter navigation: tapping an open section minimizes it.
+// Only change panel visibility here; never change inventory, balances, or history data.
+function syncCashCounterToggleLabels(){
+  const editing=$('editInventoryPanel').classList.contains('mode-open');
+  const historyOpen=$('historyView').classList.contains('mode-open');
+  const settingsOpen=!$('ccSettingsPanel').hidden;
+  $('ccEditCountMain').textContent=editing?'Minimize Edit Count':'Edit Count';
+  $('ccEditCountMain').setAttribute('aria-expanded',String(editing));
+  $('ccHistoryLink').textContent=historyOpen?'Hide history':'View history';
+  $('ccHistoryLink').setAttribute('aria-expanded',String(historyOpen));
+  $('ccSettingsGear').textContent=settingsOpen?'Close Settings':'Settings';
+  $('ccSettingsGear').setAttribute('aria-expanded',String(settingsOpen));
+}
+$('ccEditCountMain').addEventListener('click',()=>{
+  if($('editInventoryPanel').classList.contains('mode-open')){
+    setCashCounterMode('cash');
+  }else{
+    $('ccSettingsPanel').hidden=true;
+    $('editInventoryBtn').click();
+  }
+  syncCashCounterToggleLabels();
+});
+$('ccHistoryLink').addEventListener('click',()=>{
+  if($('historyView').classList.contains('mode-open')){
+    setCashCounterMode('cash');
+  }else{
+    $('ccSettingsPanel').hidden=true;
+    $('historyModeBtn').click();
+  }
+  syncCashCounterToggleLabels();
+});
 $('ccSettingsGear').addEventListener('click',()=>{
   const panel=$('ccSettingsPanel');
-  panel.hidden=!panel.hidden;
-  $('ccSettingsGear').setAttribute('aria-expanded',String(!panel.hidden));
+  const opening=panel.hidden;
+  if(opening) setCashCounterMode('cash');
+  panel.hidden=!opening;
+  syncCashCounterToggleLabels();
 });
 $('ccSettingsClose').addEventListener('click',()=>{
   $('ccSettingsPanel').hidden=true;
-  $('ccSettingsGear').setAttribute('aria-expanded','false');
+  syncCashCounterToggleLabels();
 });
 $('ccSettingsReconcile').addEventListener('click',()=>{
   $('ccSettingsClose').click();
