@@ -4561,6 +4561,13 @@ body > .hero{
           <span>Total Cash Counter</span>
           <strong id="cashCounterInventoryTotalBottom">₱0.00</strong>
         </div>
+        <button id="setCashToCountedBtn" type="button"
+          style="width:100%;margin-top:12px;padding:13px 12px;border:0;border-radius:12px;background:#0f7a3d;color:#fff;font-weight:900;font-size:14px;">
+          Set Cash on Hand to Counted Cash
+        </button>
+        <div style="font-size:11px;color:#667085;margin-top:7px;line-height:1.4;">
+          Use this after you finish counting your actual cash. It changes Cash on Hand to the saved Cash Counter total and records the adjustment.
+        </div>
 
       </div>
 
@@ -6337,6 +6344,7 @@ body > .hero{
     if(a.method==='addMayaTransferBySession'||a.method==='addMayaTransferWithCashPiecesBySession') return 'Move Money';
     if(a.method==='saveCashCount') return 'Cash Check';
     if(a.method==='saveManualCashCounterCorrection') return 'Cash Counter Reconciliation';
+    if(a.method==='setCashOnHandToCountedCashBySession') return 'Cash on Hand Adjustment';
     if(a.method==='deleteTransactionBySession') return 'Delete Transaction';
     return a.method||'Record';
   }
@@ -6375,6 +6383,11 @@ body > .hero{
       if(data&&data.movement) replacePendingById(capitalMovements,a.id,data.movement);
       if(data&&data.capital) renderCapital(data.capital);
       renderCapitalActivity(); saveLocalTrackerCache();
+    }else if(a.method==='setCashOnHandToCountedCashBySession'){
+      if(data&&data.movement) replacePendingById(capitalMovements,a.id,data.movement);
+      if(data&&data.capital) renderCapital(data.capital);
+      renderCapitalActivity(); saveLocalTrackerCache();
+      try{ window.gcashCashCounterUpdatePending=false; sendCashCounterStatusToTracker(); }catch(_e){}
     }else if(a.method==='addMayaTransferBySession'||a.method==='addMayaTransferWithCashPiecesBySession'){
       if(data&&data.transfer) replacePendingById(mayaTransfers,a.id,data.transfer);
       if(data&&data.capital) renderCapital(data.capital);
@@ -8887,6 +8900,73 @@ function refreshReconcilePreview(){
   if(Math.abs(diff)<0.005) card.classList.add('matched');
   else if(diff<0) card.classList.add('short');
   else card.classList.add('over');
+}
+
+
+const setCashToCountedBtn=$('setCashToCountedBtn');
+if(setCashToCountedBtn){
+  setCashToCountedBtn.addEventListener('click',()=>{
+    const counted=(current && current.pieces) ? total(current.pieces) : 0;
+    const tracker=reconcileTrackerCashValue();
+    const diff=counted-tracker;
+
+    if(counted < 0){
+      showMsg('Counted cash is not available.','err');
+      return;
+    }
+    if(Math.abs(diff)<=0.01){
+      showMsg('Cash on Hand already matches the Cash Counter.','ok');
+      try{sendCashCounterStatusToTracker();}catch(_e){}
+      return;
+    }
+
+    const msg=
+      'Set Cash on Hand to your counted cash?\n\n'+
+      'Current Cash on Hand: '+money(tracker)+'\n'+
+      'Counted Cash: '+money(counted)+'\n'+
+      'Adjustment: '+(diff>0?'+':'')+money(diff)+'\n\n'+
+      'GCash, Maya, MariBank, Current Capital, and Earnings will not change.';
+
+    if(!confirm(msg)) return;
+
+    const id='CASHADJ_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+
+    // Immediate local update. Google Sheets sync happens in the background.
+    if(typeof capitalData==='object' && capitalData){
+      capitalData={...capitalData,cashOnHand:counted,cashOutAvailable:Math.max(counted,0)};
+      renderCapital(capitalData);
+    }
+    if(current){
+      current={...current,trackerCashOnHand:counted,difference:0,status:'MATCHED'};
+      try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(_e){}
+      renderSummary(current);
+    }
+    try{sendCashCounterStatusToTracker();}catch(_e){}
+    try{saveLocalTrackerCache();}catch(_e){}
+
+    const localMovement={
+      id:id,timestamp:new Date().toISOString(),date:new Date().toLocaleString(),
+      type:'CASH_ADJUSTMENT',amount:Math.abs(diff),signedDifference:diff,
+      wallet:'Cash on Hand',note:'Set Cash on Hand to physical count',
+      previousWallet:tracker,newWallet:counted,_pendingSync:true
+    };
+    try{
+      if(Array.isArray(capitalMovements)){
+        capitalMovements.unshift(localMovement);
+        renderCapitalActivity();
+      }
+    }catch(_e){}
+
+    window.dispatchEvent(new CustomEvent('gcash-queue-offline-action',{detail:{
+      id:id,
+      method:'setCashOnHandToCountedCashBySession',
+      payload:{clientActionId:id}
+    }}));
+
+    showMsg(navigator.onLine
+      ? 'Cash on Hand updated to '+money(counted)+'. Syncing…'
+      : 'Cash on Hand updated locally. Waiting to sync.','ok');
+  });
 }
 
 $('cancelInventoryCorrection').addEventListener('click',()=>{
