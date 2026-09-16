@@ -9629,6 +9629,57 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
 </script>
 
 
+
+<style id="home-layout-latest-transaction-final">
+/* HOME FINAL ORDER:
+   Latest Transaction
+   GCash | Maya
+   MariBank | Cash on Hand
+   Cash Balance Check
+*/
+#homeBalanceStrip{
+  display:grid !important;
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  gap:8px !important;
+}
+#homeBalanceStrip > #lastTransactionFastCard{
+  order:0 !important;
+  grid-column:1 / -1 !important;
+  width:100% !important;
+  margin:0 !important;
+}
+#homeBalanceStrip > .home-wallet-gcash{
+  order:1 !important;
+  grid-column:1 !important;
+}
+#homeBalanceStrip > .home-wallet-maya{
+  order:2 !important;
+  grid-column:2 !important;
+}
+#homeBalanceStrip > .home-wallet-maribank{
+  order:3 !important;
+  grid-column:1 !important;
+}
+#homeBalanceStrip > .home-wallet-cash{
+  order:4 !important;
+  grid-column:2 !important;
+}
+#homeBalanceStrip > #homeBalanceCheck{
+  order:5 !important;
+  grid-column:1 / -1 !important;
+}
+#homeBalanceStrip > .home-wallet-saripay{
+  display:none !important;
+}
+#lastTransactionFastCard{
+  padding:11px 12px !important;
+  border-radius:14px !important;
+}
+#lastTransactionFastCard .ltf-title{font-size:13px !important}
+#lastTransactionFastCard .ltf-main{font-size:16px !important}
+#lastTransactionFastCard .ltf-detail{font-size:11px !important}
+</style>
+
 <style id="fast-customer-confirmation-style">
 #lastTransactionFastCard{margin-top:7px;padding:9px 10px;border:1px solid #b7dfc4;background:#f2fbf5;border-radius:12px}
 #lastTransactionFastCard .ltf-top{display:flex;justify-content:space-between;gap:8px;align-items:center}
@@ -9651,7 +9702,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     anchor.insertAdjacentElement('afterend',c); return c;
   }
   function walletName(tx){return String(tx.walletDestination||tx.wallet||'GCash')}
-  function renderTx(tx){
+  function renderTx(tx,flash){
     if(!tx)return; ensureCard();
     const w=walletName(tx), type=String(tx.type||'Transaction'), amt=Number(tx.amount||0), fee=Number(tx.fee||0);
     const main=document.getElementById('ltfMain'), det=document.getElementById('ltfDetail'), sy=document.getElementById('ltfSync');
@@ -9662,12 +9713,45 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     const pre=key==='maya'?tx.previousMaya:key==='maribank'?tx.previousMaribank:tx.previousGcash;
     const post=key==='maya'?tx.newMaya:key==='maribank'?tx.newMaribank:tx.newGcash;
     if(isFinite(Number(pre))&&isFinite(Number(post)))parts.push(cap+' '+peso(pre)+' → '+peso(post));
-    if(det)det.textContent=parts.join(' · '); if(sy)sy.textContent='Saved locally · Syncing…';
+    if(det)det.textContent=parts.join(' · ');
+    if(sy)sy.textContent=(tx._pendingSync||tx.pendingSync)?'Saved locally · Syncing…':'SYNCED ✓';
     try{localStorage.setItem('gcashLastTransactionFastV1',JSON.stringify(tx));}catch(_e){}
-    const f=document.getElementById('recordedFastFlash'); if(f){f.classList.add('show');clearTimeout(window.__recordedFastTimer);window.__recordedFastTimer=setTimeout(()=>f.classList.remove('show'),1200)}
+    if(flash!==false){
+      const f=document.getElementById('recordedFastFlash');
+      if(f){f.classList.add('show');clearTimeout(window.__recordedFastTimer);window.__recordedFastTimer=setTimeout(()=>f.classList.remove('show'),1200)}
+    }
   }
-  window.addEventListener('gcash-local-transaction-recorded',e=>renderTx(e.detail||null));
-  document.addEventListener('DOMContentLoaded',()=>{ensureCard();try{renderTx(JSON.parse(localStorage.getItem('gcashLastTransactionFastV1')||'null'))}catch(_e){}});
+  function newestTrackerTransaction(){
+    try{
+      const list=Array.isArray(window.__gcashTransactions)?window.__gcashTransactions:[];
+      if(!list.length)return null;
+      return list.slice().sort((a,b)=>{
+        const ta=new Date(a.timestamp||a.date||0).getTime()||0;
+        const tb=new Date(b.timestamp||b.date||0).getTime()||0;
+        return tb-ta;
+      })[0]||null;
+    }catch(_e){return null}
+  }
+  function restoreLatestTransaction(){
+    ensureCard();
+    let cached=null;
+    try{cached=JSON.parse(localStorage.getItem('gcashLastTransactionFastV1')||'null')}catch(_e){}
+    if(cached){renderTx(cached,false);return true}
+    const latest=newestTrackerTransaction();
+    if(latest){renderTx(latest,false);return true}
+    return false;
+  }
+  window.addEventListener('gcash-local-transaction-recorded',e=>renderTx(e.detail||null,true));
+  document.addEventListener('DOMContentLoaded',()=>{
+    ensureCard();
+    if(!restoreLatestTransaction()){
+      let tries=0;
+      const timer=setInterval(()=>{
+        tries++;
+        if(restoreLatestTransaction()||tries>=30)clearInterval(timer);
+      },250);
+    }
+  });
   const sync=document.getElementById('syncStatus'); if(sync)new MutationObserver(()=>{const t=String(sync.textContent||'');const el=document.getElementById('ltfSync');if(el){if(/^synced\.?$/i.test(t.trim()))el.textContent='SYNCED ✓';else if(/sync/i.test(t))el.textContent='Saved locally · Syncing…';}}).observe(sync,{childList:true,subtree:true,characterData:true});
 })();
 </script>
