@@ -4463,6 +4463,32 @@ body > .hero{
 #cashCounterNative .today-check-details{font-size:12px}
 @media(max-width:420px){#cashCounterNative .cc-text-row{grid-template-columns:minmax(0,1fr) 58px minmax(80px,auto);font-size:13px}}
 </style>
+<style id="cc-clean-dashboard-20260916">
+/* Interface only: no storage keys, accounting logic, or backup API changes. */
+#cashCounterNative .cash-counter-native-heading .note{display:none!important}
+#cashCounterNative .cc-heading-row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+#cashCounterNative #ccSettingsGear{border:1px solid #d9e5f5;background:#fff;color:#174a92;border-radius:10px;padding:8px 11px;font-size:12px;font-weight:800;cursor:pointer}
+#cashCounterNative #trackerCashAuto{display:none!important}
+#cashCounterNative .cash-counter-native-heading+section.card{display:none!important}
+#cashCounterNative #ccSummaryCard{padding:10px!important;margin-bottom:8px!important}
+#cashCounterNative #ccSummaryCard .summary{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0!important}
+#cashCounterNative #ccSummaryCard .metric{padding:12px 10px;background:#eaf3ff;border-radius:13px;min-width:0}
+#cashCounterNative #ccSummaryCard .metric:nth-child(1){background:#edf9f1}
+#cashCounterNative #ccSummaryCard .metric:nth-child(3){grid-column:1/-1;background:#f3f7fc}
+#cashCounterNative #ccSummaryCard .metric small{font-size:11px!important}
+#cashCounterNative #ccSummaryCard .metric strong{font-size:clamp(18px,5vw,25px)!important;white-space:normal!important}
+#cashCounterNative .cc-simple-actions{display:none!important}
+#cashCounterNative .cc-minimal-actions{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+#cashCounterNative .cc-minimal-actions .btn{min-height:48px!important;height:auto!important;font-size:16px!important}
+#cashCounterNative .cc-history-link{align-self:center;background:none;border:0;color:#0b5ed7;text-decoration:underline;padding:9px 14px;font-size:14px;font-weight:800;cursor:pointer}
+#cashCounterNative #cashCounterInventoryCard .today-check-head{margin-bottom:6px}
+#cashCounterNative #cashCounterInventoryCard .today-check-details{display:none!important}
+#cashCounterNative #cashCounterInventoryCard .inventory-total-bar{display:none!important}
+#cashCounterNative #cashCounterInventoryCard .cc-text-row{border-left:0;border-right:0;border-top:0;border-radius:0;padding:9px 5px}
+#cashCounterNative #ccSettingsPanel[hidden]{display:none!important}
+#cashCounterNative #ccSettingsPanel{border:1px solid #c9d9ed!important;background:#f8fafc!important;margin:6px 0 12px!important}
+#cashCounterNative #ccSettingsPanel .btn{height:auto!important;min-height:42px!important}
+</style>
 </head>
 <body>
 <main class="app">
@@ -4555,7 +4581,7 @@ body > .hero{
 
 <div id="cashCounterNative">
   <div class="cash-counter-native-heading">
-    <h2 class="section-title">Cash Counter</h2>
+    <div class="cc-heading-row"><h2 class="section-title">Cash Counter</h2><button id="ccSettingsGear" type="button" aria-label="Cash Counter settings" aria-expanded="false">Settings</button></div>
     <p class="note">Count and manage the actual bills and coins in Cash on Hand.</p>
   </div>
 
@@ -4570,7 +4596,11 @@ body > .hero{
   </section>
 
   <section class="card">
-    <div class="cash-counter-mode-tabs cc-simple-actions">
+    <div class="cc-minimal-actions">
+      <button id="ccEditCountMain" class="btn btn-primary" type="button">Edit Count</button>
+      <button id="ccHistoryLink" class="cc-history-link" type="button">View history</button>
+    </div>
+    <div class="cash-counter-mode-tabs cc-simple-actions" style="display:none!important" aria-hidden="true">
       <button id="cashCheckModeBtn" class="active" type="button">Saved count</button>
       <button id="startNewCheck" type="button">Count Physical Cash</button>
       <button id="historyModeBtn" type="button">History</button>
@@ -4581,12 +4611,14 @@ body > .hero{
       <button id="ccCashCheckInfoBtn" type="button">Cash Check</button>
       <button id="ccSettingsBtn" type="button" aria-expanded="false" aria-controls="ccSettingsPanel">Cash Counter Settings</button>
     </div>
-
     <div id="ccSettingsPanel" class="card" hidden style="margin-top:10px">
       <div style="font-weight:900;margin-bottom:5px">Cash Counter Settings</div>
-      <p class="note" style="margin:0 0 10px">Back up the saved denomination inventory and full Cash Counter history to two new sheets. This does not reset or change your balances.</p>
+      <p class="note" style="margin:0 0 10px">Back up your saved denomination inventory and full Cash Counter history without changing balances.</p>
       <button id="ccBackupNowBtn" class="btn btn-secondary" type="button">Backup Cash Counter Now</button>
       <div id="ccBackupStatus" class="status" role="status" aria-live="polite"></div>
+      <button id="ccSettingsReconcile" class="btn btn-secondary" type="button" style="margin-top:10px">Reconcile / Reset (backup first)</button>
+      <button id="ccSettingsCount" class="btn btn-secondary" type="button" style="margin-top:8px">Count Physical Cash</button>
+      <button id="ccSettingsClose" class="btn btn-secondary" type="button" style="margin-top:8px">Close Settings</button>
     </div>
 
     <div id="countView" class="view active">
@@ -9444,6 +9476,26 @@ $('ccSettingsBtn').addEventListener('click',()=>{
   $('ccSettingsBtn').setAttribute('aria-expanded',String(opening));
   ccMoreActions.hidden=true;
   ccMoreBtn.setAttribute('aria-expanded','false');
+});
+// Simple Cash Counter navigation: reuse existing handlers and preserve all saved data.
+$('ccEditCountMain').addEventListener('click',()=>$('editInventoryBtn').click());
+$('ccHistoryLink').addEventListener('click',()=>$('historyModeBtn').click());
+$('ccSettingsGear').addEventListener('click',()=>{
+  const panel=$('ccSettingsPanel');
+  panel.hidden=!panel.hidden;
+  $('ccSettingsGear').setAttribute('aria-expanded',String(!panel.hidden));
+});
+$('ccSettingsClose').addEventListener('click',()=>{
+  $('ccSettingsPanel').hidden=true;
+  $('ccSettingsGear').setAttribute('aria-expanded','false');
+});
+$('ccSettingsReconcile').addEventListener('click',()=>{
+  $('ccSettingsClose').click();
+  $('editInventoryBtn').click();
+});
+$('ccSettingsCount').addEventListener('click',()=>{
+  $('ccSettingsClose').click();
+  $('startNewCheck').click();
 });
 $('ccBackupNowBtn').addEventListener('click',()=>{
   const btn=$('ccBackupNowBtn');
