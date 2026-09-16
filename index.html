@@ -4549,6 +4549,24 @@ body > .hero{
 #cashCounterNative .cc-minimal-actions{order:2!important}
 @media(max-width:370px){#cashCounterNative #ccSummaryCard .metric{padding:10px!important}#cashCounterNative #cashCounterPiecesList .cc-text-row{grid-template-columns:minmax(65px,1fr) 43px minmax(85px,1fr)!important;padding:8px 5px!important;font-size:12px!important}#cashCounterNative #cashCounterPiecesList .cc-text-row>strong:last-child{font-size:12px!important}}
 </style>
+<style id="cc-overlay-navigation-v1">
+/* Fixed overlay panels do not push the saved denomination list or each other down. */
+#cashCounterNative #ccPanelBackdrop[hidden]{display:none!important}
+#cashCounterNative #ccPanelBackdrop{position:fixed;inset:0;z-index:18000;background:rgba(12,27,49,.54);touch-action:none}
+#cashCounterNative #editInventoryPanel.mode-open,
+#cashCounterNative #historyView.mode-open{
+  position:fixed!important;inset:calc(env(safe-area-inset-top, 0px) + 12px) 10px calc(env(safe-area-inset-bottom, 0px) + 12px)!important;
+  width:auto!important;max-width:600px!important;max-height:none!important;
+  margin:0 auto!important;padding:12px!important;z-index:18001!important;
+  overflow-y:auto!important;overscroll-behavior:contain!important;
+  -webkit-overflow-scrolling:touch!important;background:#fff!important;
+  border:1px solid #d9e5f5!important;border-radius:18px!important;
+  box-shadow:0 24px 70px rgba(12,27,49,.30)!important;
+}
+#cashCounterNative .cc-overlay-head{position:sticky;top:-12px;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 4px 12px;background:#fff;border-bottom:1px solid #e6edf7;margin-bottom:12px}
+#cashCounterNative .cc-overlay-head strong{font-size:17px;color:#172033}
+#cashCounterNative .cc-overlay-close{border:1px solid #d9e5f5;background:#f1f6fc;color:#173b68;border-radius:10px;padding:9px 13px;font-size:13px;font-weight:850;min-height:40px}
+</style>
 </head>
 <body>
 <main class="app">
@@ -8778,7 +8796,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
 <script id="cash-counter-true-native-script">
 
-const D=[['1000','₱1,000',1000],['500','₱500',500],['200','₱200',200],['100','₱100',100],['50','₱50',50],['20b','₱20 bill',20],['20c','₱20 coin',20],['10','₱10',10],['5','₱5',5],['1','₱1',1]];
+const D=[['1000','₱1,000',1000],['500','₱500',500],['200','₱200',200],['100','₱100',100],['50','₱50',50],['20b','₱20 bill',20],['20c','₱20',20],['10','₱10',10],['5','₱5',5],['1','₱1',1]];
 const MONEY_IMAGES={}; // Text-only Cash Counter: no remote denomination photos.
 const $=id=>document.getElementById(id);
 const money=v=>'₱'+Number(v||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -9499,6 +9517,10 @@ document.addEventListener('input',e=>{
 
 
 function setCashCounterMode(mode){
+  const overlayOpen=mode==='reconcile'||mode==='history';
+  const backdrop=$('ccPanelBackdrop');
+  if(backdrop)backdrop.hidden=!overlayOpen;
+  document.documentElement.style.overflow=overlayOpen?'hidden':'';
   const panels = {
     cash: $('cashCounterInventoryCard'),
     count: $('dailyCountForm'),
@@ -9538,6 +9560,25 @@ $('ccSettingsBtn').addEventListener('click',()=>{
   ccMoreActions.hidden=true;
   ccMoreBtn.setAttribute('aria-expanded','false');
 });
+// Keep the original editor/history elements and handlers; only change their presentation.
+const ccBackdrop=document.createElement('div');
+ccBackdrop.id='ccPanelBackdrop';ccBackdrop.hidden=true;
+ccBackdrop.setAttribute('aria-label','Close Cash Counter panel');
+$('cashCounterNative').appendChild(ccBackdrop);
+ccBackdrop.addEventListener('click',()=>setCashCounterMode('cash'));
+[['editInventoryPanel','Edit Count'],['historyView','Cash Counter History']].forEach(([id,title])=>{
+  const panel=$(id);
+  const head=document.createElement('div');head.className='cc-overlay-head';
+  const heading=document.createElement('strong');heading.textContent=title;
+  const close=document.createElement('button');close.type='button';close.className='cc-overlay-close';
+  close.textContent='Close';close.setAttribute('aria-label','Close '+title);
+  close.addEventListener('click',()=>setCashCounterMode('cash'));
+  head.append(heading,close);panel.prepend(head);
+  panel.setAttribute('role','dialog');panel.setAttribute('aria-label',title);
+});
+document.querySelectorAll('[data-main-tab]').forEach(btn=>btn.addEventListener('click',()=>{
+  if($('editInventoryPanel').classList.contains('mode-open')||$('historyView').classList.contains('mode-open'))setCashCounterMode('cash');
+}));
 // Simple Cash Counter navigation: tapping an open section minimizes it.
 // Only change panel visibility here; never change inventory, balances, or history data.
 function syncCashCounterToggleLabels(){
@@ -9678,7 +9719,7 @@ function loadHistory(){
 
   const denomMeta=[
     ['1000','₱1,000'],['500','₱500'],['200','₱200'],['100','₱100'],['50','₱50'],
-    ['20b','₱20 bill'],['20c','₱20 coin'],['10','₱10'],['5','₱5'],['1','₱1']
+    ['20b','₱20 bill'],['20c','₱20'],['10','₱10'],['5','₱5'],['1','₱1']
   ];
 
   const esc=s=>String(s==null?'':s)
