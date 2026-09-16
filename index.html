@@ -7704,71 +7704,49 @@ body > .hero{
       return;
     }
 
-    // Cash In / Cash Out draft:
-    // commit the transaction only now, after Cash Pieces are valid.
-    if(tx._transactionDraft){
-      const payloadToSave={...(tx._transactionPayload||{})};
-      if(!payloadToSave.clientTransactionId){
-        save.disabled=false;
-        if(stat){stat.textContent='Could not save transaction draft.';stat.className='err';}
-        return;
-      }
-
-      // Apply wallet/earnings snapshots and History locally as one completed action.
-      // Cash Balance Check switches to UPDATING only for the few milliseconds
-      // between the wallet snapshot and the local denomination update.
-      window.gcashCashCounterUpdatePending=true;
-      try{ window.dispatchEvent(new CustomEvent('gcash-cash-counter-updating')); }catch(_e){}
-      delete tx._transactionDraft;
-      delete tx._transactionPayload;
-      applyOptimisticTransaction(tx);
-
-      const q=loadPendingTxQueue();
-      if(!q.some(x=>String(x.clientTransactionId)===String(payloadToSave.clientTransactionId))){
-        q.push(payloadToSave);
-        savePendingTxQueue(q);
-      }
-
-      // Clear the entry form only after the transaction is truly completed.
-      amount.value='';
-      cashReceived.value='';
-      txType.value='';
-      pendingPayload=null;
-      selectedTransactionWallet='';
-      resetChargeMode();
-      setTransactionSaving(false);
-
-      status.textContent='Recorded ✓ Syncing to Google Sheets…';
-      status.className='status ok';
+    // Cash In / Cash Out: save exact denominations BEFORE committing wallet/History.
+    // If the local Cash Counter cannot be updated, leave the entire draft unrecorded.
+    const isDraft=!!tx._transactionDraft;
+    const payloadToSave=isDraft?{...(tx._transactionPayload||{})}:null;
+    if(isDraft && !payloadToSave.clientTransactionId){
+      save.disabled=false;
+      if(stat){stat.textContent='Could not save transaction draft.';stat.className='err';}
+      return;
     }
-
-    // Save Cash Pieces on this device as part of the same completed transaction.
-    queueCashPieces(piecePayload);
-
-    // Commit the exact denominations directly to the local Cash Counter.
-    // Do not depend on an event listener for this critical accounting step.
     const localPiecesDetail={
-      transactionId:String(tx.id||''),
-      transactionType:String(tx.type||''),
+      transactionId:String(tx.id||''), transactionType:String(tx.type||''),
       amount:Number(tx.amount||tx.total||0),
-      received:{...cashPiecesReceived},
-      given:{...cashPiecesGiven},
+      received:{...cashPiecesReceived},given:{...cashPiecesGiven},
       expectedCashMovement:expectedCashMovement(tx)
     };
     try{
       if(typeof applyLocalCashPiecesNow!=='function' || !applyLocalCashPiecesNow(localPiecesDetail)){
-        throw new Error('Local Cash Counter update did not complete.');
+        throw new Error('Cash Counter inventory is unavailable or denominations are insufficient.');
       }
     }catch(e){
       window.gcashCashCounterUpdatePending=false;
-      save.disabled=false;
-      save.textContent='Save Cash Pieces';
-      if(stat){
-        stat.textContent='Cash Counter did not update. Please tap Save Cash Pieces again.';
-        stat.className='err';
-      }
+      save.disabled=false;save.textContent='Save Cash Pieces';
+      if(stat){stat.textContent='Nothing recorded. '+((e&&e.message)||'Cash Counter did not update.');stat.className='err';}
       return;
     }
+    // Denominations are now durable on this device. Only now save the transaction.
+    if(isDraft){
+      window.gcashCashCounterUpdatePending=true;
+      try{window.dispatchEvent(new CustomEvent('gcash-cash-counter-updating'));}catch(_e){}
+      delete tx._transactionDraft;delete tx._transactionPayload;
+      applyOptimisticTransaction(tx);
+      const q=loadPendingTxQueue();
+      if(!q.some(x=>String(x.clientTransactionId)===String(payloadToSave.clientTransactionId))){
+        q.push(payloadToSave);savePendingTxQueue(q);
+      }
+      amount.value='';cashReceived.value='';txType.value='';
+      pendingPayload=null;selectedTransactionWallet='';resetChargeMode();
+      setTransactionSaving(false);
+      status.textContent='Recorded ✓ Syncing to Google Sheets…';status.className='status ok';
+    }
+    queueCashPieces(piecePayload);
+    window.gcashCashCounterUpdatePending=false;
+    try{sendCashCounterStatusToTracker();}catch(_e){}
 
     if(isTransactionStillPending(tx.id) || tx._pendingSync){
       save.textContent='Saved';
@@ -9109,7 +9087,7 @@ function applyLocalCashPiecesNow(d){
 
   // Cash Counter must update even if the user never opened the Cash Counter tab.
   // Load the last saved denomination inventory directly from this device.
-  if(!ensureCashCounterCurrentLoaded()) return;
+  if(!ensureCashCounterCurrentLoaded()) throw new Error('Open Cash Counter once while online to load its inventory.');
 
   const received=d.received||{};
   const given=d.given||{};
@@ -9149,7 +9127,7 @@ function applyLocalCashPiecesNow(d){
       next[k]=Math.max(0,Math.floor(isFinite(n)?n:0));
     });
 
-    if(!valid) return;
+    if(!valid) throw new Error('Not enough bills or coins in the saved Cash Counter inventory.');
 
     const physical=total(next);
     const tracker=trackerCashValue();
@@ -9328,7 +9306,16 @@ function load(){
   showMsg('');
   google.script.run
     .withSuccessHandler(x=>{
-      current=x;
+      // A Cash Pieces record can be saved locally while its parent is still syncing.
+      // A delayed server response must not roll back that physical inventory.
+      let saved=null;
+      try{saved=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null');}catch(_e){}
+      const pendingPieces=(()=>{try{return JSON.parse(localStorage.getItem('gcash_tracker_pending_cash_pieces_v1')||'[]').length>0;}catch(_e){return false;}})();
+      const localTotal=saved&&saved.pieces?total(saved.pieces):null;
+      const remoteTotal=x&&x.pieces?total(x.pieces):null;
+      const keepLocal=!!(saved&&saved.pieces&&(pendingPieces || (saved._localPending && localTotal!==remoteTotal)));
+      current=keepLocal?saved:x;
+      if(!keepLocal && current && current._localPending) current._localPending=false;
       try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(e){}
       renderCashCounterInventory(current);
       setTimeout(sendCashCounterStatusToTracker,80);
@@ -9691,6 +9678,12 @@ function loadHistory(){
   google.script.run
     .withSuccessHandler(rows=>{
       rows=Array.isArray(rows)?rows:[];
+      const serverTxIds=new Set(rows.map(r=>String((r&&r.details&&r.details.transactionId)||'')));
+      const localMissing=cachedRows.filter(r=>{
+        const id=String((r&&r.details&&r.details.transactionId)||'');
+        return id && !serverTxIds.has(id) && r.details && r.details.localPending;
+      });
+      rows=[...localMissing,...rows].sort((a,b)=>new Date(b.timestamp||0)-new Date(a.timestamp||0));
       try{localStorage.setItem('gcashCashCounterHistoryV1',JSON.stringify(rows));}catch(e){}
       renderRows(rows,false);
     })
