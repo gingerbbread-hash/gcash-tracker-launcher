@@ -4503,6 +4503,52 @@ body > .hero{
 #cashCounterNative #ccMoreActions,#cashCounterNative #ccSettingsPanel{order:3}
 #cashCounterNative .cc-counter-content-card{display:flex;flex-direction:column}
 </style>
+<style id="cc-professional-colorful-dashboard">
+/* Presentation only. Preserve inventory, transaction, sync, reset and backup logic. */
+#cashCounterNative .cash-counter-native-heading{margin:8px 0 12px!important}
+#cashCounterNative .cc-heading-row{gap:8px}
+#cashCounterNative .cc-heading-row h2{font-size:23px!important;letter-spacing:-.4px}
+#cashCounterNative #ccSettingsGear{background:#fff;border:1px solid #d9e5f5;border-radius:13px;padding:10px 13px;font-size:13px;box-shadow:0 2px 8px #173b6810}
+#cashCounterNative #ccSummaryCard{background:transparent!important;border:0!important;padding:0!important;box-shadow:none!important}
+#cashCounterNative #ccSummaryCard .summary{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important}
+#cashCounterNative #ccSummaryCard .metric{border-radius:17px!important;padding:14px!important;border:1px solid #d3e3fc!important;min-width:0}
+#cashCounterNative #ccSummaryCard .metric:nth-child(1){grid-column:1/-1!important;background:linear-gradient(110deg,#eaf3ff,#d9eaff)!important;padding:21px 18px!important;border-color:#c9dcfb!important}
+#cashCounterNative #ccSummaryCard .metric:nth-child(1) strong{font-size:clamp(31px,8.5vw,46px)!important;color:#103b80!important;line-height:1.12!important;display:block!important;white-space:normal!important}
+#cashCounterNative #ccSummaryCard .metric:nth-child(2){background:#eafaf1!important;border-color:#c9ecd9!important}
+#cashCounterNative #ccSummaryCard .metric:nth-child(3){grid-column:auto!important;background:#fff7e7!important;border-color:#f5dfad!important}
+#cashCounterNative #ccSummaryCard .metric small{font-size:11px!important;font-weight:850!important;letter-spacing:.3px;color:#42516a!important}
+#cashCounterNative #ccSummaryCard .metric strong{font-size:clamp(16px,4.7vw,24px)!important;line-height:1.2!important;display:block!important;overflow-wrap:anywhere!important;color:#174a38!important}
+#cashCounterNative #ccSummaryCard .metric:nth-child(3) strong{color:#176b43!important}
+#cashCounterNative #ccSummaryCard .metric.short strong,#cashCounterNative #ccSummaryCard .metric.over strong{color:#a44817!important}
+#cashCounterNative .cc-metric-note{display:block;font-size:11px;color:#52617a;margin-top:6px;line-height:1.35}
+#cashCounterNative .cc-counter-content-card{border:1px solid #d4e3f9!important;background:#fff!important;border-radius:19px!important;padding:12px!important}
+#cashCounterNative #cashCounterInventoryCard{border:0!important;background:transparent!important;padding:0!important;box-shadow:none!important;margin:0!important}
+#cashCounterNative #cashCounterInventoryCard .today-check-head{padding:2px 3px 8px!important}
+#cashCounterNative #cashCounterInventoryCard .today-check-title{font-size:18px!important;font-weight:900!important;color:#172d4b!important}
+#cashCounterNative #cashCounterInventoryTotal{display:none!important}
+#cashCounterNative #cashCounterInventoryCard .today-check-details{display:block!important;font-size:11px!important;color:#667085!important;margin:0 3px 8px!important}
+#cashCounterNative #cashCounterPiecesList{margin-top:0!important}
+#cashCounterNative #cashCounterPiecesList .cc-text-rows{gap:0!important;border:1px solid #dbe6f5!important;border-radius:12px!important;overflow:hidden!important}
+#cashCounterNative #cashCounterPiecesList .cc-text-row{grid-template-columns:minmax(70px,1fr) minmax(55px,.65fr) minmax(100px,1fr)!important;border:0!important;border-bottom:1px solid #e6edf7!important;border-radius:0!important;padding:10px 9px!important;background:#fff!important;font-size:13px!important;gap:5px!important}
+#cashCounterNative #cashCounterPiecesList .cc-text-row:last-child{border-bottom:0!important}
+#cashCounterNative #cashCounterPiecesList .cc-text-row strong:first-child{display:inline-block!important;width:max-content!important;max-width:100%!important;padding:5px 8px!important;border-radius:7px!important;color:#fff!important;background:#1769ce!important;font-weight:900!important}
+#cashCounterNative #cashCounterPiecesList .cc-text-row:nth-child(7n+2) strong:first-child{background:#2e9a54!important}
+#cashCounterNative #cashCounterPiecesList .cc-text-row:nth-child(7n+3) strong:first-child{background:#db831e!important}
+#cashCounterNative #cashCounterPiecesList .cc-text-row:nth-child(7n+4) strong:first-child{background:#d64b64!important}
+#cashCounterNative #cashCounterPiecesList .cc-text-row:nth-child(7n+5) strong:first-child{background:#8054b8!important}
+#cashCounterNative #cashCounterPiecesList .cc-text-row:nth-child(7n+6) strong:first-child{background:#098b96!important}
+#cashCounterNative #cashCounterPiecesList .cc-text-row:nth-child(7n+7) strong:first-child{background:#c83f87!important}
+#cashCounterNative #cashCounterPiecesList .cc-text-row>span{text-align:center!important;font-weight:700!important}
+#cashCounterNative #cashCounterPiecesList .cc-text-row>strong:last-child{font-variant-numeric:tabular-nums!important;text-align:right!important;white-space:nowrap!important;font-size:13px!important}
+#cashCounterNative #cashCounterInventoryCard .inventory-total-bar{display:flex!important;align-items:center!important;justify-content:space-between!important;margin-top:0!important;padding:13px 10px!important;background:#e8f9ef!important;border:1px solid #c9ebd6!important;border-radius:0 0 11px 11px!important;color:#145c39!important;font-size:13px!important;font-weight:850!important}
+#cashCounterNative .cc-minimal-actions{margin:14px 0 0!important;gap:5px!important}
+#cashCounterNative #ccEditCountMain{background:linear-gradient(110deg,#0b5ed7,#267ee9)!important;color:#fff!important;min-height:51px!important;border-radius:12px!important;font-size:16px!important}
+#cashCounterNative .cc-history-link{color:#0b5ed7!important;font-size:14px!important;min-height:43px!important}
+#cashCounterNative #ccSettingsPanel{order:3!important}
+#cashCounterNative #countView{order:1!important}
+#cashCounterNative .cc-minimal-actions{order:2!important}
+@media(max-width:370px){#cashCounterNative #ccSummaryCard .metric{padding:10px!important}#cashCounterNative #cashCounterPiecesList .cc-text-row{grid-template-columns:minmax(65px,1fr) 43px minmax(85px,1fr)!important;padding:8px 5px!important;font-size:12px!important}#cashCounterNative #cashCounterPiecesList .cc-text-row>strong:last-child{font-size:12px!important}}
+</style>
 </head>
 <body>
 <main class="app">
@@ -4639,11 +4685,11 @@ body > .hero{
 
       <div id="cashCounterInventoryCard" class="today-check-card">
         <div class="today-check-head">
-          <div class="today-check-title">Current Cash Counter</div>
+          <div class="today-check-title">Denominations</div>
           <div id="cashCounterInventoryTotal" class="today-check-badge">Loading…</div>
         </div>
 
-        <div class="today-check-details">Latest saved bill and coin quantities. Zero quantities are hidden.</div>
+        <div class="today-check-details">Showing only bills and coins with quantities above zero.</div>
 
         <div id="cashCounterPiecesList" class="inventory-photo-grid" style="margin-top:12px"></div>
 
@@ -8783,7 +8829,7 @@ function renderSummary(x){
   const diff=counted-tracker;
   const cls=Math.abs(diff)<.005?'matched':diff<0?'short':'over';
   const difference=Math.abs(diff)<.005?'Matches':(diff>0?'+':'−')+money(Math.abs(diff));
-  $('summary').innerHTML=`<div class="metric"><small>Saved Cash Counter</small><strong>${money(counted)}</strong></div><div class="metric"><small>Cash on Hand</small><strong>${money(tracker)}</strong></div><div class="metric statusbox ${cls}"><small>Record difference</small><strong>${difference}</strong></div>`;
+  $('summary').innerHTML=`<div class="metric"><small>TOTAL CASH COUNTER</small><strong>${money(counted)}</strong><span class="cc-metric-note">Latest saved bill and coin quantities</span></div><div class="metric"><small>CASH ON HAND</small><strong>${money(tracker)}</strong><span class="cc-metric-note">From your main tracker</span></div><div class="metric statusbox ${cls}"><small>RECORD DIFFERENCE</small><strong>${difference}</strong><span class="cc-metric-note">${Math.abs(diff)<.005?'Cash Counter and Cash on Hand match.':'Review your saved denominations and transactions.'}</span></div>`;
 }
 
 function renderCashCounterInventory(x){
