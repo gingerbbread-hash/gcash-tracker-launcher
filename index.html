@@ -7732,20 +7732,30 @@ body > .hero{
     // Save Cash Pieces on this device as part of the same completed transaction.
     queueCashPieces(piecePayload);
 
-    // Update the Cash Counter on-screen immediately too. Google Sheets confirms it
-    // in the background, but the user can continue recording the next transaction now.
+    // Commit the exact denominations directly to the local Cash Counter.
+    // Do not depend on an event listener for this critical accounting step.
+    const localPiecesDetail={
+      transactionId:String(tx.id||''),
+      transactionType:String(tx.type||''),
+      amount:Number(tx.amount||tx.total||0),
+      received:{...cashPiecesReceived},
+      given:{...cashPiecesGiven},
+      expectedCashMovement:expectedCashMovement(tx)
+    };
     try{
-      window.dispatchEvent(new CustomEvent('gcash-local-cash-pieces',{
-        detail:{
-          transactionId:String(tx.id||''),
-          transactionType:String(tx.type||''),
-          amount:Number(tx.amount||tx.total||0),
-          received:{...cashPiecesReceived},
-          given:{...cashPiecesGiven},
-          expectedCashMovement:expectedCashMovement(tx)
-        }
-      }));
-    }catch(e){}
+      if(typeof applyLocalCashPiecesNow!=='function' || !applyLocalCashPiecesNow(localPiecesDetail)){
+        throw new Error('Local Cash Counter update did not complete.');
+      }
+    }catch(e){
+      window.gcashCashCounterUpdatePending=false;
+      save.disabled=false;
+      save.textContent='Save Cash Pieces';
+      if(stat){
+        stat.textContent='Cash Counter did not update. Please tap Save Cash Pieces again.';
+        stat.className='err';
+      }
+      return;
+    }
 
     if(isTransactionStillPending(tx.id) || tx._pendingSync){
       save.textContent='Saved';
@@ -8657,42 +8667,16 @@ let current=null;
 
 function sendCashCounterStatusToTracker(){
   try{
-    /* Always use the newest LOCAL denomination inventory.
-       The old in-memory `current` can lag behind localStorage after a transaction,
-       which caused Cash Balance Check to keep showing an old SHORT amount. */
-    let latest=current;
-    try{
-      const cached=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null');
-      if(cached && cached.pieces && typeof cached.pieces==='object'){
-        latest=cached;
-        current=cached;
-      }
-    }catch(_e){}
-
-    if(!latest || !latest.pieces) return;
-
+    if(!current || !current.pieces) return;
     const vals={'1000':1000,'500':500,'200':200,'100':100,'50':50,'20b':20,'20c':20,'10':10,'5':5,'1':1};
     let physical=0;
     Object.keys(vals).forEach(function(k){
-      physical += Number(latest.pieces[k]||0)*vals[k];
+      physical += Number(current.pieces[k]||0)*vals[k];
     });
-
-    const tracker=trackerCashValue();
-    latest.trackerCashOnHand=tracker;
-    latest.physicalCash=physical;
-    latest.physicalTotal=physical;
-    latest.difference=physical-tracker;
-    latest.status=Math.abs(physical-tracker)<=0.01?'MATCHED':(physical-tracker<0?'SHORT':'OVER');
-    current=latest;
-
-    try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(latest));}catch(_e){}
-
     window.dispatchEvent(new CustomEvent('gcash-cash-counter-status',{
       detail:{
         physicalCash:physical,
-        trackerCashOnHand:tracker,
-        difference:physical-tracker,
-        status:latest.status
+        trackerCashOnHand:Number(current.trackerCashOnHand||0)
       }
     }));
   }catch(e){}
@@ -9039,8 +9023,8 @@ function trackerCashValue(){
   return 0;
 }
 
-window.addEventListener('gcash-local-cash-pieces',function(e){
-  const d=(e&&e.detail)||{};
+function applyLocalCashPiecesNow(d){
+  d=d||{};
   const txId=String(d.transactionId||'');
 
   // Cash Counter must update even if the user never opened the Cash Counter tab.
@@ -9162,6 +9146,11 @@ window.addEventListener('gcash-local-cash-pieces',function(e){
   if(document.getElementById('historyView')?.classList.contains('mode-open')){
     try{loadHistory();}catch(_e){}
   }
+  return true;
+}
+
+window.addEventListener('gcash-local-cash-pieces',function(e){
+  try{ applyLocalCashPiecesNow((e&&e.detail)||{}); }catch(_e){}
 });
 
 
