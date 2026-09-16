@@ -5799,6 +5799,11 @@ body > .hero{
 
     document.querySelector('.cash-balance').classList.toggle('negative', Number(data.cashOnHand) < 0);
     document.querySelector('.gcash-balance').classList.toggle('negative', Number(data.gcashBalance) < 0);
+    // Notify Cash Counter when the authoritative wallet balance changes.
+    // This only refreshes its display; it does not mutate denominations or money.
+    window.dispatchEvent(new CustomEvent('tracker-cash-balance-updated', {
+      detail:{cashOnHand:Number(data.cashOnHand)}
+    }));
   }
 
   function loadCapital(){
@@ -8843,7 +8848,10 @@ function renderSummary(x){
   current=x||current;
   if(!current){$('summary').innerHTML='';return;}
   const counted=total(current.pieces||{});
-  const tracker=Number(current.trackerCashOnHand||0);
+  // getCashCounter() includes a historical tracker snapshot. The live wallet
+  // balance is authoritative for the CURRENT difference indicator.
+  const tracker=trackerCashValue();
+  current.trackerCashOnHand=tracker;
   const diff=counted-tracker;
   const cls=Math.abs(diff)<.005?'matched':diff<0?'short':'over';
   const difference=Math.abs(diff)<.005?'Matches':(diff>0?'+':'−')+money(Math.abs(diff));
@@ -8878,11 +8886,8 @@ function readInventoryEditor(){
 }
 
 function reconcileTrackerCashValue(){
-  if(current && current.trackerCashOnHand!==null && current.trackerCashOnHand!==undefined){
-    return Number(current.trackerCashOnHand)||0;
-  }
-  const raw=String(($('trackerCashAuto') && $('trackerCashAuto').textContent)||'').replace(/[^0-9.-]/g,'');
-  return Number(raw)||0;
+  // Use the same current wallet balance as the summary, not a stale snapshot.
+  return trackerCashValue();
 }
 
 function refreshReconcilePreview(){
@@ -9116,6 +9121,10 @@ function ensureCashCounterCurrentLoaded(){
    This must never wait for Google Sheets. */
 function trackerCashValue(){
   try{
+    if(typeof capitalData!=='undefined' && capitalData && capitalData.initialized &&
+       Number.isFinite(Number(capitalData.cashOnHand))) return Number(capitalData.cashOnHand);
+  }catch(_e){}
+  try{
     const el=document.getElementById('cashOutAvailable');
     if(el){
       const n=Number(String(el.textContent||'').replace(/[^\d.-]/g,''));
@@ -9134,6 +9143,17 @@ function trackerCashValue(){
   }catch(_e){}
   return 0;
 }
+
+window.addEventListener('tracker-cash-balance-updated',function(e){
+  if(!current || !current.pieces) return;
+  const value=Number(e.detail && e.detail.cashOnHand);
+  if(!Number.isFinite(value)) return;
+  current.trackerCashOnHand=value;
+  renderSummary(current);
+  const auto=$('trackerCashAuto');
+  if(auto) auto.textContent=money(value);
+  if($('reconcileDifferenceCard')) refreshReconcilePreview();
+});
 
 function applyLocalCashPiecesNow(d){
   d=d||{};
