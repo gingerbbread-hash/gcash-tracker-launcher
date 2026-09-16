@@ -7328,16 +7328,16 @@ body > .hero{
   let cashPiecesMode = 'received';
 
   const CASH_PIECE_DENOMS = [
-    {key:'1000',label:'₱1,000',value:1000,url:'https://www.bsp.gov.ph/Coins%20and%20Notes/Polymer/1000banknote.png',kind:'bill'},
-    {key:'500',label:'₱500',value:500,url:'https://www.bsp.gov.ph/Coins%20and%20Notes/Polymer/500banknote.png',kind:'bill'},
-    {key:'200',label:'₱200',value:200,url:'https://upload.wikimedia.org/wikipedia/commons/3/32/NDS_obverse_200_Philippine_peso_bill.jpg',kind:'bill'},
-    {key:'100',label:'₱100',value:100,url:'https://www.bsp.gov.ph/Coins%20and%20Notes/Polymer/100banknote.png',kind:'bill'},
-    {key:'50',label:'₱50',value:50,url:'https://www.bsp.gov.ph/Coins%20and%20Notes/Polymer/50banknote.png',kind:'bill'},
-    {key:'20b',label:'₱20 Bill',value:20,url:'https://upload.wikimedia.org/wikipedia/commons/c/cd/NDS_obverse_20_Philippine_peso_bill.jpg',kind:'bill'},
-    {key:'20c',label:'₱20 Coin',value:20,url:'https://upload.wikimedia.org/wikipedia/commons/1/15/Font_20_peso_Coin_Philippines.png',kind:'coin'},
-    {key:'10',label:'₱10',value:10,url:'https://upload.wikimedia.org/wikipedia/commons/8/8b/NGC_PHP_10_piso.jpg',kind:'coin'},
-    {key:'5',label:'₱5',value:5,url:'https://upload.wikimedia.org/wikipedia/commons/9/96/PhilippinesNewGen5PesoObverse.png',kind:'coin'},
-    {key:'1',label:'₱1',value:1,url:'https://upload.wikimedia.org/wikipedia/commons/4/43/1_philippinischer_Peso_2018.jpg',kind:'coin'}
+    {key:'1000',label:'₱1,000',value:1000,kind:'bill'},
+    {key:'500',label:'₱500',value:500,kind:'bill'},
+    {key:'200',label:'₱200',value:200,kind:'bill'},
+    {key:'100',label:'₱100',value:100,kind:'bill'},
+    {key:'50',label:'₱50',value:50,kind:'bill'},
+    {key:'20b',label:'₱20 Bill',value:20,kind:'bill'},
+    {key:'20c',label:'₱20 Coin',value:20,kind:'coin'},
+    {key:'10',label:'₱10',value:10,kind:'coin'},
+    {key:'5',label:'₱5',value:5,kind:'coin'},
+    {key:'1',label:'₱1',value:1,kind:'coin'}
   ];
 
   let cashPiecesReceived = {};
@@ -7431,9 +7431,6 @@ body > .hero{
       return `
         <div class="cash-piece-card">
           <div class="cash-piece-title">${d.label}</div>
-          <div class="cash-piece-photo ${d.kind}">
-            <img src="${d.url}" alt="Philippine ${d.label}" loading="lazy">
-          </div>
           <div class="cash-piece-controls">
             <button type="button" class="cash-piece-minus" data-piece-key="${d.key}">−</button>
             <input type="number" inputmode="numeric" min="0" step="1"
