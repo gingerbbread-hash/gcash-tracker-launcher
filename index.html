@@ -8990,6 +8990,29 @@ function ensureCashCounterCurrentLoaded(){
   return false;
 }
 
+/* Local Cash on Hand used by Cash Counter.
+   This must never wait for Google Sheets. */
+function trackerCashValue(){
+  try{
+    const el=document.getElementById('cashOutAvailable');
+    if(el){
+      const n=Number(String(el.textContent||'').replace(/[^\d.-]/g,''));
+      if(isFinite(n)) return n;
+    }
+  }catch(_e){}
+  try{
+    if(typeof capitalData!=='undefined' && capitalData && isFinite(Number(capitalData.cashOnHand))){
+      return Number(capitalData.cashOnHand);
+    }
+  }catch(_e){}
+  try{
+    const cached=JSON.parse(localStorage.getItem('gcashTrackerAllRecordsV2')||'null');
+    const n=Number(cached && cached.capitalData && cached.capitalData.cashOnHand);
+    if(isFinite(n)) return n;
+  }catch(_e){}
+  return 0;
+}
+
 window.addEventListener('gcash-local-cash-pieces',function(e){
   const d=(e&&e.detail)||{};
   const txId=String(d.transactionId||'');
