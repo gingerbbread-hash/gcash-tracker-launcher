@@ -4579,6 +4579,14 @@ body > .hero{
     <div id="ccMoreActions" class="cc-more-actions" hidden>
       <button id="editInventoryBtn" type="button">Reconcile / Reset (backup first)</button>
       <button id="ccCashCheckInfoBtn" type="button">Cash Check</button>
+      <button id="ccSettingsBtn" type="button" aria-expanded="false" aria-controls="ccSettingsPanel">Cash Counter Settings</button>
+    </div>
+
+    <div id="ccSettingsPanel" class="card" hidden style="margin-top:10px">
+      <div style="font-weight:900;margin-bottom:5px">Cash Counter Settings</div>
+      <p class="note" style="margin:0 0 10px">Back up the saved denomination inventory and full Cash Counter history to two new sheets. This does not reset or change your balances.</p>
+      <button id="ccBackupNowBtn" class="btn btn-secondary" type="button">Backup Cash Counter Now</button>
+      <div id="ccBackupStatus" class="status" role="status" aria-live="polite"></div>
     </div>
 
     <div id="countView" class="view active">
@@ -9428,6 +9436,38 @@ ccMoreBtn.addEventListener('click',()=>{
   const opening=ccMoreActions.hidden;
   ccMoreActions.hidden=!opening;
   ccMoreBtn.setAttribute('aria-expanded',String(opening));
+});
+$('ccSettingsBtn').addEventListener('click',()=>{
+  const panel=$('ccSettingsPanel');
+  const opening=panel.hidden;
+  panel.hidden=!opening;
+  $('ccSettingsBtn').setAttribute('aria-expanded',String(opening));
+  ccMoreActions.hidden=true;
+  ccMoreBtn.setAttribute('aria-expanded','false');
+});
+$('ccBackupNowBtn').addEventListener('click',()=>{
+  const btn=$('ccBackupNowBtn');
+  const status=$('ccBackupStatus');
+  if(!navigator.onLine){status.textContent='Connect to the internet to back up Google Sheets.';status.className='status err';return;}
+  let pending=false;
+  try{
+    pending=['gcash_tracker_pending_tx_v1','gcash_tracker_pending_cash_pieces_v1','gcashTrackerOfflineActionsV1'].some(key=>{
+      const q=JSON.parse(localStorage.getItem(key)||'[]');return !Array.isArray(q)||q.length>0;
+    });
+  }catch(_e){pending=true;}
+  if(pending){status.textContent='Sync pending records first. No backup was made.';status.className='status err';return;}
+  btn.disabled=true;
+  status.textContent='Creating backup in Google Sheets…';status.className='status';
+  google.script.run.withSuccessHandler(data=>{
+    btn.disabled=false;
+    if(!data || !data.ok){status.textContent='Backup was not confirmed.';status.className='status err';return;}
+    status.textContent='Backup saved in Google Sheets: '+data.backupInventory+' and '+data.backupHistory+'.';
+    status.className='status ok';
+  }).withFailureHandler(err=>{
+    btn.disabled=false;
+    status.textContent=(err&&err.message)||'Backup failed. Your records were not reset.';
+    status.className='status err';
+  }).backupCashCounterNow();
 });
 $('ccCashCheckInfoBtn').addEventListener('click',()=>{
   ccMoreActions.hidden=true;
