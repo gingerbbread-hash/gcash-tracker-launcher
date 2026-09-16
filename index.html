@@ -4572,6 +4572,7 @@ body > .hero{
       </div>
 
       <div id="editInventoryPanel">
+          <button id="resetCashCounterBtn" type="button" style="width:100%;min-height:48px;background:#7c2d12;color:white;border:0;border-radius:12px;font-weight:900;margin-bottom:12px">Reset Cash Counter (backup first)</button>
           <div style="font-size:14px;font-weight:950;color:#172033;margin-bottom:4px">Reconcile Cash Counter</div>
           <div style="font-size:12px;color:#667085;margin-bottom:10px">
             Use this only when the saved bills and coins do not match the cash you physically have.
@@ -8059,6 +8060,17 @@ body > .hero{
           savePendingTxQueue(remaining);
           removeQueuedCashPieces(id);
 
+          // Server confirmed the linked reversal; discard stale on-device counter history.
+          try{
+            const key='gcashCashCounterHistoryV1';
+            const old=JSON.parse(localStorage.getItem(key)||'[]');
+            if(Array.isArray(old)) localStorage.setItem(key,JSON.stringify(old.filter(r=>{
+              const details=(r&&r.details)||{};
+              return String(details.transactionId||'')!==String(id) &&
+                !String((r&&r.note)||'').includes('TX:'+String(id));
+            })));
+          }catch(e){}
+          if(typeof loadHistory==='function' && document.getElementById('historyView')?.classList.contains('mode-open'))loadHistory();
           history = history.filter(x => String(x.id) !== String(id));
           window.__gcashTransactions = history;
           render();
@@ -8943,6 +8955,37 @@ if(setCashToCountedBtn){
       : 'Cash on Hand updated locally. Waiting to sync.','ok');
   });
 }
+
+
+// Cash Counter reset is online-only: do not discard unsynced money movements.
+$('resetCashCounterBtn').addEventListener('click',()=>{
+  if(!navigator.onLine){showMsg('Connect to the internet before resetting Cash Counter.','err');return;}
+  let pending=false;
+  try{
+    pending=['gcash_tracker_pending_tx_v1','gcash_tracker_pending_cash_pieces_v1','gcashTrackerOfflineActionsV1'].some(key=>{const q=JSON.parse(localStorage.getItem(key)||'[]');return !Array.isArray(q)||q.length>0;});
+  }catch(e){pending=true;}
+  if(pending){showMsg('Sync all pending transactions, cash pieces, and wallet actions before resetting.','err');return;}
+  const tracker=reconcileTrackerCashValue();
+  const pieces=readInventoryEditor();
+  const counted=total(pieces);
+  if(counted<=0 || Math.abs(counted-tracker)>0.005){
+    showMsg('Enter the actual bills and coins. Their total must match Cash on Hand ('+money(tracker)+').','err');return;
+  }
+  if(!confirm('RESET CASH COUNTER ONLY?\n\nPhysical count: '+money(counted)+'\nCash on Hand: '+money(tracker)+'\n\nThe old inventory and history will be copied to backup sheets first. Main History and wallet balances will not change.'))return;
+  if(!confirm('Final confirmation: Have you physically counted every bill and coin, and finished syncing all transactions?'))return;
+  const btn=$('resetCashCounterBtn');btn.disabled=true;btn.textContent='Backing up and resetting…';
+  google.script.run.withSuccessHandler(data=>{
+    btn.disabled=false;btn.textContent='Reset Cash Counter (backup first)';
+    current=data;
+    try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(data));localStorage.setItem('gcashCashCounterHistoryV1','[]');localStorage.removeItem('gcashCashPiecesAppliedV1');}catch(e){}
+    renderCashCounterInventory(data);renderSummary(data);sendCashCounterStatusToTracker();
+    setCashCounterMode('cash');
+    showMsg('Reset saved. Old records backed up in '+data.backupInventory+' and '+data.backupHistory+'.','ok');
+  }).withFailureHandler(err=>{
+    btn.disabled=false;btn.textContent='Reset Cash Counter (backup first)';
+    showMsg((err&&err.message)||'Reset failed. No new count was confirmed.','err');
+  }).resetCashCounterWithBackup({pieces:pieces,expectedCash:tracker});
+});
 
 $('cancelInventoryCorrection').addEventListener('click',()=>{
   setCashCounterMode('cash');
