@@ -4489,6 +4489,20 @@ body > .hero{
 #cashCounterNative #ccSettingsPanel{border:1px solid #c9d9ed!important;background:#f8fafc!important;margin:6px 0 12px!important}
 #cashCounterNative #ccSettingsPanel .btn{height:auto!important;min-height:42px!important}
 </style>
+<style id="cc-saved-denominations-visible-fix">
+/* Display-only repair: keep the existing saved inventory visible on the main tab.
+   The old mode CSS hid the inventory whenever it lacked .mode-open. */
+#cashCounterNative #countView{display:block!important}
+#cashCounterNative #cashCounterInventoryCard,
+#cashCounterNative #cashCounterInventoryCard:not(.mode-open){display:block!important}
+#cashCounterNative #cashCounterPiecesList{display:block!important;visibility:visible!important}
+#cashCounterNative #cashCounterPiecesList .cc-text-rows{display:grid!important}
+/* Put the visible saved denominations above the everyday actions. */
+#cashCounterNative .cc-minimal-actions{order:2}
+#cashCounterNative #countView{order:1}
+#cashCounterNative #ccMoreActions,#cashCounterNative #ccSettingsPanel{order:3}
+#cashCounterNative .cc-counter-content-card{display:flex;flex-direction:column}
+</style>
 </head>
 <body>
 <main class="app">
@@ -4595,7 +4609,7 @@ body > .hero{
     <div id="summary" class="summary"></div>
   </section>
 
-  <section class="card">
+  <section class="card cc-counter-content-card">
     <div class="cc-minimal-actions">
       <button id="ccEditCountMain" class="btn btn-primary" type="button">Edit Count</button>
       <button id="ccHistoryLink" class="cc-history-link" type="button">View history</button>
