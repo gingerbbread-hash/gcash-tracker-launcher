@@ -4428,6 +4428,21 @@ body > .hero{
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="GCash Tracker">
   <link rel="apple-touch-icon" href="./icon-192.png">
+<style id="cc-fast-text-only">
+#cashCounterNative .inventory-photo-grid,#cashCounterNative .edit-money-grid,#cashCounterNative .denom-grid{display:block!important}
+#cashCounterNative .cc-text-rows{display:grid;gap:7px}
+#cashCounterNative .cc-text-row{display:grid;grid-template-columns:minmax(70px,1fr) minmax(95px,1.4fr) minmax(85px,1fr);align-items:center;gap:7px;padding:10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff;font-size:13px}
+#cashCounterNative .cc-text-row>strong:last-child{text-align:right;font-variant-numeric:tabular-nums}
+#cashCounterNative .cc-text-row .qty-control,#cashCounterNative .cc-text-row .edit-qty{display:flex;align-items:center;justify-content:center;gap:3px;min-width:0}
+#cashCounterNative .cc-text-row input{min-width:0;width:46px;max-width:60px;text-align:center;padding:7px 2px;font-size:14px}
+#cashCounterNative .cc-text-row button{min-width:28px;min-height:32px;padding:4px;border-radius:7px}
+#cashCounterNative .cc-add-line{display:flex;gap:8px;margin-top:10px}
+#cashCounterNative .cc-add-line select{flex:1;min-width:0;border:1px solid #d0d5dd;border-radius:10px;padding:10px;background:#fff}
+#cashCounterNative .cc-add-line button{width:auto;min-width:65px}
+#cashCounterNative .cash-counter-native-heading{margin-bottom:8px}
+#cashCounterNative .card{margin-bottom:9px}
+#cashCounterNative .inventory-photo-wrap,#cashCounterNative .money-sample,#cashCounterNative .edit-money-photo{display:none!important}
+</style>
 </head>
 <body>
 <main class="app">
@@ -4638,10 +4653,7 @@ body > .hero{
         </div>
 
         <button id="saveCount" class="btn primary">Save Physical Cash Check</button>
-      <div style="margin-top:8px;color:#98a2b3;font-size:9px;line-height:1.35">
-        Sample/reference images: Bangko Sentral ng Pilipinas and Wikimedia Commons.
-        ₱10 coin photo: Vj7895, CC BY-SA 4.0.
-      </div>
+
       </div>
 
     </div>
@@ -8648,18 +8660,7 @@ document.addEventListener('DOMContentLoaded', function(){
 <script id="cash-counter-true-native-script">
 
 const D=[['1000','₱1,000',1000],['500','₱500',500],['200','₱200',200],['100','₱100',100],['50','₱50',50],['20b','₱20 bill',20],['20c','₱20 coin',20],['10','₱10',10],['5','₱5',5],['1','₱1',1]];
-const MONEY_IMAGES={
-  '1000':{url:'https://www.bsp.gov.ph/Coins%20and%20Notes/Polymer/1000banknote.png',kind:'bill',alt:'Philippine ₱1,000 sample'},
-  '500':{url:'https://www.bsp.gov.ph/Coins%20and%20Notes/Polymer/500banknote.png',kind:'bill',alt:'Philippine ₱500 sample'},
-  '200':{url:'https://upload.wikimedia.org/wikipedia/commons/3/32/NDS_obverse_200_Philippine_peso_bill.jpg',kind:'bill',alt:'Philippine ₱200 sample'},
-  '100':{url:'https://www.bsp.gov.ph/Coins%20and%20Notes/Polymer/100banknote.png',kind:'bill',alt:'Philippine ₱100 sample'},
-  '50':{url:'https://www.bsp.gov.ph/Coins%20and%20Notes/Polymer/50banknote.png',kind:'bill',alt:'Philippine ₱50 sample'},
-  '20b':{url:'https://upload.wikimedia.org/wikipedia/commons/c/cd/NDS_obverse_20_Philippine_peso_bill.jpg',kind:'bill',alt:'Philippine ₱20 bill sample'},
-  '20c':{url:'https://upload.wikimedia.org/wikipedia/commons/1/15/Font_20_peso_Coin_Philippines.png',kind:'coin',alt:'Philippine ₱20 coin sample'},
-  '10':{url:'https://upload.wikimedia.org/wikipedia/commons/8/8b/NGC_PHP_10_piso.jpg',kind:'coin',alt:'Philippine ₱10 coin sample'},
-  '5':{url:'https://upload.wikimedia.org/wikipedia/commons/9/96/PhilippinesNewGen5PesoObverse.png',kind:'coin',alt:'Philippine ₱5 coin sample'},
-  '1':{url:'https://upload.wikimedia.org/wikipedia/commons/4/43/1_philippinischer_Peso_2018.jpg',kind:'coin',alt:'Philippine ₱1 coin sample'},
-};
+const MONEY_IMAGES={}; // Text-only Cash Counter: no remote denomination photos.
 const $=id=>document.getElementById(id);
 const money=v=>'₱'+Number(v||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
 const zero=()=>Object.fromEntries(D.map(d=>[d[0],0]));
@@ -8684,42 +8685,17 @@ function sendCashCounterStatusToTracker(){
 
 function grid(prefix,pieces){
   pieces=pieces||zero();
-  return D.map(d=>{
-    const ref=MONEY_IMAGES[d[0]];
-    const kind=ref?ref.kind:(d[0].includes('c')||Number(d[2])<=10?'coin':'bill');
-    const img=ref
-      ? `<div class="money-sample ${kind}">
-           <img src="${ref.url}" alt="${ref.alt}" loading="lazy"
-                onerror="this.parentElement.style.display='none'">
-         </div>`
-      : `<div class="money-sample ${kind}"></div>`;
-
-    return `<div class="denom">
-      <div class="denom-left">
-        ${img}
-        <div class="amount-badge">${d[1]}</div>
-      </div>
-
-      <div class="denom-right">
-        <div class="input-wrap">
-          <div class="qty-control">
-            <button type="button" class="qty-btn" data-action="minus" data-prefix="${prefix}" data-key="${d[0]}" aria-label="Subtract one">−</button>
-            <input class="qty-input" type="number" min="0" step="1" inputmode="numeric"
-                   data-prefix="${prefix}" data-key="${d[0]}"
-                   value="${Number(pieces[d[0]]||0)}">
-            <button type="button" class="qty-btn" data-action="plus" data-prefix="${prefix}" data-key="${d[0]}" aria-label="Add one">+</button>
-          </div>
-        </div>
-        <div class="subtotal">
-          <span>Total</span>
-          <span class="sub-amount" data-sub="${prefix}-${d[0]}">
-            ${money(Number(pieces[d[0]]||0)*d[2])}
-          </span>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
+  const selected=D.filter(d=>Number(pieces[d[0]]||0)>0);
+  return `<div class="cc-text-rows">${selected.map(d=>`<div class="cc-text-row">
+    <strong>${d[1]}</strong>
+    <div class="qty-control"><button type="button" class="qty-btn" data-action="minus" data-prefix="${prefix}" data-key="${d[0]}">−</button>
+    <input class="qty-input" type="number" min="0" step="1" inputmode="numeric" data-prefix="${prefix}" data-key="${d[0]}" value="${Number(pieces[d[0]]||0)}" aria-label="${d[1]} quantity">
+    <button type="button" class="qty-btn" data-action="plus" data-prefix="${prefix}" data-key="${d[0]}">+</button></div>
+    <strong data-sub="${prefix}-${d[0]}">${money(Number(pieces[d[0]]||0)*d[2])}</strong>
+  </div>`).join('') || '<p class="note">No denominations added yet.</p>'}</div>
+  <div class="cc-add-line"><select id="ccAddCountDenom" aria-label="Choose denomination"><option value="">Add denomination…</option>${D.filter(d=>!selected.some(a=>a[0]===d[0])).map(d=>`<option value="${d[0]}">${d[1]}</option>`).join('')}</select><button type="button" id="ccAddCountBtn" class="btn btn-secondary">Add</button></div>`;
 }
+
 function read(prefix){const o=zero();document.querySelectorAll(`input[data-prefix="${prefix}"]`).forEach(i=>o[i.dataset.key]=Math.max(0,Math.floor(Number(i.value||0))));return o}
 function total(p){return D.reduce((s,d)=>s+Number(p[d[0]]||0)*d[2],0)}
 function refreshSubs(prefix){document.querySelectorAll(`input[data-prefix="${prefix}"]`).forEach(i=>{const d=D.find(x=>x[0]===i.dataset.key);const el=document.querySelector(`[data-sub="${prefix}-${i.dataset.key}"]`);if(el)el.textContent=money(Number(i.value||0)*d[2])})}
@@ -8759,99 +8735,18 @@ function renderSummary(x){
 
 function renderCashCounterInventory(x){
   current=x||current;
-  if(!current) return;
-
-  const pieces=(current.pieces && typeof current.pieces==='object')
-    ? current.pieces
-    : {};
-
-  const list=$('cashCounterPiecesList');
-  const activeDenoms=D.filter(d=>{
-    const qty=Math.max(0,Math.floor(Number(pieces[d[0]]||0)));
-    return qty>0;
-  });
-
-  if(!activeDenoms.length){
-    list.innerHTML=`
-      <div class="inventory-empty">
-        No saved money pieces yet.
-      </div>`;
-  }else{
-    list.innerHTML=activeDenoms.map(d=>{
-      const key=d[0];
-      const qty=Math.max(0,Math.floor(Number(pieces[key]||0)));
-      const subtotal=qty*Number(d[2]||0);
-      const ref=MONEY_IMAGES[key]||null;
-      const kind=ref
-        ? ref.kind
-        : (key.includes('c')||Number(d[2])<=10 ? 'coin' : 'bill');
-
-      const img=ref
-        ? `<div class="money-sample ${kind}">
-             <img src="${ref.url}"
-                  alt="${ref.alt}"
-                  loading="lazy"
-                  onerror="this.parentElement.style.display='none'">
-           </div>`
-        : `<div class="money-sample ${kind}"></div>`;
-
-      const title = key==='20b'
-        ? '₱20 Pesos (Bill)'
-        : key==='20c'
-          ? '₱20 Pesos (Coin)'
-          : `${d[1]} ${Number(d[2])===1?'Peso':'Pesos'}`;
-
-      return `
-        <div class="inventory-photo-card">
-          <div class="inventory-denom-title">${title}</div>
-
-          <div class="inventory-photo-wrap">
-            ${img}
-          </div>
-
-          <div class="inventory-info">
-            <div class="inventory-pieces">
-              ${qty} ${qty===1?'piece':'pieces'}
-            </div>
-            <div class="inventory-subtotal">
-              Total: ${money(subtotal)}
-            </div>
-          </div>
-        </div>`;
-    }).join('');
-  }
-
-  const totalNow=total(pieces);
-  $('cashCounterInventoryTotal').textContent=money(totalNow);
-  $('cashCounterInventoryTotalBottom').textContent=money(totalNow);
+  if(!current)return;
+  const pieces=current.pieces||{};
+  const rows=D.filter(d=>Number(pieces[d[0]]||0)>0);
+  $('cashCounterPiecesList').innerHTML=rows.length?rows.map(d=>`<div class="cc-text-row"><strong>${d[1]}</strong><span>${Math.floor(Number(pieces[d[0]]||0))} pcs</span><strong>${money(Number(pieces[d[0]]||0)*d[2])}</strong></div>`).join(''):'<p class="note">No saved denominations yet.</p>';
+  $('cashCounterInventoryTotal').textContent=money(total(pieces));
+  $('cashCounterInventoryTotalBottom').textContent=money(total(pieces));
 }
 
-
-function renderInventoryEditor(){
-  const pieces=(current && current.pieces && typeof current.pieces==='object')
-    ? current.pieces : {};
-  const grid=$('editInventoryGrid');
-
-  grid.innerHTML=D.map(d=>{
-    const key=d[0];
-    const qty=Math.max(0,Math.floor(Number(pieces[key]||0)));
-    const ref=MONEY_IMAGES[key]||null;
-    const kind=ref ? ref.kind : (key.includes('c')||Number(d[2])<=10?'coin':'bill');
-    const img=ref
-      ? `<div class="money-sample ${kind}"><img src="${ref.url}" alt="${ref.alt}" loading="lazy"></div>`
-      : `<div class="money-sample ${kind}"></div>`;
-    const title=key==='20b'?'₱20 Pesos (Bill)':key==='20c'?'₱20 Pesos (Coin)':`${d[1]} ${Number(d[2])===1?'Peso':'Pesos'}`;
-
-    return `<div class="edit-money-card">
-      <div class="edit-money-title">${title}</div>
-      <div class="edit-money-photo">${img}</div>
-      <div class="edit-qty">
-        <button type="button" class="edit-minus" data-key="${key}">−</button>
-        <input type="number" min="0" step="1" inputmode="numeric" data-edit-key="${key}" value="${qty}">
-        <button type="button" class="edit-plus" data-key="${key}">+</button>
-      </div>
-    </div>`;
-  }).join('');
+function renderInventoryEditor(preserve){
+  const pieces=preserve||((current&&current.pieces)||{});
+  const selected=D.filter(d=>Number(pieces[d[0]]||0)>0);
+  $('editInventoryGrid').innerHTML=`<div class="cc-text-rows">${selected.map(d=>`<div class="cc-text-row"><strong>${d[1]}</strong><div class="edit-qty"><button type="button" class="edit-minus" data-key="${d[0]}">−</button><input type="number" min="0" step="1" inputmode="numeric" data-edit-key="${d[0]}" value="${Math.floor(Number(pieces[d[0]]||0))}" aria-label="${d[1]} quantity"><button type="button" class="edit-plus" data-key="${d[0]}">+</button></div><strong>${money(Number(pieces[d[0]]||0)*d[2])}</strong></div>`).join('')||'<p class="note">No denominations added yet.</p>'}</div><div class="cc-add-line"><select id="ccAddEditDenom" aria-label="Choose denomination"><option value="">Add denomination…</option>${D.filter(d=>!selected.some(a=>a[0]===d[0])).map(d=>`<option value="${d[0]}">${d[1]}</option>`).join('')}</select><button type="button" id="ccAddEditBtn" class="btn btn-secondary">Add</button></div>`;
 }
 
 function readInventoryEditor(){
@@ -9344,6 +9239,15 @@ window.reverseLocalCashPiecesForTransaction=function(transactionId){
 
 function load(){
   showMsg('');
+  try{
+    const cached=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null');
+    if(cached&&cached.pieces){
+      current=cached;
+      renderCashCounterInventory(current);
+      renderSummary(current);
+      setTimeout(sendCashCounterStatusToTracker,0);
+    }
+  }catch(_e){}
   google.script.run
     .withSuccessHandler(x=>{
       // A Cash Pieces record can be saved locally while its parent is still syncing.
@@ -9360,12 +9264,11 @@ function load(){
       renderCashCounterInventory(current);
       setTimeout(sendCashCounterStatusToTracker,80);
 
-      $('countGrid').innerHTML=grid('count',zero());
+      if(!$('countGrid').innerHTML.trim()) $('countGrid').innerHTML=grid('count',zero());
       refreshCount();
       renderSummary(current);
       setTimeout(sendCashCounterStatusToTracker,50);
 
-      setCashCounterMode('cash');
       showMsg('Cash Counter inventory loaded. Count physical cash only if you want to verify it.');
     })
     .withFailureHandler(e=>{
@@ -9458,6 +9361,16 @@ function refreshCount(){
 
 
 document.addEventListener('click',e=>{
+  if(e.target.closest('#ccAddCountBtn')){
+    const key=$('ccAddCountDenom').value;
+    if(key){const pieces=read('count');pieces[key]=1;$('countGrid').innerHTML=grid('count',pieces);refreshCount();}
+    return;
+  }
+  if(e.target.closest('#ccAddEditBtn')){
+    const key=$('ccAddEditDenom').value;
+    if(key){const pieces=readInventoryEditor();pieces[key]=1;renderInventoryEditor(pieces);refreshReconcilePreview();}
+    return;
+  }
   const btn=e.target.closest('.qty-btn');
   if(!btn) return;
 
