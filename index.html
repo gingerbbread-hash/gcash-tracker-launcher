@@ -4442,6 +4442,13 @@ body > .hero{
 #cashCounterNative .cash-counter-native-heading{margin-bottom:8px}
 #cashCounterNative .card{margin-bottom:9px}
 #cashCounterNative .inventory-photo-wrap,#cashCounterNative .money-sample,#cashCounterNative .edit-money-photo{display:none!important}
+#cashCounterNative .cc-more-actions[hidden]{display:none!important}
+#cashCounterNative .cc-more-actions{margin:0 0 12px;padding:10px;background:#f8fafc;border:1px solid #dbe5f1;border-radius:12px}
+#cashCounterNative .cc-more-actions button{width:100%;margin:3px 0;padding:11px;border:1px solid #cbd5e1;border-radius:9px;background:#fff;color:#172033;font-weight:750}
+#cashCounterNative .cc-simple-actions{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+#cashCounterNative .cc-combined-rows .cc-text-row{grid-template-columns:minmax(75px,1fr) minmax(55px,.6fr) minmax(95px,1fr)}
+#cashCounterNative #cashCounterInventoryCard{display:block!important}
+#cashCounterNative #cashCounterInventoryCard:not(.mode-open){display:none!important}
 </style>
 <style id="cash-counter-simple-final">
 #cashCounterNative .cash-counter-native-heading .note{font-size:13px}
@@ -4558,16 +4565,20 @@ body > .hero{
     <div class="msg">Automatically read from your main GCash/Maya/MariBank Tracker. This Cash Counter cannot change it.</div>
   </section>
 
-  <section class="card">
+  <section class="card" id="ccSummaryCard">
     <div id="summary" class="summary"></div>
   </section>
 
   <section class="card">
-    <div class="cash-counter-mode-tabs">
-      <button id="cashCheckModeBtn" class="active" type="button">Cash Check</button>
+    <div class="cash-counter-mode-tabs cc-simple-actions">
+      <button id="cashCheckModeBtn" class="active" type="button">Saved count</button>
       <button id="startNewCheck" type="button">Count Physical Cash</button>
-      <button id="editInventoryBtn" type="button">Reconcile</button>
       <button id="historyModeBtn" type="button">History</button>
+      <button id="ccMoreBtn" type="button" aria-expanded="false" aria-controls="ccMoreActions">More</button>
+    </div>
+    <div id="ccMoreActions" class="cc-more-actions" hidden>
+      <button id="editInventoryBtn" type="button">Reconcile / Reset (backup first)</button>
+      <button id="ccCashCheckInfoBtn" type="button">Cash Check</button>
     </div>
 
     <div id="countView" class="view active">
@@ -4578,10 +4589,7 @@ body > .hero{
           <div id="cashCounterInventoryTotal" class="today-check-badge">Loading…</div>
         </div>
 
-        <div class="today-check-details">
-          These are the saved denominations the Cash Counter says you currently have.
-          Compare them with the actual money in your cash box.
-        </div>
+        <div class="today-check-details">Latest saved bill and coin quantities. Zero quantities are hidden.</div>
 
         <div id="cashCounterPiecesList" class="inventory-photo-grid" style="margin-top:12px"></div>
 
@@ -4590,12 +4598,10 @@ body > .hero{
           <strong id="cashCounterInventoryTotalBottom">₱0.00</strong>
         </div>
         <button id="setCashToCountedBtn" type="button"
-          style="width:100%;margin-top:12px;padding:13px 12px;border:0;border-radius:12px;background:#0f7a3d;color:#fff;font-weight:900;font-size:14px;">
+          style="display:none;width:100%;margin-top:12px;padding:13px 12px;border:0;border-radius:12px;background:#0f7a3d;color:#fff;font-weight:900;font-size:14px;">
           Set Cash on Hand to Counted Cash
         </button>
-        <div style="font-size:11px;color:#667085;margin-top:7px;line-height:1.4;">
-          Use this after you finish counting your actual cash. It changes Cash on Hand to the saved Cash Counter total and records the adjustment.
-        </div>
+
 
       </div>
 
@@ -8717,44 +8723,23 @@ function showMsg(t,cls=''){ $('msg').textContent=t; $('msg').className='msg '+cl
 
 function renderSummary(x){
   current=x||current;
-  if(!current){$('summary').innerHTML='';return}
-
+  if(!current){$('summary').innerHTML='';return;}
+  const counted=total(current.pieces||{});
   const tracker=Number(current.trackerCashOnHand||0);
-  const physical=total(read('count'));
-  const hasCount=physical>0;
-
-  $('trackerCashAuto').textContent=money(tracker);
-
-  let checkText='READY TO COUNT';
-  let cls='matched';
-
-  if(hasCount){
-    const diff=physical-tracker;
-    cls=Math.abs(diff)<.01?'matched':diff<0?'short':'over';
-    checkText=Math.abs(diff)<.01
-      ? 'MATCHED'
-      : diff<0
-        ? 'SHORT '+money(Math.abs(diff))
-        : 'OVER '+money(diff);
-  }
-
-  $('summary').innerHTML=`
-    <div class="metric"><small>Physical Cash</small><strong>${hasCount?money(physical):'Not counted'}</strong></div>
-    <div class="metric"><small>Tracker Cash on Hand</small><strong>${money(tracker)}</strong></div>
-    <div class="metric statusbox ${cls}"><small>Cash Check</small><strong>${checkText}</strong></div>`;
+  const diff=counted-tracker;
+  const cls=Math.abs(diff)<.005?'matched':diff<0?'short':'over';
+  const difference=Math.abs(diff)<.005?'Matches':(diff>0?'+':'−')+money(Math.abs(diff));
+  $('summary').innerHTML=`<div class="metric"><small>Saved Cash Counter</small><strong>${money(counted)}</strong></div><div class="metric"><small>Cash on Hand</small><strong>${money(tracker)}</strong></div><div class="metric statusbox ${cls}"><small>Record difference</small><strong>${difference}</strong></div>`;
 }
-
-
 
 function renderCashCounterInventory(x){
   current=x||current;
   if(!current)return;
   const pieces=current.pieces||{};
   const rows=D.filter(d=>Number(pieces[d[0]]||0)>0);
-  const billRows=rows.filter(d=>!String(d[0]).endsWith('c') && String(d[0])!=='1' && String(d[0])!=='5' && String(d[0])!=='10' && String(d[0])!=='25c' && String(d[0])!=='5c' && String(d[0])!=='1c');
-  const coinRows=rows.filter(d=>!billRows.includes(d));
-  const makeSection=(title,items)=>items.length?`<div class="cc-simple-section"><h3>${title}</h3>${items.map(d=>`<div class="cc-text-row"><strong>${d[1]}</strong><span>× ${Math.floor(Number(pieces[d[0]]||0))}</span><strong>${money(Number(pieces[d[0]]||0)*d[2])}</strong></div>`).join('')}</div>`:'';
-  $('cashCounterPiecesList').innerHTML=rows.length?makeSection('Bills',billRows)+makeSection('Coins',coinRows):'<p class="note">No saved denominations yet.</p>';
+  $('cashCounterPiecesList').innerHTML=rows.length
+    ? '<div class="cc-text-rows cc-combined-rows">'+rows.map(d=>`<div class="cc-text-row"><strong>${d[1]}</strong><span>× ${Math.floor(Number(pieces[d[0]]||0))}</span><strong>${money(Number(pieces[d[0]]||0)*d[2])}</strong></div>`).join('')+'</div>'
+    : '<p class="note">No saved denominations yet. Use Count Physical Cash to enter a count.</p>';
   $('cashCounterInventoryTotal').textContent=money(total(pieces));
   $('cashCounterInventoryTotalBottom').textContent=money(total(pieces));
 }
@@ -9437,6 +9422,19 @@ function setCashCounterMode(mode){
   });
 }
 
+const ccMoreBtn=$('ccMoreBtn');
+const ccMoreActions=$('ccMoreActions');
+ccMoreBtn.addEventListener('click',()=>{
+  const opening=ccMoreActions.hidden;
+  ccMoreActions.hidden=!opening;
+  ccMoreBtn.setAttribute('aria-expanded',String(opening));
+});
+$('ccCashCheckInfoBtn').addEventListener('click',()=>{
+  ccMoreActions.hidden=true;
+  ccMoreBtn.setAttribute('aria-expanded','false');
+  setCashCounterMode('cash');
+  showMsg('Cash Check compares a separately saved physical count with Cash on Hand. The denomination list above is your saved Cash Counter inventory.');
+});
 $('cashCheckModeBtn').addEventListener('click',()=>{
   setCashCounterMode('cash');
   showMsg('Cash Counter inventory.');
