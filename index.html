@@ -6499,6 +6499,7 @@ body > .hero{
     if(a.method==='addMayaTransferBySession'||a.method==='addMayaTransferWithCashPiecesBySession') return 'Move Money';
     if(a.method==='saveCashCount') return 'Cash Check';
     if(a.method==='saveManualCashCounterCorrection') return 'Cash Counter Reconciliation';
+    if(a.method==='saveCashCounterChangeMoney') return 'Change Money';
     if(a.method==='setCashOnHandToCountedCashBySession') return 'Cash on Hand Adjustment';
     if(a.method==='deleteTransactionBySession') return 'Delete Transaction';
     return a.method||'Record';
@@ -6548,7 +6549,7 @@ body > .hero{
       if(data&&data.capital) renderCapital(data.capital);
       renderMayaTransfers(); renderCapitalActivity(); saveLocalTrackerCache();
       window.dispatchEvent(new CustomEvent('offline-wallet-action-synced',{detail:{action:a,data:data}}));
-    }else if(a.method==='saveCashCount'||a.method==='saveManualCashCounterCorrection'){
+    }else if(a.method==='saveCashCount'||a.method==='saveManualCashCounterCorrection'||a.method==='saveCashCounterChangeMoney'){
       window.dispatchEvent(new CustomEvent('offline-cashcounter-action-synced',{detail:{action:a,data:data}}));
     }
   }
@@ -6594,6 +6595,8 @@ body > .hero{
         runner.saveCashCount(a.payload.pieces,a.id);
       }else if(a.method==='saveManualCashCounterCorrection'){
         runner.saveManualCashCounterCorrection(a.payload.pieces,a.payload.reason,a.payload.note,a.id);
+      }else if(a.method==='saveCashCounterChangeMoney'){
+        runner.saveCashCounterChangeMoney(a.payload.pieces,a.id);
       }else if(a.method==='deleteTransactionBySession'){
         runner.deleteTransactionBySession(getSessionToken(),a.payload.id);
       }else{
@@ -10084,5 +10087,118 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   const sync=document.getElementById('syncStatus'); if(sync)new MutationObserver(()=>{const t=String(sync.textContent||'');const el=document.getElementById('ltfSync');if(el){if(/^synced\.?$/i.test(t.trim()))el.textContent='SYNCED ✓';else if(/sync/i.test(t))el.textContent='Saved locally · Syncing…';}}).observe(sync,{childList:true,subtree:true,characterData:true});
 })();
 </script>
+
+<style id="cc-change-money-v1">
+#cashCounterNative .cc-action-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+#cashCounterNative .cc-action-grid .btn{min-height:50px!important;height:auto!important}
+#cashCounterNative .cc-secondary-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:7px}
+#cashCounterNative .cc-secondary-grid button{min-height:44px;border:1px solid #d9e5f5;border-radius:12px;background:#f7faff;color:#173b68;font-size:13px;font-weight:900}
+#cashCounterNative #ccChangeMoneyBtn{background:#1769ce!important;color:#fff!important;border:0!important}
+#cashCounterNative #ccChangeMoneyPanel[hidden],#cashCounterNative #ccSettingsPanel[hidden]{display:none!important}
+#cashCounterNative #ccChangeMoneyPanel.cc-overlay-open,#cashCounterNative #ccSettingsPanel.cc-overlay-open{
+  display:block!important;position:fixed!important;inset:calc(env(safe-area-inset-top,0px) + 12px) 10px calc(env(safe-area-inset-bottom,0px) + 12px)!important;
+  width:auto!important;max-width:600px!important;max-height:none!important;margin:0 auto!important;padding:12px!important;z-index:18001!important;
+  overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;background:#fff!important;border:1px solid #d9e5f5!important;border-radius:18px!important;
+  box-shadow:0 24px 70px rgba(12,27,49,.30)!important
+}
+#cashCounterNative .cc-change-summary{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+#cashCounterNative .cc-change-summary>div{border:1px solid #d9e5f5;border-radius:12px;padding:10px;background:#f8fafc}
+#cashCounterNative .cc-change-summary small{display:block;font-size:10px;font-weight:900;color:#667085;margin-bottom:4px}
+#cashCounterNative .cc-change-summary strong{font-size:18px;color:#172033}
+#cashCounterNative .cc-change-summary .cc-change-balance{grid-column:1/-1;text-align:center}
+#cashCounterNative .cc-change-side{border:1px solid #e4e7ec;border-radius:14px;padding:10px;margin-top:9px}
+#cashCounterNative .cc-change-side h3{font-size:14px;margin:0 0 3px;color:#172033}
+#cashCounterNative .cc-change-side p{font-size:10px;color:#667085;margin:0 0 8px}
+#cashCounterNative .cc-change-row{display:grid;grid-template-columns:minmax(80px,1fr) 52px 48px 52px;gap:5px;align-items:center;padding:5px 0;border-bottom:1px solid #eef2f6}
+#cashCounterNative .cc-change-row:last-child{border-bottom:0}
+#cashCounterNative .cc-change-row strong{font-size:12px;color:#172033}
+#cashCounterNative .cc-change-row button{height:38px;border:0;border-radius:9px;color:#fff;font-size:20px;font-weight:900;padding:0}
+#cashCounterNative .cc-change-minus{background:#dc2626}#cashCounterNative .cc-change-plus{background:#0b5ed7}
+#cashCounterNative .cc-change-row input{height:38px!important;min-height:38px!important;padding:3px!important;text-align:center;font-size:16px!important;border-radius:9px!important}
+#cashCounterNative .cc-change-save{width:100%;min-height:50px;border:0;border-radius:12px;background:#0f7b45;color:#fff;font-size:15px;font-weight:900;margin-top:12px}
+#cashCounterNative .cc-change-save:disabled{opacity:.5}
+#cashCounterNative #ccChangeStatus{font-size:12px;line-height:1.4;margin-top:8px;text-align:center;min-height:18px}
+@media(max-width:390px){#cashCounterNative .cc-change-row{grid-template-columns:minmax(70px,1fr) 44px 44px 44px;gap:4px}}
+</style>
+<script id="cc-change-money-script">
+(function(){
+  const root=document.getElementById('cashCounterNative'); if(!root) return;
+  const $=id=>document.getElementById(id);
+  const actions=root.querySelector('.cc-minimal-actions'); if(!actions) return;
+
+  // Replace the old vertical action links with the requested layout.
+  actions.innerHTML=`
+    <div class="cc-action-grid">
+      <button id="ccEditCountMain" class="btn btn-primary" type="button" aria-expanded="false" aria-controls="editInventoryPanel">Edit Count</button>
+      <button id="ccChangeMoneyBtn" class="btn" type="button" aria-expanded="false" aria-controls="ccChangeMoneyPanel">Change Money</button>
+    </div>
+    <div class="cc-secondary-grid">
+      <button id="ccHistoryLink" type="button" aria-expanded="false" aria-controls="historyView">History</button>
+      <button id="ccSettingsGear" type="button" aria-expanded="false" aria-controls="ccSettingsPanel">Settings</button>
+    </div>`;
+  const oldTopSettings=root.querySelector('.cc-heading-row #ccSettingsGear'); if(oldTopSettings) oldTopSettings.remove();
+
+  const panel=document.createElement('section');
+  panel.id='ccChangeMoneyPanel'; panel.hidden=true; panel.setAttribute('role','dialog'); panel.setAttribute('aria-label','Change Money');
+  panel.innerHTML=`<div class="cc-overlay-head"><strong>Change Money</strong><button id="ccChangeClose" class="cc-overlay-close" type="button">Close</button></div>
+    <p class="note" style="margin:0 0 8px">Use this when a customer gives you bills or coins and you give the same value back in different denominations. Cash on Hand, Capital, Earnings, and the total Cash Counter will not change.</p>
+    <div class="cc-change-summary"><div><small>CUSTOMER GIVES YOU</small><strong id="ccChangeReceiveTotal">₱0.00</strong></div><div><small>YOU GIVE CUSTOMER</small><strong id="ccChangeGiveTotal">₱0.00</strong></div><div class="cc-change-balance"><small>DIFFERENCE</small><strong id="ccChangeDifference">₱0.00</strong></div></div>
+    <div class="cc-change-side"><h3>Customer gives you</h3><p>These pieces will be added to your Cash Counter.</p><div id="ccChangeReceiveRows"></div></div>
+    <div class="cc-change-side"><h3>You give customer</h3><p>These pieces will be removed from your Cash Counter.</p><div id="ccChangeGiveRows"></div></div>
+    <button id="ccChangeSave" class="cc-change-save" type="button" disabled>Save Change</button><div id="ccChangeStatus"></div>`;
+  root.appendChild(panel);
+
+  // Settings now behaves exactly like an overlay panel instead of expanding the page.
+  const settings=$('ccSettingsPanel');
+  if(settings){
+    const existing=settings.querySelector('.cc-overlay-head');
+    if(!existing){
+      const head=document.createElement('div'); head.className='cc-overlay-head';
+      head.innerHTML='<strong>Cash Counter Settings</strong><button id="ccSettingsOverlayClose" class="cc-overlay-close" type="button">Close</button>';
+      settings.prepend(head);
+    }
+  }
+
+  const D2=(typeof D!=='undefined'?D:[['1000','₱1,000',1000],['500','₱500',500],['200','₱200',200],['100','₱100',100],['50','₱50',50],['20b','₱20 Bill',20],['20c','₱20 Coin',20],['10','₱10',10],['5','₱5',5],['1','₱1',1]]);
+  const fmt=n=>'₱'+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+  function rows(kind){return D2.map(d=>`<div class="cc-change-row"><strong>${d[1]}</strong><button class="cc-change-minus" type="button" data-kind="${kind}" data-key="${d[0]}">−</button><input type="number" min="0" step="1" inputmode="numeric" value="0" data-change-kind="${kind}" data-key="${d[0]}" aria-label="${kind} ${d[1]}"><button class="cc-change-plus" type="button" data-kind="${kind}" data-key="${d[0]}">+</button></div>`).join('')}
+  $('ccChangeReceiveRows').innerHTML=rows('receive'); $('ccChangeGiveRows').innerHTML=rows('give');
+  function readSide(kind){const out={};D2.forEach(d=>{const el=root.querySelector(`input[data-change-kind="${kind}"][data-key="${d[0]}"]`);out[d[0]]=Math.max(0,Math.floor(Number(el&&el.value||0)));});return out}
+  function valueOf(p){return D2.reduce((s,d)=>s+Number(p[d[0]]||0)*Number(d[2]||0),0)}
+  function pendingSync(){try{return ['gcash_tracker_pending_tx_v1','gcash_tracker_pending_cash_pieces_v1','gcashTrackerOfflineActionsV1'].some(k=>{const q=JSON.parse(localStorage.getItem(k)||'[]');return Array.isArray(q)&&q.length;});}catch(e){return true}}
+  function refresh(){const r=valueOf(readSide('receive')),g=valueOf(readSide('give')),diff=r-g;$('ccChangeReceiveTotal').textContent=fmt(r);$('ccChangeGiveTotal').textContent=fmt(g);$('ccChangeDifference').textContent=(diff>0?'+':'')+fmt(diff);$('ccChangeDifference').style.color=Math.abs(diff)<.005?'#0f7b45':'#c62828';$('ccChangeSave').disabled=!(r>0&&g>0&&Math.abs(diff)<.005)}
+  function reset(){root.querySelectorAll('input[data-change-kind]').forEach(i=>i.value='0');$('ccChangeStatus').textContent='';refresh()}
+  function closeOverlays(){panel.hidden=true;panel.classList.remove('cc-overlay-open');if(settings){settings.hidden=true;settings.classList.remove('cc-overlay-open')}const bd=$('ccPanelBackdrop');if(bd)bd.hidden=true;document.documentElement.style.overflow='';$('ccChangeMoneyBtn').setAttribute('aria-expanded','false');$('ccSettingsGear').setAttribute('aria-expanded','false')}
+  function openOverlay(which){if(typeof setCashCounterMode==='function')setCashCounterMode('cash');closeOverlays();const bd=$('ccPanelBackdrop');if(bd)bd.hidden=false;document.documentElement.style.overflow='hidden';which.hidden=false;which.classList.add('cc-overlay-open')}
+  $('ccChangeMoneyBtn').addEventListener('click',()=>{reset();openOverlay(panel);$('ccChangeMoneyBtn').setAttribute('aria-expanded','true')});
+  $('ccChangeClose').addEventListener('click',closeOverlays);
+  $('ccSettingsGear').addEventListener('click',()=>{openOverlay(settings);$('ccSettingsGear').setAttribute('aria-expanded','true')});
+  const sc=$('ccSettingsOverlayClose'); if(sc)sc.addEventListener('click',closeOverlays);
+  const oldClose=$('ccSettingsClose'); if(oldClose)oldClose.addEventListener('click',closeOverlays);
+  const bd=$('ccPanelBackdrop'); if(bd)bd.addEventListener('click',closeOverlays);
+  root.addEventListener('click',e=>{const b=e.target.closest('.cc-change-plus,.cc-change-minus');if(!b)return;const i=root.querySelector(`input[data-change-kind="${b.dataset.kind}"][data-key="${b.dataset.key}"]`);if(!i)return;let n=Math.max(0,Math.floor(Number(i.value||0)));n=b.classList.contains('cc-change-plus')?n+1:Math.max(0,n-1);i.value=n;refresh()});
+  root.addEventListener('input',e=>{if(e.target.matches('input[data-change-kind]'))refresh()});
+  $('ccChangeSave').addEventListener('click',()=>{
+    if(!navigator.onLine){$('ccChangeStatus').textContent='Connect to the internet before using Change Money.';$('ccChangeStatus').style.color='#c62828';return}
+    if(pendingSync()){$('ccChangeStatus').textContent='Wait until Pending Sync is empty before changing denominations.';$('ccChangeStatus').style.color='#c62828';return}
+    if(!current||!current.pieces){$('ccChangeStatus').textContent='Cash Counter inventory is not loaded.';$('ccChangeStatus').style.color='#c62828';return}
+    const receive=readSide('receive'),give=readSide('give'),rt=valueOf(receive),gt=valueOf(give);
+    if(rt<=0||gt<=0||Math.abs(rt-gt)>.005){$('ccChangeStatus').textContent='The customer-gives total and you-give total must be exactly the same.';$('ccChangeStatus').style.color='#c62828';return}
+    const next={...current.pieces};
+    for(const d of D2){const k=d[0],have=Math.max(0,Math.floor(Number(next[k]||0))),out=Math.max(0,Math.floor(Number(give[k]||0)));if(out>have){$('ccChangeStatus').textContent='Not enough '+d[1]+' pieces in Cash Counter. You have '+have+'.';$('ccChangeStatus').style.color='#c62828';return}next[k]=have-out+Math.max(0,Math.floor(Number(receive[k]||0)))}
+    if(Math.abs(valueOf(next)-valueOf(current.pieces))>.005){$('ccChangeStatus').textContent='Safety check failed: Cash Counter total would change.';$('ccChangeStatus').style.color='#c62828';return}
+    if(!confirm('Save this money change?\n\nCustomer gives: '+fmt(rt)+'\nYou give: '+fmt(gt)+'\n\nTotal Cash Counter will stay the same.'))return;
+    const id='CHANGE_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+    current={...current,pieces:{...next},physicalCash:valueOf(next),physicalTotal:valueOf(next),_localPending:true};
+    try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current))}catch(e){}
+    renderCashCounterInventory(current);renderSummary(current);try{sendCashCounterStatusToTracker()}catch(e){}
+    window.dispatchEvent(new CustomEvent('gcash-queue-offline-action',{detail:{id:id,method:'saveCashCounterChangeMoney',payload:{pieces:{...next}}}}));
+    $('ccChangeStatus').textContent='Change saved. Syncing denomination counts…';$('ccChangeStatus').style.color='#0f7b45';
+    setTimeout(closeOverlays,500);
+  });
+  refresh();
+})();
+</script>
+
 </body>
 </html>
