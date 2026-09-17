@@ -4658,7 +4658,7 @@ body > .hero{
   <section id="tabCashCounterPage" class="app-tab-page">
 
 <div id="cashCounterNative">
-  <div class="cash-counter-native-heading">
+  <div class="cash-counter-native-heading" style="display:none">
     <div class="cc-heading-row"><h2 class="section-title">Cash Counter</h2><button id="ccSettingsGear" type="button" aria-label="Cash Counter settings" aria-expanded="false" aria-controls="ccSettingsPanel">Settings</button></div>
     <p class="note">Count and manage the actual bills and coins in Cash on Hand.</p>
   </div>
@@ -4690,13 +4690,16 @@ body > .hero{
       <button id="ccSettingsBtn" type="button" aria-expanded="false" aria-controls="ccSettingsPanel">Cash Counter Settings</button>
     </div>
     <div id="ccSettingsPanel" class="card" hidden style="margin-top:10px">
-      <div style="font-weight:900;margin-bottom:5px">Cash Counter Settings</div>
-      <p class="note" style="margin:0 0 10px">Back up your saved denomination inventory and full Cash Counter history without changing balances.</p>
-      <button id="ccBackupNowBtn" class="btn btn-secondary" type="button">Backup Cash Counter Now</button>
+      <p class="note" style="margin:0 0 12px">Back up your saved bills and coins, or check your physical cash. Neither action changes your balances.</p>
+      <button id="ccBackupNowBtn" class="btn btn-secondary" type="button">Back Up Cash Counter</button>
       <div id="ccBackupStatus" class="status" role="status" aria-live="polite"></div>
-      <button id="ccSettingsReconcile" class="btn btn-secondary" type="button" style="margin-top:10px">Reconcile / Reset (backup first)</button>
-      <button id="ccSettingsCount" class="btn btn-secondary" type="button" style="margin-top:8px">Count Physical Cash</button>
-      <button id="ccSettingsClose" class="btn btn-secondary" type="button" style="margin-top:8px">Close Settings</button>
+      <button id="ccSettingsCount" class="btn btn-secondary" type="button" style="margin-top:10px">Count Physical Cash</button>
+      <details id="ccAdvancedSettings" style="margin-top:20px;border-top:1px solid #d9e5f5;padding-top:12px">
+        <summary style="cursor:pointer;font-weight:700;color:#52647d">Advanced: Reconcile or reset</summary>
+        <p class="note" style="margin:10px 0">Only use this if your saved denomination inventory needs to be replaced after a full physical count. Back up first. This is not needed for everyday transactions.</p>
+        <button id="ccSettingsReconcile" class="btn btn-secondary" type="button">Continue to Reconcile / Reset</button>
+      </details>
+      <button id="ccSettingsClose" type="button" hidden aria-hidden="true" tabindex="-1">Close Settings</button>
     </div>
 
     <div id="countView" class="view active">
@@ -9682,6 +9685,7 @@ $('ccSettingsClose').addEventListener('click',()=>{
   syncCashCounterToggleLabels();
 });
 $('ccSettingsReconcile').addEventListener('click',()=>{
+  if(!confirm('Advanced action: continue to the reconciliation screen? Do not reset unless you have backed up and physically counted every bill and coin. No data will change by opening the screen.'))return;
   $('ccSettingsClose').click();
   $('editInventoryBtn').click();
 });
