@@ -10191,7 +10191,11 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   actionGrid.append(changeButton,settingsButton);
   const secondary=document.createElement('div');secondary.className='cc-secondary-grid';
   secondary.appendChild(editButton);
+  // The original navigation-label updater still expects ccHistoryLink to exist.
+  // Keep that hidden button attached so opening either overlay cannot throw.
+  const hiddenHistory=$('ccHistoryLink');
   actions.replaceChildren(actionGrid,secondary);
+  if(hiddenHistory){hiddenHistory.hidden=true;hiddenHistory.style.display='none';actions.appendChild(hiddenHistory);}
   oldSettings.remove();
 
   const panel=document.createElement('section');
