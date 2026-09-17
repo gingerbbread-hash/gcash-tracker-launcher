@@ -5668,6 +5668,40 @@ body > .hero{
     return tx.walletDestination || 'GCash';
   }
 
+  const ccHistoryDenoms=[['1000','₱1,000'],['500','₱500'],['200','₱200'],['100','₱100'],['50','₱50'],['20b','₱20 bill'],['20c','₱20 coin'],['10','₱10'],['5','₱5'],['1','₱1']];
+  let ccHistoryRecords=[];
+  function ccPieceLines(pieces){
+    return ccHistoryDenoms.filter(([k])=>Number(pieces&&pieces[k]||0)>0).map(([k,label])=>`<span class="cc-hist-piece">${Number(pieces[k])} × ${label}</span>`).join('');
+  }
+  function ccPiecePanel(record){
+    if(!record || !record.details)return '';
+    const d=record.details;
+    const received=ccPieceLines(d.received),given=ccPieceLines(d.given||d.change);
+    if(!received&&!given)return '';
+    return `<div class="cc-hist-pieces">${received?`<div class="cc-hist-side cc-hist-in"><strong>Money received</strong><div>${received}</div></div>`:''}${given?`<div class="cc-hist-side cc-hist-out"><strong>Money given</strong><div>${given}</div></div>`:''}</div>`;
+  }
+  function ccLinkedRecord(tx){
+    return ccHistoryRecords.find(r=>r&&r.details&&String(r.details.transactionId||'')===String(tx.id||'')&&['TRANSACTION_PIECES','CASH_IN_PIECES','CASH_OUT_PIECES'].includes(r.action));
+  }
+  function ccExchangeCard(r){
+    const d=r.details||{};
+    return `<div class="history-tx-card cc-exchange-card"><div class="history-tx-head"><div><span class="badge cc-exchange-badge">Change Money</span><div class="history-tx-meta">${escapeHtml(r.date||'')}</div></div><strong class="history-tx-amount">${money(Number(d.receivedTotal||r.receiveTotal||0))}</strong></div>${ccPiecePanel(r)}<div class="cc-hist-zero">Net change to total cash: ${money(0)}</div></div>`;
+  }
+  function ccLoadMainHistory(){
+    try{
+      const cached=JSON.parse(localStorage.getItem('gcashCashCounterHistoryV1')||'[]');
+      if(Array.isArray(cached))ccHistoryRecords=cached;
+    }catch(e){}
+    if(calSelected)renderDay(calSelected);
+    if(!navigator.onLine)return;
+    google.script.run.withSuccessHandler(rows=>{
+      if(!Array.isArray(rows))return;
+      ccHistoryRecords=rows;
+      try{localStorage.setItem('gcashCashCounterHistoryV1',JSON.stringify(rows));}catch(e){}
+      if(calSelected)renderDay(calSelected);
+    }).withFailureHandler(()=>{}).getCashCountHistory();
+  }
+  window.__loadGcashCashPiecesHistory=ccLoadMainHistory;
   function renderDay(key){
     const box=$('calDetail'); if(!box)return;
     const txs=history.filter(x=>dateKey(x)===key);
@@ -5691,9 +5725,11 @@ body > .hero{
         </div>
       </div>
 
+      ${ccPiecePanel(ccLinkedRecord(tx))}
       <div class="history-tx-actions"><button class="link-btn" type="button" data-cal-remove="${escapeHtml(tx.id)}">Remove</button></div>
     </div>`).join('');
-    box.innerHTML=`<div class="cal-head"><strong>${d.toLocaleDateString('en-PH',{month:'long',day:'numeric',year:'numeric'})}</strong><strong>${money(fees)} fees</strong></div><div class="cal-sum"><div class="metric"><small>Cash In</small><strong>${money(ci)}</strong></div><div class="metric"><small>Cash Out</small><strong>${money(co)}</strong></div></div>${txhtml||'<div class="history-empty">No transactions on this date.</div>'}`;
+    const exchangeHtml=ccHistoryRecords.filter(r=>r&&r.action==='CHANGE_MONEY'&&r.details&&r.details.dateKey===key).map(ccExchangeCard).join('');
+    box.innerHTML=`<div class="cal-head"><strong>${d.toLocaleDateString('en-PH',{month:'long',day:'numeric',year:'numeric'})}</strong><strong>${money(fees)} fees</strong></div><div class="cal-sum"><div class="metric"><small>Cash In</small><strong>${money(ci)}</strong></div><div class="metric"><small>Cash Out</small><strong>${money(co)}</strong></div></div>${txhtml}${exchangeHtml}${(!txhtml&&!exchangeHtml)?'<div class="history-empty">No transactions on this date.</div>':''}`;
     box.style.display='block';
   }
   function renderCalendar(){
@@ -6596,7 +6632,7 @@ body > .hero{
       }else if(a.method==='saveManualCashCounterCorrection'){
         runner.saveManualCashCounterCorrection(a.payload.pieces,a.payload.reason,a.payload.note,a.id);
       }else if(a.method==='saveCashCounterChangeMoney'){
-        runner.saveCashCounterChangeMoney(a.payload.pieces,a.id);
+        runner.saveCashCounterChangeMoney(a.payload.pieces,a.id,a.payload.exchange||null);
       }else if(a.method==='deleteTransactionBySession'){
         runner.deleteTransactionBySession(getSessionToken(),a.payload.id);
       }else{
@@ -8417,6 +8453,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
     if(name==='history' && typeof window.__renderGcashHistory==='function'){
       window.__renderGcashHistory();
+      if(typeof window.__loadGcashCashPiecesHistory==='function')window.__loadGcashCashPiecesHistory();
     }
     if(name==='home' && typeof window.refreshTodayDashboard==='function'){
       window.refreshTodayDashboard();
@@ -10119,6 +10156,16 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
 #cashCounterNative .cc-change-save:disabled{opacity:.5}
 #cashCounterNative #ccChangeStatus{font-size:12px;line-height:1.4;margin-top:8px;text-align:center;min-height:18px}
 @media(max-width:390px){#cashCounterNative .cc-change-row{grid-template-columns:minmax(70px,1fr) 44px 44px 44px;gap:4px}}
+#cashCounterNative #historyView,#cashCounterNative #historyModeBtn,#cashCounterNative #ccHistoryLink{display:none!important}
+#cashCounterNative .cc-secondary-grid{grid-template-columns:1fr!important}
+#tabHistoryPage .cc-hist-pieces{display:grid;gap:7px;margin-top:10px}
+#tabHistoryPage .cc-hist-side{padding:10px;border-radius:13px;background:#edf5ff;color:#172033;font-size:12px}
+#tabHistoryPage .cc-hist-side strong{display:block;margin-bottom:6px}
+#tabHistoryPage .cc-hist-side.cc-hist-in{background:#eaf8f0}
+#tabHistoryPage .cc-hist-side.cc-hist-out{background:#fff0f0}
+#tabHistoryPage .cc-hist-piece{display:inline-block;background:#fff;border-radius:8px;padding:6px 9px;margin:3px 5px 0 0;font-weight:800}
+#tabHistoryPage .cc-exchange-badge{background:#efe6ff;color:#6f42c1}
+#tabHistoryPage .cc-hist-zero{background:#edf5ff;border-radius:10px;padding:9px;margin-top:7px;text-align:center;font-size:12px;font-weight:800}
 </style>
 <script id="cc-change-money-script">
 (function(){
@@ -10129,12 +10176,11 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   // Replace the old vertical action links with the requested layout.
   actions.innerHTML=`
     <div class="cc-action-grid">
-      <button id="ccEditCountMain" class="btn btn-primary" type="button" aria-expanded="false" aria-controls="editInventoryPanel">Edit Count</button>
       <button id="ccChangeMoneyBtn" class="btn" type="button" aria-expanded="false" aria-controls="ccChangeMoneyPanel">Change Money</button>
+      <button id="ccSettingsGear" class="btn" type="button" aria-expanded="false" aria-controls="ccSettingsPanel">Settings</button>
     </div>
     <div class="cc-secondary-grid">
-      <button id="ccHistoryLink" type="button" aria-expanded="false" aria-controls="historyView">History</button>
-      <button id="ccSettingsGear" type="button" aria-expanded="false" aria-controls="ccSettingsPanel">Settings</button>
+      <button id="ccEditCountMain" class="btn btn-primary" type="button" aria-expanded="false" aria-controls="editInventoryPanel">Edit Count</button>
     </div>`;
   const oldTopSettings=root.querySelector('.cc-heading-row #ccSettingsGear'); if(oldTopSettings) oldTopSettings.remove();
 
@@ -10192,7 +10238,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     current={...current,pieces:{...next},physicalCash:valueOf(next),physicalTotal:valueOf(next),_localPending:true};
     try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current))}catch(e){}
     renderCashCounterInventory(current);renderSummary(current);try{sendCashCounterStatusToTracker()}catch(e){}
-    window.dispatchEvent(new CustomEvent('gcash-queue-offline-action',{detail:{id:id,method:'saveCashCounterChangeMoney',payload:{pieces:{...next}}}}));
+    window.dispatchEvent(new CustomEvent('gcash-queue-offline-action',{detail:{id:id,method:'saveCashCounterChangeMoney',payload:{pieces:{...next},exchange:{received:{...receive},given:{...give}}}}}));
     $('ccChangeStatus').textContent='Change saved. Syncing denomination counts…';$('ccChangeStatus').style.color='#0f7b45';
     setTimeout(closeOverlays,500);
   });
