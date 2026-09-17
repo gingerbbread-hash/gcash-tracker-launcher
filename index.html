@@ -10173,16 +10173,26 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   const $=id=>document.getElementById(id);
   const actions=root.querySelector('.cc-minimal-actions'); if(!actions) return;
 
-  // Replace the old vertical action links with the requested layout.
-  actions.innerHTML=`
-    <div class="cc-action-grid">
-      <button id="ccChangeMoneyBtn" class="btn" type="button" aria-expanded="false" aria-controls="ccChangeMoneyPanel">Change Money</button>
-      <button id="ccSettingsGear" class="btn" type="button" aria-expanded="false" aria-controls="ccSettingsPanel">Settings</button>
-    </div>
-    <div class="cc-secondary-grid">
-      <button id="ccEditCountMain" class="btn btn-primary" type="button" aria-expanded="false" aria-controls="editInventoryPanel">Edit Count</button>
-    </div>`;
-  const oldTopSettings=root.querySelector('.cc-heading-row #ccSettingsGear'); if(oldTopSettings) oldTopSettings.remove();
+  // Preserve the original Edit Count node: its working click handler was
+  // attached before this script. Replacing it with innerHTML detached it.
+  const editButton=$('ccEditCountMain');
+  const oldSettings=$('ccSettingsGear');
+  // Clone Settings to avoid conflicting old inline-panel and new overlay handlers.
+  const settingsButton=oldSettings.cloneNode(false);
+  settingsButton.textContent='Settings';
+  settingsButton.className='btn';
+  settingsButton.setAttribute('aria-controls','ccSettingsPanel');
+  const actionGrid=document.createElement('div');
+  actionGrid.className='cc-action-grid';
+  const changeButton=document.createElement('button');
+  changeButton.id='ccChangeMoneyBtn';changeButton.className='btn';changeButton.type='button';
+  changeButton.textContent='Change Money';changeButton.setAttribute('aria-expanded','false');
+  changeButton.setAttribute('aria-controls','ccChangeMoneyPanel');
+  actionGrid.append(changeButton,settingsButton);
+  const secondary=document.createElement('div');secondary.className='cc-secondary-grid';
+  secondary.appendChild(editButton);
+  actions.replaceChildren(actionGrid,secondary);
+  oldSettings.remove();
 
   const panel=document.createElement('section');
   panel.id='ccChangeMoneyPanel'; panel.hidden=true; panel.setAttribute('role','dialog'); panel.setAttribute('aria-label','Change Money');
