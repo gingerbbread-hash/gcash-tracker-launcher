@@ -4774,6 +4774,15 @@ body > .hero{
 #cashCounterNative #editInventoryGrid .cc-piece-amount small{display:block;font-size:13px;line-height:1.2;color:#0b5ed7;font-weight:900;white-space:nowrap}
 #cashCounterNative #editInventoryGrid .edit-qty input{opacity:1!important;visibility:visible!important;color:#172033!important;background:#fff!important;-webkit-text-fill-color:#172033!important}
 </style>
+<style id="cc-middle-piece-count-fix">
+#cashCounterNative #editInventoryGrid .cc-text-row{grid-template-columns:minmax(76px,1fr) minmax(132px,1.4fr) minmax(82px,1fr)!important;gap:5px!important;padding:9px 6px!important}
+#cashCounterNative #editInventoryGrid .edit-qty{display:grid!important;grid-template-columns:36px minmax(48px,1fr) 36px!important;gap:3px!important;padding:0!important;width:100%!important;min-width:0!important}
+#cashCounterNative #editInventoryGrid .edit-piece-middle{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;min-width:0!important;gap:0!important}
+#cashCounterNative #editInventoryGrid .edit-piece-middle input{display:block!important;width:100%!important;max-width:none!important;min-width:0!important;height:31px!important;min-height:31px!important;padding:0 1px!important;text-align:center!important;font-size:17px!important;font-weight:900!important;opacity:1!important;color:#172033!important;-webkit-text-fill-color:#172033!important;appearance:textfield!important;-moz-appearance:textfield!important}
+#cashCounterNative #editInventoryGrid .edit-piece-middle input::-webkit-inner-spin-button,#cashCounterNative #editInventoryGrid .edit-piece-middle input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+#cashCounterNative #editInventoryGrid .edit-piece-middle small{font-size:10px!important;font-weight:800!important;color:#0b5ed7!important;line-height:1.1!important}
+#cashCounterNative #editInventoryGrid .cc-piece-amount{display:block!important;text-align:right!important;font-size:13px!important;overflow-wrap:anywhere}
+</style>
 </head>
 <body>
 <main class="app">
@@ -4967,7 +4976,7 @@ body > .hero{
             <option value="Physical recount">Physical recount</option>
             <option value="Counting error">Counting error</option>
             <option value="Missing or extra change">Missing or extra change</option>
-            <option value="Wrong denomination recorded">Wrong denomination recorded</option>
+            <option value="Wrong denomination recorded">Wrong denomination recorded</option><option value="Correction of cash denomination count">Correction of cash denomination count</option>
             <option value="Old balance correction">Old balance correction</option>
             <option value="Other">Other</option>
           </select>
@@ -9128,7 +9137,7 @@ function renderCashCounterInventory(x){
 function renderInventoryEditor(preserve){
   const pieces=preserve||((current&&current.pieces)||{});
   const selected=D.filter(d=>Number(pieces[d[0]]||0)>0);
-  $('editInventoryGrid').innerHTML=`<div class="cc-text-rows">${selected.map(d=>`<div class="cc-text-row"><strong><span class="peso-denom-label">${window.pesoDenominationIcon(d[0])}<span>${d[1]}</span></span></strong><div class="edit-qty"><button type="button" class="edit-minus" data-key="${d[0]}">−</button><input type="number" min="0" step="1" inputmode="numeric" data-edit-key="${d[0]}" value="${Math.floor(Number(pieces[d[0]]||0))}" aria-label="${d[1]} quantity"><button type="button" class="edit-plus" data-key="${d[0]}">+</button></div><strong class="cc-piece-amount"><span data-edit-sub="${d[0]}">${money(Number(pieces[d[0]]||0)*d[2])}</span><small data-edit-piece-count="${d[0]}">${Math.floor(Number(pieces[d[0]]||0))} ${Math.floor(Number(pieces[d[0]]||0))===1?'piece':'pieces'}</small></strong></div>`).join('')||'<p class="note">No denominations added yet.</p>'}</div><div class="cc-add-line"><select id="ccAddEditDenom" aria-label="Choose denomination"><option value="">Add denomination…</option>${D.filter(d=>!selected.some(a=>a[0]===d[0])).map(d=>`<option value="${d[0]}">${d[1]}</option>`).join('')}</select><button type="button" id="ccAddEditBtn" class="btn btn-secondary">Add</button></div>`;
+  $('editInventoryGrid').innerHTML=`<div class="cc-text-rows">${selected.map(d=>`<div class="cc-text-row"><strong><span class="peso-denom-label">${window.pesoDenominationIcon(d[0])}<span>${d[1]}</span></span></strong><div class="edit-qty"><button type="button" class="edit-minus" data-key="${d[0]}">−</button><span class="edit-piece-middle"><input type="number" min="0" step="1" inputmode="numeric" data-edit-key="${d[0]}" value="${Math.floor(Number(pieces[d[0]]||0))}" aria-label="${d[1]} quantity"><small>pcs</small></span><button type="button" class="edit-plus" data-key="${d[0]}">+</button></div><strong class="cc-piece-amount"><span data-edit-sub="${d[0]}">${money(Number(pieces[d[0]]||0)*d[2])}</span></strong></div>`).join('')||'<p class="note">No denominations added yet.</p>'}</div><div class="cc-add-line"><select id="ccAddEditDenom" aria-label="Choose denomination"><option value="">Add denomination…</option>${D.filter(d=>!selected.some(a=>a[0]===d[0])).map(d=>`<option value="${d[0]}">${d[1]}</option>`).join('')}</select><button type="button" id="ccAddEditBtn" class="btn btn-secondary">Add</button></div>`;
 }
 
 function readInventoryEditor(){
