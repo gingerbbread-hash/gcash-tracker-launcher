@@ -4567,6 +4567,38 @@ body > .hero{
 #cashCounterNative .cc-overlay-head strong{font-size:17px;color:#172033}
 #cashCounterNative .cc-overlay-close{border:1px solid #d9e5f5;background:#f1f6fc;color:#173b68;border-radius:10px;padding:9px 13px;font-size:13px;font-weight:850;min-height:40px}
 </style>
+<script id="compact-denomination-icons">
+(function(){
+  const meta={
+    '1000':['1000','#1972c6','bill'],'500':['500','#dca923','bill'],
+    '200':['200','#33966b','bill'],'100':['100','#8061bd','bill'],
+    '50':['50','#d45b65','bill'],'20b':['20','#d88943','bill'],
+    '20c':['20','#a4aab3','coin'],'10':['10','#c2a16b','coin'],
+    '5':['5','#b3a176','coin'],'1':['1','#a7adb5','coin']
+  };
+  function icon(key){
+    const m=meta[String(key)];if(!m)return '';
+    const [value,color,kind]=m;
+    const svg=kind==='bill'
+      ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 36"><rect x="1" y="1" width="68" height="34" rx="4" fill="${color}"/><rect x="5" y="5" width="60" height="26" rx="2" fill="#fff" opacity=".18"/><circle cx="35" cy="18" r="11" fill="#fff" opacity=".27"/><text x="35" y="22" font-family="Arial,sans-serif" font-size="${value.length>3?11:15}" font-weight="bold" text-anchor="middle" fill="#fff">${value}</text><path d="M8 10h10M52 26h10" stroke="#fff" opacity=".65" stroke-width="2"/></svg>`
+      : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16" fill="${color}" stroke="#777" stroke-width="1"/><circle cx="18" cy="18" r="12.5" fill="none" stroke="#fff" opacity=".65"/><text x="18" y="22" font-family="Arial,sans-serif" font-size="${value.length>1?13:16}" font-weight="bold" text-anchor="middle" fill="#fff">${value}</text></svg>`;
+    return `<img class="peso-thumb ${kind}" alt="" aria-hidden="true" loading="lazy" decoding="async" src="data:image/svg+xml,${encodeURIComponent(svg)}">`;
+  }
+  window.pesoDenominationIcon=icon;
+})();
+</script>
+<style id="compact-denomination-icon-style">
+.peso-denom-label{display:inline-flex;align-items:center;gap:5px;min-width:0;vertical-align:middle}
+.peso-thumb{display:inline-block;width:30px;height:19px;object-fit:contain;flex:none;vertical-align:middle}
+.peso-thumb.coin{width:19px;height:19px}
+.cc-hist-piece .peso-thumb{width:24px;height:16px}.cc-hist-piece .peso-thumb.coin{width:16px;height:16px}
+.cash-piece-title .peso-thumb{width:28px;height:17px}.cash-piece-title .peso-thumb.coin{width:17px;height:17px}
+#cashCounterNative .cc-text-row .peso-denom-label{white-space:nowrap;gap:4px}
+#cashCounterNative .cc-text-row .peso-thumb{width:25px;height:16px}
+#cashCounterNative .cc-text-row .peso-thumb.coin{width:16px;height:16px}
+#cashCounterNative .cc-change-row .peso-thumb{width:25px;height:16px}
+#cashCounterNative .cc-change-row .peso-thumb.coin{width:16px;height:16px}
+</style>
 </head>
 <body>
 <main class="app">
@@ -5674,7 +5706,7 @@ body > .hero{
   const ccHistoryDenoms=[['1000','₱1,000'],['500','₱500'],['200','₱200'],['100','₱100'],['50','₱50'],['20b','₱20 bill'],['20c','₱20 coin'],['10','₱10'],['5','₱5'],['1','₱1']];
   let ccHistoryRecords=[];
   function ccPieceLines(pieces){
-    return ccHistoryDenoms.filter(([k])=>Number(pieces&&pieces[k]||0)>0).map(([k,label])=>`<span class="cc-hist-piece">${Number(pieces[k])} × ${label}</span>`).join('');
+    return ccHistoryDenoms.filter(([k])=>Number(pieces&&pieces[k]||0)>0).map(([k,label])=>`<span class="cc-hist-piece">${window.pesoDenominationIcon(k)} ${Number(pieces[k])} × ${label}</span>`).join('');
   }
   function ccPiecePanel(record){
     if(!record || !record.details)return '';
@@ -7627,7 +7659,7 @@ body > .hero{
       const qty=Math.max(0,Math.floor(Number(data[d.key]||0)));
       return `
         <div class="cash-piece-card">
-          <div class="cash-piece-title">${d.label}</div>
+          <div class="cash-piece-title"><span class="peso-denom-label">${window.pesoDenominationIcon(d.key)}<span>${d.label}</span></span></div>
           <div class="cash-piece-controls">
             <button type="button" class="cash-piece-minus" data-piece-key="${d.key}">−</button>
             <input type="number" inputmode="numeric" min="0" step="1"
@@ -8845,7 +8877,7 @@ document.addEventListener('DOMContentLoaded', function(){
 <script id="cash-counter-true-native-script">
 
 const D=[['1000','₱1,000',1000],['500','₱500',500],['200','₱200',200],['100','₱100',100],['50','₱50',50],['20b','₱20 bill',20],['20c','₱20',20],['10','₱10',10],['5','₱5',5],['1','₱1',1]];
-const MONEY_IMAGES={}; // Text-only Cash Counter: no remote denomination photos.
+const MONEY_IMAGES={}; // Visual-only denomination icons; transaction data is unchanged.
 const $=id=>document.getElementById(id);
 const money=v=>'₱'+Number(v||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
 const zero=()=>Object.fromEntries(D.map(d=>[d[0],0]));
@@ -8872,7 +8904,7 @@ function grid(prefix,pieces){
   pieces=pieces||zero();
   const selected=D.filter(d=>Number(pieces[d[0]]||0)>0);
   return `<div class="cc-text-rows">${selected.map(d=>`<div class="cc-text-row">
-    <strong>${d[1]}</strong>
+    <strong><span class="peso-denom-label">${window.pesoDenominationIcon(d[0])}<span>${d[1]}</span></span></strong>
     <div class="qty-control"><button type="button" class="qty-btn" data-action="minus" data-prefix="${prefix}" data-key="${d[0]}">−</button>
     <input class="qty-input" type="number" min="0" step="1" inputmode="numeric" data-prefix="${prefix}" data-key="${d[0]}" value="${Number(pieces[d[0]]||0)}" aria-label="${d[1]} quantity">
     <button type="button" class="qty-btn" data-action="plus" data-prefix="${prefix}" data-key="${d[0]}">+</button></div>
@@ -8907,7 +8939,7 @@ function renderCashCounterInventory(x){
   const pieces=current.pieces||{};
   const rows=D.filter(d=>Number(pieces[d[0]]||0)>0);
   $('cashCounterPiecesList').innerHTML=rows.length
-    ? '<div class="cc-text-rows cc-combined-rows">'+rows.map(d=>`<div class="cc-text-row"><strong>${d[1]}</strong><span>× ${Math.floor(Number(pieces[d[0]]||0))}</span><strong>${money(Number(pieces[d[0]]||0)*d[2])}</strong></div>`).join('')+'</div>'
+    ? '<div class="cc-text-rows cc-combined-rows">'+rows.map(d=>`<div class="cc-text-row"><strong><span class="peso-denom-label">${window.pesoDenominationIcon(d[0])}<span>${d[1]}</span></span></strong><span>× ${Math.floor(Number(pieces[d[0]]||0))}</span><strong>${money(Number(pieces[d[0]]||0)*d[2])}</strong></div>`).join('')+'</div>'
     : '<p class="note">No saved denominations yet. Use Count Physical Cash to enter a count.</p>';
   $('cashCounterInventoryTotal').textContent=money(total(pieces));
   $('cashCounterInventoryTotalBottom').textContent=money(total(pieces));
@@ -8916,7 +8948,7 @@ function renderCashCounterInventory(x){
 function renderInventoryEditor(preserve){
   const pieces=preserve||((current&&current.pieces)||{});
   const selected=D.filter(d=>Number(pieces[d[0]]||0)>0);
-  $('editInventoryGrid').innerHTML=`<div class="cc-text-rows">${selected.map(d=>`<div class="cc-text-row"><strong>${d[1]}</strong><div class="edit-qty"><button type="button" class="edit-minus" data-key="${d[0]}">−</button><input type="number" min="0" step="1" inputmode="numeric" data-edit-key="${d[0]}" value="${Math.floor(Number(pieces[d[0]]||0))}" aria-label="${d[1]} quantity"><button type="button" class="edit-plus" data-key="${d[0]}">+</button></div><strong>${money(Number(pieces[d[0]]||0)*d[2])}</strong></div>`).join('')||'<p class="note">No denominations added yet.</p>'}</div><div class="cc-add-line"><select id="ccAddEditDenom" aria-label="Choose denomination"><option value="">Add denomination…</option>${D.filter(d=>!selected.some(a=>a[0]===d[0])).map(d=>`<option value="${d[0]}">${d[1]}</option>`).join('')}</select><button type="button" id="ccAddEditBtn" class="btn btn-secondary">Add</button></div>`;
+  $('editInventoryGrid').innerHTML=`<div class="cc-text-rows">${selected.map(d=>`<div class="cc-text-row"><strong><span class="peso-denom-label">${window.pesoDenominationIcon(d[0])}<span>${d[1]}</span></span></strong><div class="edit-qty"><button type="button" class="edit-minus" data-key="${d[0]}">−</button><input type="number" min="0" step="1" inputmode="numeric" data-edit-key="${d[0]}" value="${Math.floor(Number(pieces[d[0]]||0))}" aria-label="${d[1]} quantity"><button type="button" class="edit-plus" data-key="${d[0]}">+</button></div><strong>${money(Number(pieces[d[0]]||0)*d[2])}</strong></div>`).join('')||'<p class="note">No denominations added yet.</p>'}</div><div class="cc-add-line"><select id="ccAddEditDenom" aria-label="Choose denomination"><option value="">Add denomination…</option>${D.filter(d=>!selected.some(a=>a[0]===d[0])).map(d=>`<option value="${d[0]}">${d[1]}</option>`).join('')}</select><button type="button" id="ccAddEditBtn" class="btn btn-secondary">Add</button></div>`;
 }
 
 function readInventoryEditor(){
@@ -10225,7 +10257,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
 
   const D2=(typeof D!=='undefined'?D:[['1000','₱1,000',1000],['500','₱500',500],['200','₱200',200],['100','₱100',100],['50','₱50',50],['20b','₱20 Bill',20],['20c','₱20 Coin',20],['10','₱10',10],['5','₱5',5],['1','₱1',1]]);
   const fmt=n=>'₱'+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
-  function rows(kind){return D2.map(d=>`<div class="cc-change-row"><strong>${d[1]}</strong><button class="cc-change-minus" type="button" data-kind="${kind}" data-key="${d[0]}">−</button><input type="number" min="0" step="1" inputmode="numeric" value="0" data-change-kind="${kind}" data-key="${d[0]}" aria-label="${kind} ${d[1]}"><button class="cc-change-plus" type="button" data-kind="${kind}" data-key="${d[0]}">+</button></div>`).join('')}
+  function rows(kind){return D2.map(d=>`<div class="cc-change-row"><strong><span class="peso-denom-label">${window.pesoDenominationIcon(d[0])}<span>${d[1]}</span></span></strong><button class="cc-change-minus" type="button" data-kind="${kind}" data-key="${d[0]}">−</button><input type="number" min="0" step="1" inputmode="numeric" value="0" data-change-kind="${kind}" data-key="${d[0]}" aria-label="${kind} ${d[1]}"><button class="cc-change-plus" type="button" data-kind="${kind}" data-key="${d[0]}">+</button></div>`).join('')}
   $('ccChangeReceiveRows').innerHTML=rows('receive'); $('ccChangeGiveRows').innerHTML=rows('give');
   function readSide(kind){const out={};D2.forEach(d=>{const el=root.querySelector(`input[data-change-kind="${kind}"][data-key="${d[0]}"]`);out[d[0]]=Math.max(0,Math.floor(Number(el&&el.value||0)));});return out}
   function valueOf(p){return D2.reduce((s,d)=>s+Number(p[d[0]]||0)*Number(d[2]||0),0)}
