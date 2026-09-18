@@ -7430,83 +7430,64 @@ body > .hero{
     );
   }
 
-  // Keep unresolved entries in place, but do not let one missing parent block all others.
-  const cashPiecesDeferredUntil = new Map();
-  const cashPiecesDenoms = ['1000','500','200','100','50','20b','20c','10','5','1'];
-  function sameCashPieces(a,b){
-    return cashPiecesDenoms.every(k=>Number((a||{})[k]||0)===Number((b||{})[k]||0));
-  }
-  function removeVerifiedCashPieces(payload){
+  // Queue reconciliation: never drop a cash-pieces record without an exact server match.
+  const cashPiecesDeferredUntil=new Map();
+  const cashPiecesDenoms=['1000','500','200','100','50','20b','20c','10','5','1'];
+  const cashPiecesEqual=(a,b)=>cashPiecesDenoms.every(k=>Number((a||{})[k]||0)===Number((b||{})[k]||0));
+  function removeExactQueuedPieces(p){
     const q=loadPendingCashPiecesQueue();
-    const i=q.findIndex(x=>String(x.transactionId||'')===String(payload.transactionId||'') &&
-      sameCashPieces(x.received,payload.received) && sameCashPieces(x.given,payload.given));
+    const i=q.findIndex(x=>String(x.transactionId||'')===String(p.transactionId||'')&&cashPiecesEqual(x.received,p.received)&&cashPiecesEqual(x.given,p.given));
     if(i<0)return false;
-    q.splice(i,1);
-    savePendingCashPiecesQueue(q);
-    cashPiecesDeferredUntil.delete(String(payload.transactionId||''));
-    return true;
+    q.splice(i,1);savePendingCashPiecesQueue(q);cashPiecesDeferredUntil.delete(String(p.transactionId));return true;
   }
   function processPendingCashPiecesQueue(transactionId){
-    if(cashPiecesSyncBusy || !unlocked)return;
-    const all=loadPendingCashPiecesQueue();
-    if(!all.length)return;
+    if(cashPiecesSyncBusy||!unlocked||!navigator.onLine)return;
+    const all=loadPendingCashPiecesQueue();if(!all.length)return;
     const now=Date.now();
-    // Explicit transaction IDs are hints, not a reason to retry a blocked item forever.
-    const eligible=all.filter(x=>x && x.transactionId && !isTransactionStillPending(x.transactionId) &&
-      (cashPiecesDeferredUntil.get(String(x.transactionId))||0)<=now);
-    const payload=(transactionId && eligible.find(x=>String(x.transactionId)===String(transactionId)))||eligible[0];
-    if(!payload){
-      const next=Math.min(...all.map(x=>cashPiecesDeferredUntil.get(String((x||{}).transactionId||''))||now+30000).filter(t=>t>now));
-      setTimeout(()=>processPendingCashPiecesQueue(),Math.max(3000,Math.min(30000,(Number.isFinite(next)?next-now:30000))));
+    const eligible=all.filter(x=>x&&x.transactionId&&!isTransactionStillPending(x.transactionId)&&(cashPiecesDeferredUntil.get(String(x.transactionId))||0)<=now);
+    const p=(transactionId&&eligible.find(x=>String(x.transactionId)===String(transactionId)))||eligible[0];
+    if(!p){
+      const future=all.map(x=>cashPiecesDeferredUntil.get(String((x||{}).transactionId||''))||now+60000).filter(t=>t>now);
+      if(future.length)setTimeout(()=>processPendingCashPiecesQueue(),Math.max(1000,Math.min(60000,Math.min(...future)-now)));
       return;
     }
-    const id=String(payload.transactionId);
-    cashPiecesSyncBusy=true;
-    function defer(message){
-      cashPiecesSyncBusy=false;
-      window.gcashCashPiecesSyncError=message||'Cash pieces need review';
+    const id=String(p.transactionId);cashPiecesSyncBusy=true;
+    function next(){cashPiecesSyncBusy=false;setTimeout(()=>processPendingCashPiecesQueue(),100);}
+    function defer(reason){
+      window.gcashCashPiecesSyncError=reason;
       cashPiecesDeferredUntil.set(id,Date.now()+60000);
       try{renderPendingSyncPanel()}catch(e){}
-      // Try another eligible entry immediately; revisit this one after a minute.
-      setTimeout(()=>processPendingCashPiecesQueue(),100);
+      next();
     }
-    function confirmAlreadyRecorded(){
-      google.script.run.withSuccessHandler(check=>{
-        if(check && check.recorded===true && sameCashPieces(check.received,payload.received) && sameCashPieces(check.given,payload.given)){
-          removeVerifiedCashPieces(payload);
-          cashPiecesSyncBusy=false;
-          cashPiecesRetryDelay=1200;
-          setTimeout(()=>processPendingCashPiecesQueue(),50);
-        }else defer(check && check.recorded?'Saved denominations differ; manual review required.':'Cash pieces could not be verified.');
-      }).withFailureHandler(err=>defer(String((err&&err.message)||err||'Verification failed')))
+    function lookup(done){
+      google.script.run.withSuccessHandler(done).withFailureHandler(e=>defer('Verification unavailable for '+id+': '+String((e&&e.message)||e)))
         .getTransactionCashPiecesBySession(getSessionToken(),id);
     }
-    google.script.run.withSuccessHandler(result=>{
-      // A successful write is authoritative; only remove the unchanged queued payload.
-      removeVerifiedCashPieces(payload);
-      window.gcashCashPiecesSyncError='';
-      cashPiecesSyncBusy=false;
-      cashPiecesRetryDelay=1200;
-      if(typeof window.loadCashCounterLatestStatus==='function')setTimeout(window.loadCashCounterLatestStatus,100);
-      setTimeout(()=>processPendingCashPiecesQueue(),50);
-    }).withFailureHandler(err=>{
-      const msg=String((err&&err.message)||err||'Cash pieces sync failed');
-      if(msg.toLowerCase().includes('already recorded')){confirmAlreadyRecorded();return;}
-      // Lost responses can look like network errors. Verify before retrying a write.
-      if(!msg.toLowerCase().includes('transaction not found')){
-        google.script.run.withSuccessHandler(check=>{
-          if(check && check.recorded===true){
-            if(sameCashPieces(check.received,payload.received)&&sameCashPieces(check.given,payload.given)){
-              removeVerifiedCashPieces(payload);cashPiecesSyncBusy=false;
-              setTimeout(()=>processPendingCashPiecesQueue(),50);
-            }else defer('Saved denominations differ for '+id+'. Manual review required.');
-          }else defer(msg);
-        }).withFailureHandler(()=>defer(msg)).getTransactionCashPiecesBySession(getSessionToken(),id);
+    // Read before writing: a lost response from a previous attempt must not duplicate inventory.
+    lookup(check=>{
+      if(!check||!check.transaction){defer('Cannot verify parent transaction for '+id);return;}
+      if(check.recorded){
+        if(cashPiecesEqual(check.received,p.received)&&cashPiecesEqual(check.given,p.given)){
+          removeExactQueuedPieces(p);window.gcashCashPiecesSyncError='';next();
+        }else defer('Saved denominations differ for '+id+'; review required.');
         return;
       }
-      defer('Parent transaction not found for '+id+'. Entry preserved.');
-    }).recordTransactionCashPiecesBySession(getSessionToken(),{
-      transactionId:id,received:{...(payload.received||{})},given:{...(payload.given||{})}
+      google.script.run.withSuccessHandler(()=>{
+        // Only remove the same unchanged payload after a confirmed successful write.
+        removeExactQueuedPieces(p);window.gcashCashPiecesSyncError='';
+        if(typeof window.loadCashCounterLatestStatus==='function')setTimeout(window.loadCashCounterLatestStatus,100);
+        next();
+      }).withFailureHandler(e=>{
+        const msg=String((e&&e.message)||e||'Cash pieces sync failed');
+        // Even an error may mean the write completed but the response was lost.
+        lookup(verify=>{
+          if(verify&&verify.recorded&&cashPiecesEqual(verify.received,p.received)&&cashPiecesEqual(verify.given,p.given)){
+            removeExactQueuedPieces(p);window.gcashCashPiecesSyncError='';next();
+          }else defer('Cash pieces for '+id+' remain pending: '+msg);
+        });
+      }).recordTransactionCashPiecesBySession(getSessionToken(),{
+        transactionId:id,received:{...(p.received||{})},given:{...(p.given||{})}
+      });
     });
   }
 
@@ -10637,6 +10618,31 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     try{if(typeof renderPendingSyncPanel==='function')renderPendingSyncPanel();if(typeof refreshFastSyncStatus==='function')refreshFastSyncStatus()}catch(e){}
     btn.disabled=false;btn.textContent='Check and clear confirmed copies';
   });
+})();
+</script>
+<script>
+/* Export pending sync records before any manual reconciliation. Read-only. */
+(function(){
+  function setup(){
+    const anchor=document.getElementById('ccSafeSyncRepair')||document.getElementById('verifyCashPiecesBtn');
+    if(!anchor||document.getElementById('exportPendingCashPiecesBackup'))return;
+    const button=document.createElement('button');button.id='exportPendingCashPiecesBackup';button.type='button';
+    button.textContent='Download pending-record backup';button.className='btn btn-secondary';
+    button.style.cssText='display:block;width:100%;margin-top:10px;white-space:normal;height:auto;min-height:44px';
+    anchor.insertAdjacentElement('afterend',button);
+    button.addEventListener('click',()=>{
+      try{
+        const keys=['gcash_tracker_pending_cash_pieces_v1','gcash_tracker_pending_tx_v1','gcashTrackerOfflineActionsV1'];
+        const backup={format:'GCash Tracker pending queues backup',createdAt:new Date().toISOString(),queues:{}};
+        keys.forEach(k=>{backup.queues[k]=JSON.parse(localStorage.getItem(k)||'[]')});
+        const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+        const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;
+        a.download='gcash-pending-backup-'+new Date().toISOString().slice(0,10)+'.json';
+        document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      }catch(e){alert('Backup failed. No data changed: '+e.message)}
+    });
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();
 })();
 </script>
 </body>
