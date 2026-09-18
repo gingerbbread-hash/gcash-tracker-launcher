@@ -6782,7 +6782,7 @@ body > .hero{
     const rows=[];
     actions.forEach(a=>rows.push(`<div class="pending-sync-item"><strong>${escapeHtml(actionLabel(a))}</strong><small>${escapeHtml(new Date(a.queuedAt||Date.now()).toLocaleString())}</small></div>`));
     tx.forEach(a=>rows.push(`<div class="pending-sync-item"><strong>${escapeHtml((a.payload&&a.payload.type)||'Cash transaction')}</strong><small>Transaction waiting for Google Sheets</small></div>`));
-    cp.forEach(a=>rows.push(`<div class="pending-sync-item"><strong>Cash Counter pieces</strong><small>Waiting for transaction/Cash Counter sync</small></div>`));
+    cp.forEach(a=>rows.push(`<div class="pending-sync-item"><strong>Cash Counter pieces</strong><small>Waiting for transaction/Cash Counter sync${window.gcashCashPiecesSyncError?' · Error: '+escapeHtml(window.gcashCashPiecesSyncError):''}</small></div>`));
     list.innerHTML=rows.join('')||'<div class="pending-sync-item"><strong>Nothing waiting to sync.</strong></div>';
   }
 
@@ -7448,6 +7448,7 @@ body > .hero{
           x => String(x.transactionId || '') !== String(payload.transactionId || '')
         );
         savePendingCashPiecesQueue(latest);
+        window.gcashCashPiecesSyncError='';
         cashPiecesSyncBusy = false;
         cashPiecesRetryDelay = 1200;
 
@@ -7471,7 +7472,26 @@ body > .hero{
           return;
         }
 
-        // Keep it queued and retry quickly with a gentle backoff.
+        // A previous attempt may have saved successfully but its response was lost.
+        // Confirm the linked record on the server before removing this local item.
+        if(msg.toLowerCase().includes('already recorded')){
+          google.script.run
+            .withSuccessHandler(check=>{
+              if(check && check.recorded === true){
+                removeQueuedCashPieces(payload.transactionId);
+                cashPiecesRetryDelay = 1200;
+                setTimeout(()=>processPendingCashPiecesQueue(),50);
+              }else{
+                scheduleCashPiecesRetry(payload.transactionId);
+              }
+            })
+            .withFailureHandler(()=>scheduleCashPiecesRetry(payload.transactionId))
+            .getTransactionCashPiecesBySession(getSessionToken(),String(payload.transactionId||''));
+          return;
+        }
+        // Never silently discard an unverified record. Show the server error.
+        window.gcashCashPiecesSyncError=msg||'Cash pieces sync failed';
+        renderPendingSyncPanel();
         scheduleCashPiecesRetry(payload.transactionId);
       })
       .recordTransactionCashPiecesBySession(
