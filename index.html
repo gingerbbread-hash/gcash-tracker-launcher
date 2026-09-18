@@ -4721,6 +4721,53 @@ body > .hero{
   #tabCashCounterPage #cashCounterPiecesList .cc-text-row > strong:last-child { font-size: 10px !important; }
 }
 </style>
+
+<style id="cash-counter-single-row-20260918">
+/* Cash Counter presentation only. History and all transaction/data logic are untouched. */
+@media (max-width:650px){
+  /* Compact the large top Total Cash Counter metric into one horizontal row. */
+  #tabCashCounterPage #ccSummaryCard{padding:0 !important;margin:0 0 5px !important;}
+  #tabCashCounterPage #ccSummaryCard .summary{display:grid !important;grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:5px !important;}
+  #tabCashCounterPage #ccSummaryCard .metric{padding:6px 8px !important;min-height:0 !important;border-radius:11px !important;}
+  #tabCashCounterPage #ccSummaryCard .metric:nth-child(1){grid-column:1/-1 !important;display:flex !important;align-items:center !important;justify-content:space-between !important;gap:8px !important;padding:7px 10px !important;}
+  #tabCashCounterPage #ccSummaryCard .metric:nth-child(1) small{margin:0 !important;font-size:10px !important;line-height:1.1 !important;white-space:nowrap !important;}
+  #tabCashCounterPage #ccSummaryCard .metric:nth-child(1) strong{margin:0 !important;font-size:clamp(18px,5vw,24px) !important;line-height:1 !important;white-space:nowrap !important;}
+  #tabCashCounterPage #ccSummaryCard .metric:nth-child(1) p,
+  #tabCashCounterPage #ccSummaryCard .metric:nth-child(1) .note{display:none !important;}
+  #tabCashCounterPage #ccSummaryCard .metric:nth-child(2),
+  #tabCashCounterPage #ccSummaryCard .metric:nth-child(3){padding:6px 8px !important;}
+  #tabCashCounterPage #ccSummaryCard .metric:nth-child(2) strong,
+  #tabCashCounterPage #ccSummaryCard .metric:nth-child(3) strong{font-size:clamp(15px,4vw,19px) !important;line-height:1.05 !important;}
+
+  /* Saved denominations: exactly one denomination per row. */
+  #tabCashCounterPage #cashCounterInventoryCard{padding:6px !important;margin-bottom:5px !important;}
+  #tabCashCounterPage #cashCounterInventoryCard .today-check-head{margin:0 0 3px !important;}
+  #tabCashCounterPage #cashCounterInventoryCard .today-check-details{margin:0 0 4px !important;font-size:10px !important;}
+  #tabCashCounterPage #cashCounterPiecesList{margin-top:3px !important;}
+  #tabCashCounterPage #cashCounterPiecesList .cc-text-rows{display:grid !important;grid-template-columns:1fr !important;gap:0 !important;}
+  #tabCashCounterPage #cashCounterPiecesList .cc-text-row{display:grid !important;grid-template-columns:minmax(115px,1.15fr) minmax(42px,.45fr) minmax(82px,.8fr) !important;align-items:center !important;gap:5px !important;padding:6px 7px !important;min-height:37px !important;border:0 !important;border-bottom:1px solid #e6edf7 !important;border-radius:0 !important;background:#fff !important;font-size:12px !important;}
+  #tabCashCounterPage #cashCounterPiecesList .cc-text-row:last-child{border-bottom:0 !important;}
+  #tabCashCounterPage #cashCounterPiecesList .cc-text-row > strong:first-child{grid-column:auto !important;display:inline-flex !important;align-items:center !important;gap:4px !important;width:max-content !important;max-width:100% !important;padding:4px 6px !important;font-size:12px !important;line-height:1 !important;white-space:nowrap !important;}
+  #tabCashCounterPage #cashCounterPiecesList .cc-text-row > span{grid-column:auto !important;text-align:center !important;font-size:12px !important;white-space:nowrap !important;}
+  #tabCashCounterPage #cashCounterPiecesList .cc-text-row > strong:last-child{grid-column:auto !important;text-align:right !important;font-size:12px !important;white-space:nowrap !important;}
+  #tabCashCounterPage #cashCounterPiecesList .money-sample{max-width:25px !important;max-height:15px !important;object-fit:contain !important;}
+  #tabCashCounterPage .inventory-total-bar{display:flex !important;align-items:center !important;justify-content:space-between !important;padding:6px 8px !important;margin-top:3px !important;min-height:34px !important;}
+  #tabCashCounterPage .inventory-total-bar strong{font-size:clamp(15px,4vw,19px) !important;}
+
+  /* Keep the three Cash Counter actions compact below the denomination list. */
+  #tabCashCounterPage .cc-minimal-actions,
+  #tabCashCounterPage .cc-simple-actions{gap:5px !important;margin-top:5px !important;margin-bottom:5px !important;}
+  #tabCashCounterPage #ccChangeMoneyBtn,
+  #tabCashCounterPage #ccSettingsGear,
+  #tabCashCounterPage #ccEditCountBtn{min-height:36px !important;height:36px !important;padding:5px 7px !important;font-size:12px !important;border-radius:10px !important;}
+}
+@media (max-width:360px){
+  #tabCashCounterPage #cashCounterPiecesList .cc-text-row{grid-template-columns:minmax(105px,1.1fr) 38px minmax(72px,.75fr) !important;padding:5px !important;font-size:11px !important;}
+  #tabCashCounterPage #cashCounterPiecesList .cc-text-row > strong:first-child,
+  #tabCashCounterPage #cashCounterPiecesList .cc-text-row > span,
+  #tabCashCounterPage #cashCounterPiecesList .cc-text-row > strong:last-child{font-size:11px !important;}
+}
+</style>
 </head>
 <body>
 <main class="app">
