@@ -5141,6 +5141,10 @@ body > .hero{
       <div class="pending-sync-head"><strong>Pending Sync</strong><button id="pendingSyncClose" type="button">Close</button></div>
       <div id="pendingSyncNetwork" class="pending-sync-network"></div>
       <div id="pendingSyncList"></div>
+      <div style="margin-top:12px;padding-top:12px;border-top:1px solid #d9e5f5">
+        <button id="verifyCashPiecesBtn" type="button" style="width:100%;min-height:44px;border:0;border-radius:10px;background:#0b5ed7;color:white;font-weight:800">Verify cash pieces (read-only)</button>
+        <div id="verifyCashPiecesReport" role="status" aria-live="polite" style="font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;margin-top:8px">Checks Google Sheets without deleting or saving anything. Keep this screen open until complete.</div>
+      </div>
     </div>
   </div>
 </section>
@@ -10530,5 +10534,58 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
 })();
 </script>
 
+<script>
+/* Read-only cash-pieces reconciliation. Does not change localStorage or call any write API. */
+(function(){
+  const btn=document.getElementById('verifyCashPiecesBtn');
+  const out=document.getElementById('verifyCashPiecesReport');
+  if(!btn||!out)return;
+  const key='gcash_tracker_pending_cash_pieces_v1';
+  const denoms=['1000','500','200','100','50','20b','20c','10','5','1'];
+  const normalized=p=>denoms.map(k=>Math.max(0,Math.floor(Number((p||{})[k]||0)))).join(',');
+  const short=id=>String(id||'').slice(0,12)+'…';
+  function lookup(id){return new Promise(resolve=>{
+    try{
+      google.script.run.withSuccessHandler(data=>resolve({data}))
+        .withFailureHandler(error=>resolve({error:String((error&&error.message)||error||'Unknown error')}))
+        .getTransactionCashPiecesBySession(typeof getSessionToken==='function'?getSessionToken():'',id);
+    }catch(error){resolve({error:String((error&&error.message)||error)})}
+  })}
+  btn.addEventListener('click',async()=>{
+    if(btn.disabled)return;
+    let pending;
+    try{pending=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(pending))throw Error('Queue is not an array');}
+    catch(e){out.textContent='Cannot read pending cash-pieces queue: '+e.message;return}
+    const snapshot=pending.map(p=>({transactionId:String((p&&p.transactionId)||''),received:p&&p.received,given:p&&p.given}));
+    btn.disabled=true;btn.textContent='Verifying…';
+    const counts={matched:0,missing:0,mismatch:0,error:0,invalid:0};
+    const issues=[];
+    out.textContent='Checking '+snapshot.length+' local cash-pieces entries against Google Sheets, one at a time. No records will be changed.\nChecked: 0/'+snapshot.length;
+    for(let i=0;i<snapshot.length;i++){
+      const item=snapshot[i];
+      if(!item.transactionId){counts.invalid++;issues.push('Entry '+(i+1)+': missing transaction ID');continue}
+      const response=await lookup(item.transactionId);
+      if(response.error){counts.error++;issues.push('Entry '+(i+1)+' '+short(item.transactionId)+': ERROR '+response.error)}
+      else if(!response.data||response.data.recorded!==true){counts.missing++;issues.push('Entry '+(i+1)+' '+short(item.transactionId)+': cash pieces NOT FOUND on server (transaction may exist)')}
+      else if(normalized(response.data.received)!==normalized(item.received)||normalized(response.data.given)!==normalized(item.given)){
+        counts.mismatch++;issues.push('Entry '+(i+1)+' '+short(item.transactionId)+': SERVER PIECES DIFFER from local entry');
+      }else counts.matched++;
+      out.textContent='Checking Google Sheets… '+(i+1)+'/'+snapshot.length+'\nConfirmed matching: '+counts.matched+' · Not found: '+counts.missing+' · Different: '+counts.mismatch+' · Errors: '+counts.error+'\nDo not clear the queue or save another change.';
+    }
+    let remaining='unavailable';
+    try{const q=JSON.parse(localStorage.getItem(key)||'[]');remaining=Array.isArray(q)?q.length:'unreadable'}catch(e){}
+    out.textContent='READ-ONLY VERIFICATION COMPLETE\nLocal cash-pieces entries at start: '+snapshot.length+
+      '\nConfirmed matching on Google Sheets: '+counts.matched+
+      '\nCash pieces not found on server: '+counts.missing+
+      '\nServer pieces differ: '+counts.mismatch+
+      '\nLookup errors: '+counts.error+
+      '\nInvalid local IDs: '+counts.invalid+
+      '\nLocal entries remaining now: '+remaining+
+      '\n\n'+(issues.length?'DETAILS:\n'+issues.join('\n'):'All checked entries match saved cash pieces.')+
+      '\n\nNo entries were deleted or changed by this verification. Take a screenshot of this report.';
+    btn.disabled=false;btn.textContent='Verify cash pieces again (read-only)';
+  });
+})();
+</script>
 </body>
 </html>
