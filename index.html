@@ -4769,6 +4769,11 @@ body > .hero{
   #tabCashCounterPage #cashCounterPiecesList .cc-text-row > strong:last-child{font-size:11px !important;}
 }
 </style>
+<style id="cc-visible-piece-count">
+#cashCounterNative #editInventoryGrid .cc-piece-amount{display:flex;flex-direction:column;align-items:flex-end;gap:5px;min-width:0}
+#cashCounterNative #editInventoryGrid .cc-piece-amount small{display:block;font-size:13px;line-height:1.2;color:#0b5ed7;font-weight:900;white-space:nowrap}
+#cashCounterNative #editInventoryGrid .edit-qty input{opacity:1!important;visibility:visible!important;color:#172033!important;background:#fff!important;-webkit-text-fill-color:#172033!important}
+</style>
 </head>
 <body>
 <main class="app">
@@ -9123,7 +9128,7 @@ function renderCashCounterInventory(x){
 function renderInventoryEditor(preserve){
   const pieces=preserve||((current&&current.pieces)||{});
   const selected=D.filter(d=>Number(pieces[d[0]]||0)>0);
-  $('editInventoryGrid').innerHTML=`<div class="cc-text-rows">${selected.map(d=>`<div class="cc-text-row"><strong><span class="peso-denom-label">${window.pesoDenominationIcon(d[0])}<span>${d[1]}</span></span></strong><div class="edit-qty"><button type="button" class="edit-minus" data-key="${d[0]}">−</button><input type="number" min="0" step="1" inputmode="numeric" data-edit-key="${d[0]}" value="${Math.floor(Number(pieces[d[0]]||0))}" aria-label="${d[1]} quantity"><button type="button" class="edit-plus" data-key="${d[0]}">+</button></div><strong data-edit-sub="${d[0]}">${money(Number(pieces[d[0]]||0)*d[2])}</strong></div>`).join('')||'<p class="note">No denominations added yet.</p>'}</div><div class="cc-add-line"><select id="ccAddEditDenom" aria-label="Choose denomination"><option value="">Add denomination…</option>${D.filter(d=>!selected.some(a=>a[0]===d[0])).map(d=>`<option value="${d[0]}">${d[1]}</option>`).join('')}</select><button type="button" id="ccAddEditBtn" class="btn btn-secondary">Add</button></div>`;
+  $('editInventoryGrid').innerHTML=`<div class="cc-text-rows">${selected.map(d=>`<div class="cc-text-row"><strong><span class="peso-denom-label">${window.pesoDenominationIcon(d[0])}<span>${d[1]}</span></span></strong><div class="edit-qty"><button type="button" class="edit-minus" data-key="${d[0]}">−</button><input type="number" min="0" step="1" inputmode="numeric" data-edit-key="${d[0]}" value="${Math.floor(Number(pieces[d[0]]||0))}" aria-label="${d[1]} quantity"><button type="button" class="edit-plus" data-key="${d[0]}">+</button></div><strong class="cc-piece-amount"><span data-edit-sub="${d[0]}">${money(Number(pieces[d[0]]||0)*d[2])}</span><small data-edit-piece-count="${d[0]}">${Math.floor(Number(pieces[d[0]]||0))} ${Math.floor(Number(pieces[d[0]]||0))===1?'piece':'pieces'}</small></strong></div>`).join('')||'<p class="note">No denominations added yet.</p>'}</div><div class="cc-add-line"><select id="ccAddEditDenom" aria-label="Choose denomination"><option value="">Add denomination…</option>${D.filter(d=>!selected.some(a=>a[0]===d[0])).map(d=>`<option value="${d[0]}">${d[1]}</option>`).join('')}</select><button type="button" id="ccAddEditBtn" class="btn btn-secondary">Add</button></div>`;
 }
 
 function readInventoryEditor(){
@@ -9281,6 +9286,8 @@ function refreshInventoryEditorTotals(){
     const denomination=D.find(d=>d[0]===input.dataset.editKey);
     const subtotal=document.querySelector('#editInventoryGrid [data-edit-sub="'+input.dataset.editKey+'"]');
     if(denomination && subtotal) subtotal.textContent=money(Math.max(0,Math.floor(Number(input.value)||0))*denomination[2]);
+    const pieceLabel=document.querySelector('#editInventoryGrid [data-edit-piece-count="'+input.dataset.editKey+'"]');
+    if(pieceLabel){const n=Math.max(0,Math.floor(Number(input.value)||0));pieceLabel.textContent=n+' '+(n===1?'piece':'pieces');}
   });
   refreshReconcilePreview();
 }
