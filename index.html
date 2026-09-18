@@ -945,6 +945,7 @@ body.app-locked #historyToggle{
   .fee-location-actions .fee-location-choice{flex:1;min-width:0}
   .fee-location-choice{min-height:50px;border-radius:13px;border:1px solid var(--border);background:#fff;color:var(--text);font-size:13px;font-weight:900;cursor:pointer}
   .fee-location-choice.gcash{color:#0b57d0;background:#e8f0fe;border-color:#bfd3fb}
+  .fee-location-choice.maribank{color:#344054;background:#f2f4f7;border-color:#d0d5dd}
   .fee-location-choice.maya{color:#067647;background:#ecfdf3;border-color:#abefc6}
   .fee-location-choice.cash{color:#137333;background:#e6f4ea;border-color:#b7dfc4}
 
@@ -5328,6 +5329,7 @@ body > .hero{
       <div class="fee-location-actions">
         <button type="button" id="feeToGcash" class="fee-location-choice gcash">GCash</button>
         <button type="button" id="feeToMaya" class="fee-location-choice maya">Maya</button>
+        <button type="button" id="feeToMaribank" class="fee-location-choice maribank" style="display:none">MariBank</button>
         <button type="button" id="feeToCash" class="fee-location-choice cash">Cash on Hand</button>
       </div>
     </div>
@@ -5641,6 +5643,7 @@ body > .hero{
   const feeLocationStep = $('feeLocationStep');
   const feeToGcash = $('feeToGcash');
   const feeToMaya = $('feeToMaya');
+  const feeToMaribank = $('feeToMaribank');
   const feeToCash = $('feeToCash');
   const cashInWalletStep = $('cashInWalletStep');
   const cashInFromGcash = $('cashInFromGcash');
@@ -7509,6 +7512,7 @@ body > .hero{
 
       if(payload.feeLocation === 'Maya') afterMaya += feeValue;
       else if(payload.feeLocation === 'GCash') afterGcash += feeValue;
+      else if(payload.feeLocation === 'MariBank') afterMaribank += feeValue;
     }else{
       afterCash -= txAmount;
       if(payload.walletDestination === 'MariBank') afterMaribank += txAmount;
@@ -8253,12 +8257,13 @@ body > .hero{
     if(cashOutWalletStep) cashOutWalletStep.classList.remove('show');
 
     const title=feeLocationStep ? feeLocationStep.querySelector('.fee-location-title') : null;
-    if(title) title.textContent='Where did the Cash Out fee go?';
+    if(title) title.textContent=type==='Cash In' ? 'Where did the Cash In fee go?' : 'Where did the Cash Out fee go?';
 
     // Cash Out fee can only go to the SAME digital wallet used for
     // the transaction, or to Cash on Hand.
     if(feeToGcash) feeToGcash.style.display = wallet==='GCash' ? '' : 'none';
     if(feeToMaya) feeToMaya.style.display = wallet==='Maya' ? '' : 'none';
+    if(feeToMaribank) feeToMaribank.style.display = wallet==='MariBank' ? '' : 'none';
     if(feeToCash) feeToCash.style.display = '';
 
     feeLocationStep.classList.add('show');
@@ -8268,8 +8273,8 @@ body > .hero{
     if(!pendingPayload) return;
     selectedTransactionWallet=wallet;
     pendingPayload.walletDestination=wallet;
-    pendingPayload.feeLocation='Cash on Hand';
-    savePendingTransaction('Cash In');
+    pendingPayload.feeLocation='';
+    openFeeLocationStep('Cash In',wallet);
   }
 
   cashInFromGcash.addEventListener('click',()=>chooseCashInWallet('GCash'));
@@ -8297,6 +8302,7 @@ body > .hero{
 
   feeToGcash.addEventListener('click',()=>chooseFeeLocation('GCash'));
   feeToMaya.addEventListener('click',()=>chooseFeeLocation('Maya'));
+  feeToMaribank.addEventListener('click',()=>chooseFeeLocation('MariBank'));
   feeToCash.addEventListener('click',()=>chooseFeeLocation('Cash on Hand'));
 
   cancelTypeChoice.addEventListener('click',()=>{
