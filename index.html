@@ -4784,11 +4784,6 @@ body > .hero{
 #cashCounterNative #editInventoryGrid .edit-piece-middle small{font-size:10px!important;font-weight:800!important;color:#0b5ed7!important;line-height:1.1!important}
 #cashCounterNative #editInventoryGrid .cc-piece-amount{display:block!important;text-align:right!important;font-size:13px!important;overflow-wrap:anywhere}
 </style>
-<style id="disable-change-money-ui">
-/* Change Money retired by request. Preserve historical records and pending sync data. */
-#cashCounterNative #ccChangeMoneyBtn,
-#cashCounterNative #ccChangeMoneyPanel { display:none !important; }
-</style>
 </head>
 <body>
 <main class="app">
@@ -4899,12 +4894,6 @@ body > .hero{
     <div class="cc-minimal-actions">
       <button id="ccEditCountMain" class="btn btn-primary" type="button" aria-expanded="false" aria-controls="editInventoryPanel">Edit Count</button>
       <button id="ccHistoryLink" class="cc-history-link" type="button" aria-expanded="false" aria-controls="historyView">View history</button>
-    </div>
-    <div id="ccSyncRepairPanel" style="display:block!important;visibility:visible!important;margin:14px 0;padding:14px;border:2px solid #135bc6;border-radius:12px;background:#f5f9ff;color:#173354">
-      <strong>Cash-pieces sync check</strong>
-      <p style="margin:8px 0;font-size:14px">Checks pending entries against Google Sheets. Clears only exact confirmed copies from this phone. Missing or different entries remain pending.</p>
-      <button id="ccSafeSyncRepair" type="button" style="display:block!important;width:100%;min-height:52px;background:#135bc6;color:white;border:0;border-radius:10px;font-weight:800;font-size:15px">Check and clear confirmed copies</button>
-      <div id="ccSafeSyncReport" role="status" aria-live="polite" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.5;margin-top:10px">This check does not change balances or Google Sheets.</div>
     </div>
     <div class="cash-counter-mode-tabs cc-simple-actions" style="display:none!important" aria-hidden="true">
       <button id="cashCheckModeBtn" class="active" type="button">Saved count</button>
@@ -5152,10 +5141,6 @@ body > .hero{
       <div class="pending-sync-head"><strong>Pending Sync</strong><button id="pendingSyncClose" type="button">Close</button></div>
       <div id="pendingSyncNetwork" class="pending-sync-network"></div>
       <div id="pendingSyncList"></div>
-      <div style="margin-top:12px;padding-top:12px;border-top:1px solid #d9e5f5">
-        <button id="verifyCashPiecesBtn" type="button" style="width:100%;min-height:44px;border:0;border-radius:10px;background:#0b5ed7;color:white;font-weight:800">Verify cash pieces (read-only)</button>
-        <div id="verifyCashPiecesReport" role="status" aria-live="polite" style="font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;margin-top:8px">Checks Google Sheets without deleting or saving anything. Keep this screen open until complete.</div>
-      </div>
     </div>
   </div>
 </section>
@@ -6797,7 +6782,7 @@ body > .hero{
     const rows=[];
     actions.forEach(a=>rows.push(`<div class="pending-sync-item"><strong>${escapeHtml(actionLabel(a))}</strong><small>${escapeHtml(new Date(a.queuedAt||Date.now()).toLocaleString())}</small></div>`));
     tx.forEach(a=>rows.push(`<div class="pending-sync-item"><strong>${escapeHtml((a.payload&&a.payload.type)||'Cash transaction')}</strong><small>Transaction waiting for Google Sheets</small></div>`));
-    cp.forEach(a=>rows.push(`<div class="pending-sync-item"><strong>Cash Counter pieces</strong><small>Waiting for transaction/Cash Counter sync${window.gcashCashPiecesSyncError?' · Error: '+escapeHtml(window.gcashCashPiecesSyncError):''}</small></div>`));
+    cp.forEach(a=>rows.push(`<div class="pending-sync-item"><strong>Cash Counter pieces</strong><small>Waiting for transaction/Cash Counter sync</small></div>`));
     list.innerHTML=rows.join('')||'<div class="pending-sync-item"><strong>Nothing waiting to sync.</strong></div>';
   }
 
@@ -7435,65 +7420,68 @@ body > .hero{
     );
   }
 
-  // Queue reconciliation: never drop a cash-pieces record without an exact server match.
-  const cashPiecesDeferredUntil=new Map();
-  const cashPiecesDenoms=['1000','500','200','100','50','20b','20c','10','5','1'];
-  const cashPiecesEqual=(a,b)=>cashPiecesDenoms.every(k=>Number((a||{})[k]||0)===Number((b||{})[k]||0));
-  function removeExactQueuedPieces(p){
-    const q=loadPendingCashPiecesQueue();
-    const i=q.findIndex(x=>String(x.transactionId||'')===String(p.transactionId||'')&&cashPiecesEqual(x.received,p.received)&&cashPiecesEqual(x.given,p.given));
-    if(i<0)return false;
-    q.splice(i,1);savePendingCashPiecesQueue(q);cashPiecesDeferredUntil.delete(String(p.transactionId));return true;
-  }
   function processPendingCashPiecesQueue(transactionId){
-    if(cashPiecesSyncBusy||!unlocked||!navigator.onLine)return;
-    const all=loadPendingCashPiecesQueue();if(!all.length)return;
-    const now=Date.now();
-    const eligible=all.filter(x=>x&&x.transactionId&&!isTransactionStillPending(x.transactionId)&&(cashPiecesDeferredUntil.get(String(x.transactionId))||0)<=now);
-    const p=(transactionId&&eligible.find(x=>String(x.transactionId)===String(transactionId)))||eligible[0];
-    if(!p){
-      const future=all.map(x=>cashPiecesDeferredUntil.get(String((x||{}).transactionId||''))||now+60000).filter(t=>t>now);
-      if(future.length)setTimeout(()=>processPendingCashPiecesQueue(),Math.max(1000,Math.min(60000,Math.min(...future)-now)));
-      return;
+    if(cashPiecesSyncBusy || !unlocked) return;
+
+    const all = loadPendingCashPiecesQueue();
+    if(!all.length) return;
+
+    let idx = 0;
+    if(transactionId){
+      idx = all.findIndex(
+        x => String(x.transactionId || '') === String(transactionId || '')
+      );
+      if(idx < 0) return;
     }
-    const id=String(p.transactionId);cashPiecesSyncBusy=true;
-    function next(){cashPiecesSyncBusy=false;setTimeout(()=>processPendingCashPiecesQueue(),100);}
-    function defer(reason){
-      window.gcashCashPiecesSyncError=reason;
-      cashPiecesDeferredUntil.set(id,Date.now()+60000);
-      try{renderPendingSyncPanel()}catch(e){}
-      next();
-    }
-    function lookup(done){
-      google.script.run.withSuccessHandler(done).withFailureHandler(e=>defer('Verification unavailable for '+id+': '+String((e&&e.message)||e)))
-        .getTransactionCashPiecesBySession(getSessionToken(),id);
-    }
-    // Read before writing: a lost response from a previous attempt must not duplicate inventory.
-    lookup(check=>{
-      if(!check||!check.transaction){defer('Cannot verify parent transaction for '+id);return;}
-      if(check.recorded){
-        if(cashPiecesEqual(check.received,p.received)&&cashPiecesEqual(check.given,p.given)){
-          removeExactQueuedPieces(p);window.gcashCashPiecesSyncError='';next();
-        }else defer('Saved denominations differ for '+id+'; review required.');
-        return;
-      }
-      google.script.run.withSuccessHandler(()=>{
-        // Only remove the same unchanged payload after a confirmed successful write.
-        removeExactQueuedPieces(p);window.gcashCashPiecesSyncError='';
-        if(typeof window.loadCashCounterLatestStatus==='function')setTimeout(window.loadCashCounterLatestStatus,100);
-        next();
-      }).withFailureHandler(e=>{
-        const msg=String((e&&e.message)||e||'Cash pieces sync failed');
-        // Even an error may mean the write completed but the response was lost.
-        lookup(verify=>{
-          if(verify&&verify.recorded&&cashPiecesEqual(verify.received,p.received)&&cashPiecesEqual(verify.given,p.given)){
-            removeExactQueuedPieces(p);window.gcashCashPiecesSyncError='';next();
-          }else defer('Cash pieces for '+id+' remain pending: '+msg);
-        });
-      }).recordTransactionCashPiecesBySession(getSessionToken(),{
-        transactionId:id,received:{...(p.received||{})},given:{...(p.given||{})}
-      });
-    });
+
+    const payload = all[idx];
+
+    // The backend can only save denominations after the parent transaction
+    // already exists in Google Sheets.
+    if(isTransactionStillPending(payload.transactionId)) return;
+
+    cashPiecesSyncBusy = true;
+
+    google.script.run
+      .withSuccessHandler(result=>{
+        const latest = loadPendingCashPiecesQueue().filter(
+          x => String(x.transactionId || '') !== String(payload.transactionId || '')
+        );
+        savePendingCashPiecesQueue(latest);
+        cashPiecesSyncBusy = false;
+        cashPiecesRetryDelay = 1200;
+
+        if(typeof window.loadCashCounterLatestStatus === 'function'){
+          setTimeout(window.loadCashCounterLatestStatus, 100);
+        }
+
+        // Continue with another queued Cash Pieces record if there is one.
+        setTimeout(()=>processPendingCashPiecesQueue(), 50);
+      })
+      .withFailureHandler(err=>{
+        cashPiecesSyncBusy = false;
+
+        const msg = String((err && err.message) || '');
+        // If the transaction is not on the server yet, keep the Cash Pieces safely queued.
+        if(
+          msg.toLowerCase().includes('transaction not found') ||
+          msg.toLowerCase().includes('not found')
+        ){
+          scheduleCashPiecesRetry(payload.transactionId);
+          return;
+        }
+
+        // Keep it queued and retry quickly with a gentle backoff.
+        scheduleCashPiecesRetry(payload.transactionId);
+      })
+      .recordTransactionCashPiecesBySession(
+        getSessionToken(),
+        {
+          transactionId:String(payload.transactionId || ''),
+          received:{...(payload.received || {})},
+          given:{...(payload.given || {})}
+        }
+      );
   }
 
   function loadPendingTxQueue(){
@@ -10474,20 +10462,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   $('ccChangeReceiveRows').innerHTML=rows('receive'); $('ccChangeGiveRows').innerHTML=rows('give');
   function readSide(kind){const out={};D2.forEach(d=>{const el=root.querySelector(`input[data-change-kind="${kind}"][data-key="${d[0]}"]`);out[d[0]]=Math.max(0,Math.floor(Number(el&&el.value||0)));});return out}
   function valueOf(p){return D2.reduce((s,d)=>s+Number(p[d[0]]||0)*Number(d[2]||0),0)}
-  function pendingSyncDetails(){
-    const queues=[['gcash_tracker_pending_tx_v1','transactions'],['gcash_tracker_pending_cash_pieces_v1','cash pieces'],['gcashTrackerOfflineActionsV1','other actions']];
-    const pending=[];
-    for(const [key,label] of queues){
-      try{
-        const raw=localStorage.getItem(key)||'[]';
-        const items=JSON.parse(raw);
-        if(!Array.isArray(items)){pending.push(label+' (unreadable queue)');continue;}
-        if(items.length) pending.push(label+': '+items.length);
-      }catch(e){pending.push(label+' (unreadable queue)');}
-    }
-    return pending;
-  }
-  function pendingSync(){return pendingSyncDetails().length>0}
+  function pendingSync(){try{return ['gcash_tracker_pending_tx_v1','gcash_tracker_pending_cash_pieces_v1','gcashTrackerOfflineActionsV1'].some(k=>{const q=JSON.parse(localStorage.getItem(k)||'[]');return Array.isArray(q)&&q.length;});}catch(e){return true}}
   function refresh(){const r=valueOf(readSide('receive')),g=valueOf(readSide('give')),diff=r-g;$('ccChangeReceiveTotal').textContent=fmt(r);$('ccChangeGiveTotal').textContent=fmt(g);$('ccChangeDifference').textContent=(diff>0?'+':'')+fmt(diff);$('ccChangeDifference').style.color=Math.abs(diff)<.005?'#0f7b45':'#c62828';$('ccChangeSave').disabled=!(r>0&&g>0&&Math.abs(diff)<.005)}
   function reset(){root.querySelectorAll('input[data-change-kind]').forEach(i=>i.value='0');$('ccChangeStatus').textContent='';refresh()}
   function closeOverlays(){panel.hidden=true;panel.classList.remove('cc-overlay-open');if(settings){settings.hidden=true;settings.classList.remove('cc-overlay-open')}const bd=$('ccPanelBackdrop');if(bd)bd.hidden=true;document.documentElement.style.overflow='';$('ccChangeMoneyBtn').setAttribute('aria-expanded','false');$('ccSettingsGear').setAttribute('aria-expanded','false')}
@@ -10502,7 +10477,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   root.addEventListener('input',e=>{if(e.target.matches('input[data-change-kind]'))refresh()});
   $('ccChangeSave').addEventListener('click',()=>{
     if(!navigator.onLine){$('ccChangeStatus').textContent='Connect to the internet before using Change Money.';$('ccChangeStatus').style.color='#c62828';return}
-    if(pendingSync()){$('ccChangeStatus').textContent='Change Money is waiting for pending sync ('+pendingSyncDetails().join(', ')+'). Check Pending Sync on Home. Do not save this change again until it clears.';$('ccChangeStatus').style.color='#c62828';return}
+    if(pendingSync()){$('ccChangeStatus').textContent='Wait until Pending Sync is empty before changing denominations.';$('ccChangeStatus').style.color='#c62828';return}
     if(!current||!current.pieces){$('ccChangeStatus').textContent='Cash Counter inventory is not loaded.';$('ccChangeStatus').style.color='#c62828';return}
     const receive=readSide('receive'),give=readSide('give'),rt=valueOf(receive),gt=valueOf(give);
     if(rt<=0||gt<=0||Math.abs(rt-gt)>.005){$('ccChangeStatus').textContent='The customer-gives total and you-give total must be exactly the same.';$('ccChangeStatus').style.color='#c62828';return}
@@ -10522,133 +10497,5 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
 })();
 </script>
 
-<script>
-/* Read-only cash-pieces reconciliation. Does not change localStorage or call any write API. */
-(function(){
-  const btn=document.getElementById('verifyCashPiecesBtn');
-  const out=document.getElementById('verifyCashPiecesReport');
-  if(!btn||!out)return;
-  const key='gcash_tracker_pending_cash_pieces_v1';
-  const denoms=['1000','500','200','100','50','20b','20c','10','5','1'];
-  const normalized=p=>denoms.map(k=>Math.max(0,Math.floor(Number((p||{})[k]||0)))).join(',');
-  const short=id=>String(id||'').slice(0,12)+'…';
-  function lookup(id){return new Promise(resolve=>{
-    try{
-      google.script.run.withSuccessHandler(data=>resolve({data}))
-        .withFailureHandler(error=>resolve({error:String((error&&error.message)||error||'Unknown error')}))
-        .getTransactionCashPiecesBySession(typeof getSessionToken==='function'?getSessionToken():'',id);
-    }catch(error){resolve({error:String((error&&error.message)||error)})}
-  })}
-  btn.addEventListener('click',async()=>{
-    if(btn.disabled)return;
-    let pending;
-    try{pending=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(pending))throw Error('Queue is not an array');}
-    catch(e){out.textContent='Cannot read pending cash-pieces queue: '+e.message;return}
-    const snapshot=pending.map(p=>({transactionId:String((p&&p.transactionId)||''),received:p&&p.received,given:p&&p.given}));
-    btn.disabled=true;btn.textContent='Verifying…';
-    const counts={matched:0,missing:0,mismatch:0,error:0,invalid:0};
-    const issues=[];
-    out.textContent='Checking '+snapshot.length+' local cash-pieces entries against Google Sheets, one at a time. No records will be changed.\nChecked: 0/'+snapshot.length;
-    for(let i=0;i<snapshot.length;i++){
-      const item=snapshot[i];
-      if(!item.transactionId){counts.invalid++;issues.push('Entry '+(i+1)+': missing transaction ID');continue}
-      const response=await lookup(item.transactionId);
-      if(response.error){counts.error++;issues.push('Entry '+(i+1)+' '+short(item.transactionId)+': ERROR '+response.error)}
-      else if(!response.data||response.data.recorded!==true){counts.missing++;issues.push('Entry '+(i+1)+' '+short(item.transactionId)+': cash pieces NOT FOUND on server (transaction may exist)')}
-      else if(normalized(response.data.received)!==normalized(item.received)||normalized(response.data.given)!==normalized(item.given)){
-        counts.mismatch++;issues.push('Entry '+(i+1)+' '+short(item.transactionId)+': SERVER PIECES DIFFER from local entry');
-      }else counts.matched++;
-      out.textContent='Checking Google Sheets… '+(i+1)+'/'+snapshot.length+'\nConfirmed matching: '+counts.matched+' · Not found: '+counts.missing+' · Different: '+counts.mismatch+' · Errors: '+counts.error+'\nDo not clear the queue or save another change.';
-    }
-    let remaining='unavailable';
-    try{const q=JSON.parse(localStorage.getItem(key)||'[]');remaining=Array.isArray(q)?q.length:'unreadable'}catch(e){}
-    out.textContent='READ-ONLY VERIFICATION COMPLETE\nLocal cash-pieces entries at start: '+snapshot.length+
-      '\nConfirmed matching on Google Sheets: '+counts.matched+
-      '\nCash pieces not found on server: '+counts.missing+
-      '\nServer pieces differ: '+counts.mismatch+
-      '\nLookup errors: '+counts.error+
-      '\nInvalid local IDs: '+counts.invalid+
-      '\nLocal entries remaining now: '+remaining+
-      '\n\n'+(issues.length?'DETAILS:\n'+issues.join('\n'):'All checked entries match saved cash pieces.')+
-      '\n\nNo entries were deleted or changed by this verification. Take a screenshot of this report.';
-    btn.disabled=false;btn.textContent='Verify cash pieces again (read-only)';
-  });
-})();
-</script>
-<script>
-/* Cash-pieces safe reconciliation: only removes locally queued records when
-   server confirms the exact transaction ID and both denomination maps match. */
-(function(){
-  const queueKey='gcash_tracker_pending_cash_pieces_v1';
-  const denoms=['1000','500','200','100','50','20b','20c','10','5','1'];
-  const norm=p=>denoms.map(k=>Math.max(0,Math.floor(Number((p||{})[k]||0)))).join(',');
-  const read=()=>{const q=JSON.parse(localStorage.getItem(queueKey)||'[]');if(!Array.isArray(q))throw Error('Pending queue is not an array');return q};
-  const match=(a,b)=>String(a.transactionId||'')===String(b.transactionId||'')&&norm(a.received)===norm(b.received)&&norm(a.given)===norm(b.given);
-  const lookup=id=>new Promise(resolve=>{
-    try{google.script.run.withSuccessHandler(data=>resolve({data}))
-      .withFailureHandler(error=>resolve({error:String((error&&error.message)||error||'Lookup failed')}))
-      .getTransactionCashPiecesBySession(typeof getSessionToken==='function'?getSessionToken():'',id);
-    }catch(e){resolve({error:String(e.message||e)})}
-  });
-  // Static control lives in Cash Counter markup; no dynamic-button dependency.
-  const btn=document.getElementById('ccSafeSyncRepair');
-  const out=document.getElementById('ccSafeSyncReport');
-  if(!btn||!out)return;
-  btn.addEventListener('click',async()=>{
-    if(btn.disabled)return;
-    let snapshot;
-    try{snapshot=read().map(x=>({...x}));}catch(e){out.textContent='Cannot read queue: '+e.message;return}
-    btn.disabled=true;btn.textContent='Checking Google Sheets…';
-    const stats={confirmed:0,missing:0,different:0,errors:0,changed:0};
-    const issues=[];
-    for(let i=0;i<snapshot.length;i++){
-      const item=snapshot[i],id=String(item.transactionId||'');
-      if(!id){stats.errors++;issues.push('Entry '+(i+1)+': missing transaction ID');continue}
-      const res=await lookup(id);
-      if(res.error){stats.errors++;issues.push('Entry '+(i+1)+': '+res.error)}
-      else if(!res.data||res.data.recorded!==true){stats.missing++;issues.push('Entry '+(i+1)+': no saved cash-pieces record for '+id.slice(0,14))}
-      else if(norm(res.data.received)!==norm(item.received)||norm(res.data.given)!==norm(item.given)){
-        stats.different++;issues.push('Entry '+(i+1)+': saved denominations DIFFER for '+id.slice(0,14));
-      }else{
-        try{
-          const current=read(),index=current.findIndex(x=>match(x,item));
-          if(index>=0){current.splice(index,1);localStorage.setItem(queueKey,JSON.stringify(current));stats.confirmed++}
-          else stats.changed++;
-        }catch(e){stats.errors++;issues.push('Entry '+(i+1)+': could not update local queue: '+e.message)}
-      }
-      out.textContent='Checking '+(i+1)+' / '+snapshot.length+'\nConfirmed copies cleared: '+stats.confirmed+'\nMissing: '+stats.missing+' · Different: '+stats.different+' · Errors: '+stats.errors;
-    }
-    let left='unknown';try{left=read().length}catch(e){}
-    out.textContent='CHECK COMPLETE\nConfirmed exact copies cleared: '+stats.confirmed+'\nNot found on Google Sheets: '+stats.missing+'\nDifferent denominations: '+stats.different+'\nLookup/storage errors: '+stats.errors+'\nChanged during check: '+stats.changed+'\nStill pending on this phone: '+left+'\n\n'+(issues.length?issues.slice(0,8).join('\n'):'No unresolved items detected.')+'\n\nNo Google Sheets records or balances were changed. Do not repeat earlier money changes.';
-    try{if(typeof renderPendingSyncPanel==='function')renderPendingSyncPanel();if(typeof refreshFastSyncStatus==='function')refreshFastSyncStatus()}catch(e){}
-    btn.disabled=false;btn.textContent='Check and clear confirmed copies';
-  });
-})();
-</script>
-<script>
-/* Export pending sync records before any manual reconciliation. Read-only. */
-(function(){
-  function setup(){
-    const anchor=document.getElementById('ccSafeSyncRepair')||document.getElementById('verifyCashPiecesBtn');
-    if(!anchor||document.getElementById('exportPendingCashPiecesBackup'))return;
-    const button=document.createElement('button');button.id='exportPendingCashPiecesBackup';button.type='button';
-    button.textContent='Download pending-record backup';button.className='btn btn-secondary';
-    button.style.cssText='display:block;width:100%;margin-top:10px;white-space:normal;height:auto;min-height:44px';
-    anchor.insertAdjacentElement('afterend',button);
-    button.addEventListener('click',()=>{
-      try{
-        const keys=['gcash_tracker_pending_cash_pieces_v1','gcash_tracker_pending_tx_v1','gcashTrackerOfflineActionsV1'];
-        const backup={format:'GCash Tracker pending queues backup',createdAt:new Date().toISOString(),queues:{}};
-        keys.forEach(k=>{backup.queues[k]=JSON.parse(localStorage.getItem(k)||'[]')});
-        const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
-        const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;
-        a.download='gcash-pending-backup-'+new Date().toISOString().slice(0,10)+'.json';
-        document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
-      }catch(e){alert('Backup failed. No data changed: '+e.message)}
-    });
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();
-})();
-</script>
 </body>
 </html>
