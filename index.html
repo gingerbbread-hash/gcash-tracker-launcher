@@ -10587,5 +10587,58 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   });
 })();
 </script>
+<script>
+/* Cash-pieces safe reconciliation: only removes locally queued records when
+   server confirms the exact transaction ID and both denomination maps match. */
+(function(){
+  const queueKey='gcash_tracker_pending_cash_pieces_v1';
+  const denoms=['1000','500','200','100','50','20b','20c','10','5','1'];
+  const norm=p=>denoms.map(k=>Math.max(0,Math.floor(Number((p||{})[k]||0)))).join(',');
+  const read=()=>{const q=JSON.parse(localStorage.getItem(queueKey)||'[]');if(!Array.isArray(q))throw Error('Pending queue is not an array');return q};
+  const match=(a,b)=>String(a.transactionId||'')===String(b.transactionId||'')&&norm(a.received)===norm(b.received)&&norm(a.given)===norm(b.given);
+  const lookup=id=>new Promise(resolve=>{
+    try{google.script.run.withSuccessHandler(data=>resolve({data}))
+      .withFailureHandler(error=>resolve({error:String((error&&error.message)||error||'Lookup failed')}))
+      .getTransactionCashPiecesBySession(typeof getSessionToken==='function'?getSessionToken():'',id);
+    }catch(e){resolve({error:String(e.message||e)})}
+  });
+  const target=document.getElementById('ccChangeMoneyBtn');
+  if(!target)return;
+  const box=document.createElement('div');
+  box.style.cssText='margin:12px 0;padding:12px;border:1px solid #bfd3ee;border-radius:12px;background:#f5f9ff;color:#173354';
+  box.innerHTML='<strong>Cash-pieces sync repair</strong><p style="margin:6px 0;font-size:13px">Checks each pending entry against Google Sheets. Removes only exact confirmed copies from the phone queue; leaves missing or different entries untouched.</p><button id="ccSafeSyncRepair" type="button" style="min-height:46px;width:100%;background:#135bc6;color:#fff;border:0;border-radius:9px;font-weight:700">Check and clear confirmed copies</button><div id="ccSafeSyncReport" role="status" aria-live="polite" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.5;margin-top:9px"></div>';
+  target.parentNode.insertBefore(box,target.nextSibling);
+  const btn=box.querySelector('#ccSafeSyncRepair'),out=box.querySelector('#ccSafeSyncReport');
+  btn.addEventListener('click',async()=>{
+    if(btn.disabled)return;
+    let snapshot;
+    try{snapshot=read().map(x=>({...x}));}catch(e){out.textContent='Cannot read queue: '+e.message;return}
+    btn.disabled=true;btn.textContent='Checking Google Sheets…';
+    const stats={confirmed:0,missing:0,different:0,errors:0,changed:0};
+    const issues=[];
+    for(let i=0;i<snapshot.length;i++){
+      const item=snapshot[i],id=String(item.transactionId||'');
+      if(!id){stats.errors++;issues.push('Entry '+(i+1)+': missing transaction ID');continue}
+      const res=await lookup(id);
+      if(res.error){stats.errors++;issues.push('Entry '+(i+1)+': '+res.error)}
+      else if(!res.data||res.data.recorded!==true){stats.missing++;issues.push('Entry '+(i+1)+': no saved cash-pieces record for '+id.slice(0,14))}
+      else if(norm(res.data.received)!==norm(item.received)||norm(res.data.given)!==norm(item.given)){
+        stats.different++;issues.push('Entry '+(i+1)+': saved denominations DIFFER for '+id.slice(0,14));
+      }else{
+        try{
+          const current=read(),index=current.findIndex(x=>match(x,item));
+          if(index>=0){current.splice(index,1);localStorage.setItem(queueKey,JSON.stringify(current));stats.confirmed++}
+          else stats.changed++;
+        }catch(e){stats.errors++;issues.push('Entry '+(i+1)+': could not update local queue: '+e.message)}
+      }
+      out.textContent='Checking '+(i+1)+' / '+snapshot.length+'\nConfirmed copies cleared: '+stats.confirmed+'\nMissing: '+stats.missing+' · Different: '+stats.different+' · Errors: '+stats.errors;
+    }
+    let left='unknown';try{left=read().length}catch(e){}
+    out.textContent='CHECK COMPLETE\nConfirmed exact copies cleared: '+stats.confirmed+'\nNot found on Google Sheets: '+stats.missing+'\nDifferent denominations: '+stats.different+'\nLookup/storage errors: '+stats.errors+'\nChanged during check: '+stats.changed+'\nStill pending on this phone: '+left+'\n\n'+(issues.length?issues.slice(0,8).join('\n'):'No unresolved items detected.')+'\n\nNo Google Sheets records or balances were changed. Do not repeat earlier money changes.';
+    try{if(typeof renderPendingSyncPanel==='function')renderPendingSyncPanel();if(typeof refreshFastSyncStatus==='function')refreshFastSyncStatus()}catch(e){}
+    btn.disabled=false;btn.textContent='Check and clear confirmed copies';
+  });
+})();
+</script>
 </body>
 </html>
