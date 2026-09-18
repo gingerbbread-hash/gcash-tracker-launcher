@@ -4784,6 +4784,11 @@ body > .hero{
 #cashCounterNative #editInventoryGrid .edit-piece-middle small{font-size:10px!important;font-weight:800!important;color:#0b5ed7!important;line-height:1.1!important}
 #cashCounterNative #editInventoryGrid .cc-piece-amount{display:block!important;text-align:right!important;font-size:13px!important;overflow-wrap:anywhere}
 </style>
+<style id="disable-change-money-ui">
+/* Change Money retired by request. Preserve historical records and pending sync data. */
+#cashCounterNative #ccChangeMoneyBtn,
+#cashCounterNative #ccChangeMoneyPanel { display:none !important; }
+</style>
 </head>
 <body>
 <main class="app">
