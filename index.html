@@ -4671,6 +4671,56 @@ body > .hero{
   #cashPiecesModal .cash-piece-card {min-height:65px !important;}
 }
 </style>
+
+<style id="responsive-three-tab-fit-20260918">
+/* Presentation only: Home, Wallets and Cash Counter. History is untouched.
+   Allow vertical overflow on short screens instead of clipping actions. */
+@media (max-width: 650px) {
+  #tabHomePage, #tabWalletsPage, #tabCashCounterPage { padding: 5px 7px 85px !important; }
+  body:has(#tabHomePage.active) > .hero,
+  body:has(#tabWalletsPage.active) > .hero,
+  body:has(#tabCashCounterPage.active) > .hero { padding: 8px 10px !important; margin-bottom: 6px !important; min-height: 0 !important; }
+  body:has(#tabHomePage.active) > .hero h1,
+  body:has(#tabWalletsPage.active) > .hero h1,
+  body:has(#tabCashCounterPage.active) > .hero h1 { font-size: clamp(19px,5vw,25px) !important; line-height: 1.1 !important; }
+  #tabHomePage .card, #tabWalletsPage .card, #tabCashCounterPage .card { padding: 7px 9px !important; margin-bottom: 6px !important; }
+  #tabHomePage .section-title, #tabWalletsPage .section-title, #tabCashCounterPage .section-title { font-size: clamp(15px,4vw,19px) !important; margin-bottom: 4px !important; }
+  #tabHomePage .home-balance-strip { gap: 5px !important; margin-bottom: 6px !important; }
+  #tabHomePage .home-balance-mini { padding: 5px 7px !important; min-height: 0 !important; border-radius: 11px !important; }
+  #tabHomePage .home-balance-mini strong { font-size: clamp(14px,3.7vw,19px) !important; line-height: 1.15 !important; }
+  #tabHomePage .today-dashboard { padding: 7px !important; }
+  #tabHomePage .today-grid { gap: 5px !important; }
+  #tabHomePage .today-metric { padding: 5px 2px !important; min-height: 0 !important; }
+  #tabHomePage .today-metric strong { font-size: clamp(13px,3.6vw,18px) !important; }
+  #tabHomePage #amount, #tabHomePage #cashReceived { min-height: 42px !important; padding: 6px 9px !important; font-size: 16px !important; }
+  #tabHomePage .actions button { min-height: 42px !important; padding: 6px 7px !important; font-size: clamp(11px,3vw,14px) !important; }
+  #tabWalletsPage .wallet-card, #tabWalletsPage .balance-card { min-height: 0 !important; padding: 6px !important; }
+  #tabWalletsPage .wallet-card strong, #tabWalletsPage .balance-card strong { font-size: clamp(14px,3.8vw,19px) !important; }
+  #tabWalletsPage .note { margin: 3px 0 !important; }
+  #tabWalletsPage button { min-height: 38px !important; padding-top: 6px !important; padding-bottom: 6px !important; }
+  #tabWalletsPage #bloggerPairingCard { margin-top: 6px !important; }
+  #tabCashCounterPage #ccSummaryCard { padding: 6px !important; }
+  #tabCashCounterPage #summary { gap: 5px !important; }
+  #tabCashCounterPage #summary .metric { padding: 6px !important; min-height: 0 !important; }
+  #tabCashCounterPage #summary .metric:first-child strong { font-size: clamp(22px,6vw,31px) !important; }
+  #tabCashCounterPage #cashCounterInventoryCard { padding: 7px !important; }
+  #tabCashCounterPage #cashCounterInventoryCard .today-check-details { margin: 3px 0 !important; font-size: 11px !important; }
+  #tabCashCounterPage #cashCounterPiecesList { margin-top: 5px !important; }
+  #tabCashCounterPage #cashCounterPiecesList .cc-text-rows { display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)) !important; gap: 4px !important; }
+  #tabCashCounterPage #cashCounterPiecesList .cc-text-row { display: grid !important; grid-template-columns: minmax(0,1fr) auto !important; gap: 1px 4px !important; min-width: 0 !important; padding: 5px !important; font-size: 11px !important; border: 1px solid #dce7f6 !important; border-radius: 9px !important; }
+  #tabCashCounterPage #cashCounterPiecesList .cc-text-row > strong:first-child { grid-column: 1 / -1 !important; min-width: 0 !important; font-size: 12px !important; }
+  #tabCashCounterPage #cashCounterPiecesList .cc-text-row > span { text-align: left !important; }
+  #tabCashCounterPage #cashCounterPiecesList .cc-text-row > strong:last-child { font-size: 11px !important; white-space: nowrap !important; }
+  #tabCashCounterPage #cashCounterPiecesList .peso-denom-label { gap: 3px !important; }
+  #tabCashCounterPage #cashCounterPiecesList .money-sample { max-width: 27px !important; max-height: 17px !important; object-fit: contain !important; }
+  #tabCashCounterPage .inventory-total-bar { padding: 6px !important; margin-top: 5px !important; }
+  #tabCashCounterPage #ccChangeMoneyBtn, #tabCashCounterPage #ccSettingsGear, #tabCashCounterPage #ccEditCountBtn { min-height: 40px !important; }
+}
+@media (max-width: 360px) {
+  #tabCashCounterPage #cashCounterPiecesList .cc-text-row { padding: 4px 3px !important; font-size: 10px !important; }
+  #tabCashCounterPage #cashCounterPiecesList .cc-text-row > strong:last-child { font-size: 10px !important; }
+}
+</style>
 </head>
 <body>
 <main class="app">
