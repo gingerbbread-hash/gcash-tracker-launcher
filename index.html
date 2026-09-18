@@ -10462,7 +10462,20 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   $('ccChangeReceiveRows').innerHTML=rows('receive'); $('ccChangeGiveRows').innerHTML=rows('give');
   function readSide(kind){const out={};D2.forEach(d=>{const el=root.querySelector(`input[data-change-kind="${kind}"][data-key="${d[0]}"]`);out[d[0]]=Math.max(0,Math.floor(Number(el&&el.value||0)));});return out}
   function valueOf(p){return D2.reduce((s,d)=>s+Number(p[d[0]]||0)*Number(d[2]||0),0)}
-  function pendingSync(){try{return ['gcash_tracker_pending_tx_v1','gcash_tracker_pending_cash_pieces_v1','gcashTrackerOfflineActionsV1'].some(k=>{const q=JSON.parse(localStorage.getItem(k)||'[]');return Array.isArray(q)&&q.length;});}catch(e){return true}}
+  function pendingSyncDetails(){
+    const queues=[['gcash_tracker_pending_tx_v1','transactions'],['gcash_tracker_pending_cash_pieces_v1','cash pieces'],['gcashTrackerOfflineActionsV1','other actions']];
+    const pending=[];
+    for(const [key,label] of queues){
+      try{
+        const raw=localStorage.getItem(key)||'[]';
+        const items=JSON.parse(raw);
+        if(!Array.isArray(items)){pending.push(label+' (unreadable queue)');continue;}
+        if(items.length) pending.push(label+': '+items.length);
+      }catch(e){pending.push(label+' (unreadable queue)');}
+    }
+    return pending;
+  }
+  function pendingSync(){return pendingSyncDetails().length>0}
   function refresh(){const r=valueOf(readSide('receive')),g=valueOf(readSide('give')),diff=r-g;$('ccChangeReceiveTotal').textContent=fmt(r);$('ccChangeGiveTotal').textContent=fmt(g);$('ccChangeDifference').textContent=(diff>0?'+':'')+fmt(diff);$('ccChangeDifference').style.color=Math.abs(diff)<.005?'#0f7b45':'#c62828';$('ccChangeSave').disabled=!(r>0&&g>0&&Math.abs(diff)<.005)}
   function reset(){root.querySelectorAll('input[data-change-kind]').forEach(i=>i.value='0');$('ccChangeStatus').textContent='';refresh()}
   function closeOverlays(){panel.hidden=true;panel.classList.remove('cc-overlay-open');if(settings){settings.hidden=true;settings.classList.remove('cc-overlay-open')}const bd=$('ccPanelBackdrop');if(bd)bd.hidden=true;document.documentElement.style.overflow='';$('ccChangeMoneyBtn').setAttribute('aria-expanded','false');$('ccSettingsGear').setAttribute('aria-expanded','false')}
@@ -10477,7 +10490,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   root.addEventListener('input',e=>{if(e.target.matches('input[data-change-kind]'))refresh()});
   $('ccChangeSave').addEventListener('click',()=>{
     if(!navigator.onLine){$('ccChangeStatus').textContent='Connect to the internet before using Change Money.';$('ccChangeStatus').style.color='#c62828';return}
-    if(pendingSync()){$('ccChangeStatus').textContent='Wait until Pending Sync is empty before changing denominations.';$('ccChangeStatus').style.color='#c62828';return}
+    if(pendingSync()){$('ccChangeStatus').textContent='Change Money is waiting for pending sync ('+pendingSyncDetails().join(', ')+'). Check Pending Sync on Home. Do not save this change again until it clears.';$('ccChangeStatus').style.color='#c62828';return}
     if(!current||!current.pieces){$('ccChangeStatus').textContent='Cash Counter inventory is not loaded.';$('ccChangeStatus').style.color='#c62828';return}
     const receive=readSide('receive'),give=readSide('give'),rt=valueOf(receive),gt=valueOf(give);
     if(rt<=0||gt<=0||Math.abs(rt-gt)>.005){$('ccChangeStatus').textContent='The customer-gives total and you-give total must be exactly the same.';$('ccChangeStatus').style.color='#c62828';return}
