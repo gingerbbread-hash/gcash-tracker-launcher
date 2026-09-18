@@ -4582,7 +4582,11 @@ body > .hero{
     const svg=kind==='bill'
       ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 70 36"><rect x="1" y="1" width="68" height="34" rx="4" fill="${color}"/><rect x="5" y="5" width="60" height="26" rx="2" fill="#fff" opacity=".18"/><circle cx="35" cy="18" r="11" fill="#fff" opacity=".27"/><text x="35" y="22" font-family="Arial,sans-serif" font-size="${value.length>3?11:15}" font-weight="bold" text-anchor="middle" fill="#fff">${value}</text><path d="M8 10h10M52 26h10" stroke="#fff" opacity=".65" stroke-width="2"/></svg>`
       : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16" fill="${color}" stroke="#777" stroke-width="1"/><circle cx="18" cy="18" r="12.5" fill="none" stroke="#fff" opacity=".65"/><text x="18" y="22" font-family="Arial,sans-serif" font-size="${value.length>1?13:16}" font-weight="bold" text-anchor="middle" fill="#fff">${value}</text></svg>`;
-    return `<img class="peso-thumb ${kind}" alt="" aria-hidden="true" loading="lazy" decoding="async" src="data:image/svg+xml,${encodeURIComponent(svg)}">`;
+    const fallback=`data:image/svg+xml,${encodeURIComponent(svg)}`;
+    // Actual photos must be provided in the money-images folder; do not fabricate currency photos.
+    const filename={1000:'1000-bill.webp',500:'500-bill.webp',200:'200-bill.webp',100:'100-bill.webp',50:'50-bill.webp','20b':'20-bill.webp','20c':'20-coin.webp',10:'10-coin.webp',5:'5-coin.webp',1:'1-coin.webp'}[String(key)];
+    const photo=filename?'money-images/'+filename:'';
+    return `<img class="peso-thumb ${kind}" alt="" aria-hidden="true" loading="lazy" decoding="async" src="${photo||fallback}" onerror="this.onerror=null;this.src='${fallback}'">`;
   }
   window.pesoDenominationIcon=icon;
 })();
