@@ -7430,88 +7430,84 @@ body > .hero{
     );
   }
 
+  // Keep unresolved entries in place, but do not let one missing parent block all others.
+  const cashPiecesDeferredUntil = new Map();
+  const cashPiecesDenoms = ['1000','500','200','100','50','20b','20c','10','5','1'];
+  function sameCashPieces(a,b){
+    return cashPiecesDenoms.every(k=>Number((a||{})[k]||0)===Number((b||{})[k]||0));
+  }
+  function removeVerifiedCashPieces(payload){
+    const q=loadPendingCashPiecesQueue();
+    const i=q.findIndex(x=>String(x.transactionId||'')===String(payload.transactionId||'') &&
+      sameCashPieces(x.received,payload.received) && sameCashPieces(x.given,payload.given));
+    if(i<0)return false;
+    q.splice(i,1);
+    savePendingCashPiecesQueue(q);
+    cashPiecesDeferredUntil.delete(String(payload.transactionId||''));
+    return true;
+  }
   function processPendingCashPiecesQueue(transactionId){
-    if(cashPiecesSyncBusy || !unlocked) return;
-
-    const all = loadPendingCashPiecesQueue();
-    if(!all.length) return;
-
-    let idx = 0;
-    if(transactionId){
-      idx = all.findIndex(
-        x => String(x.transactionId || '') === String(transactionId || '')
-      );
-      if(idx < 0) return;
+    if(cashPiecesSyncBusy || !unlocked)return;
+    const all=loadPendingCashPiecesQueue();
+    if(!all.length)return;
+    const now=Date.now();
+    // Explicit transaction IDs are hints, not a reason to retry a blocked item forever.
+    const eligible=all.filter(x=>x && x.transactionId && !isTransactionStillPending(x.transactionId) &&
+      (cashPiecesDeferredUntil.get(String(x.transactionId))||0)<=now);
+    const payload=(transactionId && eligible.find(x=>String(x.transactionId)===String(transactionId)))||eligible[0];
+    if(!payload){
+      const next=Math.min(...all.map(x=>cashPiecesDeferredUntil.get(String((x||{}).transactionId||''))||now+30000).filter(t=>t>now));
+      setTimeout(()=>processPendingCashPiecesQueue(),Math.max(3000,Math.min(30000,(Number.isFinite(next)?next-now:30000))));
+      return;
     }
-
-    const payload = all[idx];
-
-    // The backend can only save denominations after the parent transaction
-    // already exists in Google Sheets.
-    if(isTransactionStillPending(payload.transactionId)) return;
-
-    cashPiecesSyncBusy = true;
-
-    google.script.run
-      .withSuccessHandler(result=>{
-        const latest = loadPendingCashPiecesQueue().filter(
-          x => String(x.transactionId || '') !== String(payload.transactionId || '')
-        );
-        savePendingCashPiecesQueue(latest);
-        window.gcashCashPiecesSyncError='';
-        cashPiecesSyncBusy = false;
-        cashPiecesRetryDelay = 1200;
-
-        if(typeof window.loadCashCounterLatestStatus === 'function'){
-          setTimeout(window.loadCashCounterLatestStatus, 100);
-        }
-
-        // Continue with another queued Cash Pieces record if there is one.
-        setTimeout(()=>processPendingCashPiecesQueue(), 50);
-      })
-      .withFailureHandler(err=>{
-        cashPiecesSyncBusy = false;
-
-        const msg = String((err && err.message) || '');
-        // If the transaction is not on the server yet, keep the Cash Pieces safely queued.
-        if(
-          msg.toLowerCase().includes('transaction not found') ||
-          msg.toLowerCase().includes('not found')
-        ){
-          scheduleCashPiecesRetry(payload.transactionId);
-          return;
-        }
-
-        // A previous attempt may have saved successfully but its response was lost.
-        // Confirm the linked record on the server before removing this local item.
-        if(msg.toLowerCase().includes('already recorded')){
-          google.script.run
-            .withSuccessHandler(check=>{
-              if(check && check.recorded === true){
-                removeQueuedCashPieces(payload.transactionId);
-                cashPiecesRetryDelay = 1200;
-                setTimeout(()=>processPendingCashPiecesQueue(),50);
-              }else{
-                scheduleCashPiecesRetry(payload.transactionId);
-              }
-            })
-            .withFailureHandler(()=>scheduleCashPiecesRetry(payload.transactionId))
-            .getTransactionCashPiecesBySession(getSessionToken(),String(payload.transactionId||''));
-          return;
-        }
-        // Never silently discard an unverified record. Show the server error.
-        window.gcashCashPiecesSyncError=msg||'Cash pieces sync failed';
-        renderPendingSyncPanel();
-        scheduleCashPiecesRetry(payload.transactionId);
-      })
-      .recordTransactionCashPiecesBySession(
-        getSessionToken(),
-        {
-          transactionId:String(payload.transactionId || ''),
-          received:{...(payload.received || {})},
-          given:{...(payload.given || {})}
-        }
-      );
+    const id=String(payload.transactionId);
+    cashPiecesSyncBusy=true;
+    function defer(message){
+      cashPiecesSyncBusy=false;
+      window.gcashCashPiecesSyncError=message||'Cash pieces need review';
+      cashPiecesDeferredUntil.set(id,Date.now()+60000);
+      try{renderPendingSyncPanel()}catch(e){}
+      // Try another eligible entry immediately; revisit this one after a minute.
+      setTimeout(()=>processPendingCashPiecesQueue(),100);
+    }
+    function confirmAlreadyRecorded(){
+      google.script.run.withSuccessHandler(check=>{
+        if(check && check.recorded===true && sameCashPieces(check.received,payload.received) && sameCashPieces(check.given,payload.given)){
+          removeVerifiedCashPieces(payload);
+          cashPiecesSyncBusy=false;
+          cashPiecesRetryDelay=1200;
+          setTimeout(()=>processPendingCashPiecesQueue(),50);
+        }else defer(check && check.recorded?'Saved denominations differ; manual review required.':'Cash pieces could not be verified.');
+      }).withFailureHandler(err=>defer(String((err&&err.message)||err||'Verification failed')))
+        .getTransactionCashPiecesBySession(getSessionToken(),id);
+    }
+    google.script.run.withSuccessHandler(result=>{
+      // A successful write is authoritative; only remove the unchanged queued payload.
+      removeVerifiedCashPieces(payload);
+      window.gcashCashPiecesSyncError='';
+      cashPiecesSyncBusy=false;
+      cashPiecesRetryDelay=1200;
+      if(typeof window.loadCashCounterLatestStatus==='function')setTimeout(window.loadCashCounterLatestStatus,100);
+      setTimeout(()=>processPendingCashPiecesQueue(),50);
+    }).withFailureHandler(err=>{
+      const msg=String((err&&err.message)||err||'Cash pieces sync failed');
+      if(msg.toLowerCase().includes('already recorded')){confirmAlreadyRecorded();return;}
+      // Lost responses can look like network errors. Verify before retrying a write.
+      if(!msg.toLowerCase().includes('transaction not found')){
+        google.script.run.withSuccessHandler(check=>{
+          if(check && check.recorded===true){
+            if(sameCashPieces(check.received,payload.received)&&sameCashPieces(check.given,payload.given)){
+              removeVerifiedCashPieces(payload);cashPiecesSyncBusy=false;
+              setTimeout(()=>processPendingCashPiecesQueue(),50);
+            }else defer('Saved denominations differ for '+id+'. Manual review required.');
+          }else defer(msg);
+        }).withFailureHandler(()=>defer(msg)).getTransactionCashPiecesBySession(getSessionToken(),id);
+        return;
+      }
+      defer('Parent transaction not found for '+id+'. Entry preserved.');
+    }).recordTransactionCashPiecesBySession(getSessionToken(),{
+      transactionId:id,received:{...(payload.received||{})},given:{...(payload.given||{})}
+    });
   }
 
   function loadPendingTxQueue(){
