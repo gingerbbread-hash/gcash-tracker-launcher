@@ -9123,7 +9123,7 @@ function renderCashCounterInventory(x){
 function renderInventoryEditor(preserve){
   const pieces=preserve||((current&&current.pieces)||{});
   const selected=D.filter(d=>Number(pieces[d[0]]||0)>0);
-  $('editInventoryGrid').innerHTML=`<div class="cc-text-rows">${selected.map(d=>`<div class="cc-text-row"><strong><span class="peso-denom-label">${window.pesoDenominationIcon(d[0])}<span>${d[1]}</span></span></strong><div class="edit-qty"><button type="button" class="edit-minus" data-key="${d[0]}">−</button><input type="number" min="0" step="1" inputmode="numeric" data-edit-key="${d[0]}" value="${Math.floor(Number(pieces[d[0]]||0))}" aria-label="${d[1]} quantity"><button type="button" class="edit-plus" data-key="${d[0]}">+</button></div><strong>${money(Number(pieces[d[0]]||0)*d[2])}</strong></div>`).join('')||'<p class="note">No denominations added yet.</p>'}</div><div class="cc-add-line"><select id="ccAddEditDenom" aria-label="Choose denomination"><option value="">Add denomination…</option>${D.filter(d=>!selected.some(a=>a[0]===d[0])).map(d=>`<option value="${d[0]}">${d[1]}</option>`).join('')}</select><button type="button" id="ccAddEditBtn" class="btn btn-secondary">Add</button></div>`;
+  $('editInventoryGrid').innerHTML=`<div class="cc-text-rows">${selected.map(d=>`<div class="cc-text-row"><strong><span class="peso-denom-label">${window.pesoDenominationIcon(d[0])}<span>${d[1]}</span></span></strong><div class="edit-qty"><button type="button" class="edit-minus" data-key="${d[0]}">−</button><input type="number" min="0" step="1" inputmode="numeric" data-edit-key="${d[0]}" value="${Math.floor(Number(pieces[d[0]]||0))}" aria-label="${d[1]} quantity"><button type="button" class="edit-plus" data-key="${d[0]}">+</button></div><strong data-edit-sub="${d[0]}">${money(Number(pieces[d[0]]||0)*d[2])}</strong></div>`).join('')||'<p class="note">No denominations added yet.</p>'}</div><div class="cc-add-line"><select id="ccAddEditDenom" aria-label="Choose denomination"><option value="">Add denomination…</option>${D.filter(d=>!selected.some(a=>a[0]===d[0])).map(d=>`<option value="${d[0]}">${d[1]}</option>`).join('')}</select><button type="button" id="ccAddEditBtn" class="btn btn-secondary">Add</button></div>`;
 }
 
 function readInventoryEditor(){
@@ -9273,11 +9273,20 @@ document.addEventListener('click',e=>{
   if(plus) n+=1;
   if(minus) n=Math.max(0,n-1);
   input.value=n;
-  refreshReconcilePreview();
+  refreshInventoryEditorTotals();
 });
 
+function refreshInventoryEditorTotals(){
+  document.querySelectorAll('#editInventoryGrid input[data-edit-key]').forEach(input=>{
+    const denomination=D.find(d=>d[0]===input.dataset.editKey);
+    const subtotal=document.querySelector('#editInventoryGrid [data-edit-sub="'+input.dataset.editKey+'"]');
+    if(denomination && subtotal) subtotal.textContent=money(Math.max(0,Math.floor(Number(input.value)||0))*denomination[2]);
+  });
+  refreshReconcilePreview();
+}
+
 $('editInventoryGrid').addEventListener('input',e=>{
-  if(e.target && e.target.matches('input[data-edit-key]')) refreshReconcilePreview();
+  if(e.target && e.target.matches('input[data-edit-key]')) refreshInventoryEditorTotals();
 });
 
 $('saveInventoryCorrection').addEventListener('click',()=>{
