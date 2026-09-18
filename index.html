@@ -4603,6 +4603,74 @@ body > .hero{
 #cashCounterNative .cc-change-row .peso-thumb{width:25px;height:16px}
 #cashCounterNative .cc-change-row .peso-thumb.coin{width:16px;height:16px}
 </style>
+
+<style id="transaction-count-one-screen-v1">
+/* Transaction Count Money only. No changes to Cash Counter, History, or saving. */
+@media (max-width: 600px) and (orientation: portrait) {
+  #cashPiecesModal.cash-pieces-modal {
+    padding: max(4px, env(safe-area-inset-top, 0px)) 7px calc(var(--bottom-nav-h, 66px) + env(safe-area-inset-bottom, 0px) + 4px) !important;
+    overflow: hidden !important;
+    align-items: stretch !important;
+  }
+  #cashPiecesModal .cash-pieces-card {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100%; max-width: 520px;
+    height: 100% !important; max-height: 100% !important;
+    min-height: 0 !important;
+    margin: 0 auto !important;
+    border-radius: 12px;
+  }
+  #cashPiecesModal .cash-pieces-head {
+    position: static; flex: 0 0 auto; padding: 7px 10px 6px;
+  }
+  #cashPiecesModal .cash-pieces-title {font-size: 15px;}
+  #cashPiecesModal .cash-pieces-subtitle {font-size: 9px; margin-top: 2px; line-height: 1.15;}
+  #cashPiecesModal .cash-pieces-x {width: 29px; height: 29px; min-width: 29px;}
+  #cashPiecesModal .cash-pieces-body {
+    display: flex; flex-direction: column; flex: 1 1 auto;
+    min-height: 0 !important; padding: 5px 7px 5px !important;
+    overflow: hidden;
+  }
+  #cashPiecesModal .cash-pieces-summary {gap: 4px; margin-bottom: 4px; flex: 0 0 auto;}
+  #cashPiecesModal .cash-pieces-summary-box {padding: 3px 6px; border-radius: 7px;}
+  #cashPiecesModal .cash-pieces-summary-box small {font-size: 8px;}
+  #cashPiecesModal .cash-pieces-summary-box strong {font-size: 12px; margin-top: 0;}
+  #cashPiecesModal .cash-pieces-summary-box.expected {display:flex; align-items:center; justify-content:space-between; gap:5px;}
+  #cashPiecesModal .cash-pieces-tabs {gap: 4px; margin-bottom: 4px; flex: 0 0 auto;}
+  #cashPiecesModal .cash-pieces-tab {min-height: 33px; font-size: 11px; border-radius: 8px;}
+  #cashPiecesModal .cash-pieces-section-note {padding: 3px 5px; margin-bottom: 4px; font-size: 9px; line-height: 1.15; flex: 0 0 auto;}
+  #cashPiecesModal .cash-pieces-grid {
+    display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(5, minmax(0, 1fr));
+    flex: 1 1 auto; min-height: 0; gap: 4px;
+  }
+  #cashPiecesModal .cash-piece-card {display:flex; flex-direction:column; min-height:0; border-radius:8px;}
+  #cashPiecesModal .cash-piece-title {flex: 1 1 auto; min-height: 0; padding: 1px 2px; font-size: 11px; line-height: 1.1;}
+  #cashPiecesModal .cash-piece-title .peso-denom-label {gap: 3px;}
+  #cashPiecesModal .cash-piece-title .peso-thumb {width: 25px; height: 15px;}
+  #cashPiecesModal .cash-piece-title .peso-thumb.coin {width: 15px; height: 15px;}
+  #cashPiecesModal .cash-piece-controls {flex: 0 0 auto; grid-template-columns: 33px minmax(0,1fr) 33px; gap: 3px; padding: 2px;}
+  #cashPiecesModal .cash-piece-controls button {width: 33px; height: 33px; font-size: 21px; border-radius: 7px;}
+  #cashPiecesModal .cash-piece-controls input {height: 33px !important; min-height: 33px !important; font-size: 16px !important; padding: 0 2px !important; border-radius: 7px;}
+  #cashPiecesModal .cash-piece-subtotal {display:none;}
+  #cashPiecesModal .cash-pieces-live {flex:0 0 auto; margin-top:4px; padding:4px 6px; border-radius:7px;}
+  #cashPiecesModal .cash-pieces-live-row {margin:0; font-size:9px; line-height:1.2;}
+  #cashPiecesModal .cash-pieces-live-row strong {font-size:10px;}
+  #cashPiecesModal .cash-pieces-match {margin-top:3px; padding:3px; font-size:10px; border-radius:6px;}
+  #cashPiecesModal #cashPiecesStatus {flex:0 0 auto; min-height:0; margin-top:1px; font-size:9px;}
+  #cashPiecesModal .cash-pieces-actions {position:static !important; flex:0 0 auto; bottom:auto !important; margin-top:3px; padding:2px 0 0 !important; gap:5px;}
+  #cashPiecesModal .cash-pieces-actions button {height:38px; min-height:38px; font-size:11px;}
+}
+/* Short displays and an open keyboard: allow scrolling rather than hiding controls. */
+@media (max-width:600px) and (max-height:650px), (max-width:600px) and (orientation:landscape) {
+  #cashPiecesModal.cash-pieces-modal {overflow-y:auto !important; align-items:flex-start !important;}
+  #cashPiecesModal .cash-pieces-card {height:auto !important; max-height:none !important;}
+  #cashPiecesModal .cash-pieces-body {overflow:visible !important;}
+  #cashPiecesModal .cash-pieces-grid {grid-template-rows:none !important;}
+  #cashPiecesModal .cash-piece-card {min-height:65px !important;}
+}
+</style>
 </head>
 <body>
 <main class="app">
