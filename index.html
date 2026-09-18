@@ -4895,6 +4895,12 @@ body > .hero{
       <button id="ccEditCountMain" class="btn btn-primary" type="button" aria-expanded="false" aria-controls="editInventoryPanel">Edit Count</button>
       <button id="ccHistoryLink" class="cc-history-link" type="button" aria-expanded="false" aria-controls="historyView">View history</button>
     </div>
+    <div id="ccSyncRepairPanel" style="display:block!important;visibility:visible!important;margin:14px 0;padding:14px;border:2px solid #135bc6;border-radius:12px;background:#f5f9ff;color:#173354">
+      <strong>Cash-pieces sync check</strong>
+      <p style="margin:8px 0;font-size:14px">Checks pending entries against Google Sheets. Clears only exact confirmed copies from this phone. Missing or different entries remain pending.</p>
+      <button id="ccSafeSyncRepair" type="button" style="display:block!important;width:100%;min-height:52px;background:#135bc6;color:white;border:0;border-radius:10px;font-weight:800;font-size:15px">Check and clear confirmed copies</button>
+      <div id="ccSafeSyncReport" role="status" aria-live="polite" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.5;margin-top:10px">This check does not change balances or Google Sheets.</div>
+    </div>
     <div class="cash-counter-mode-tabs cc-simple-actions" style="display:none!important" aria-hidden="true">
       <button id="cashCheckModeBtn" class="active" type="button">Saved count</button>
       <button id="startNewCheck" type="button">Count Physical Cash</button>
@@ -10602,13 +10608,10 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
       .getTransactionCashPiecesBySession(typeof getSessionToken==='function'?getSessionToken():'',id);
     }catch(e){resolve({error:String(e.message||e)})}
   });
-  const target=document.getElementById('ccChangeMoneyBtn');
-  if(!target)return;
-  const box=document.createElement('div');
-  box.style.cssText='margin:12px 0;padding:12px;border:1px solid #bfd3ee;border-radius:12px;background:#f5f9ff;color:#173354';
-  box.innerHTML='<strong>Cash-pieces sync repair</strong><p style="margin:6px 0;font-size:13px">Checks each pending entry against Google Sheets. Removes only exact confirmed copies from the phone queue; leaves missing or different entries untouched.</p><button id="ccSafeSyncRepair" type="button" style="min-height:46px;width:100%;background:#135bc6;color:#fff;border:0;border-radius:9px;font-weight:700">Check and clear confirmed copies</button><div id="ccSafeSyncReport" role="status" aria-live="polite" style="white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.5;margin-top:9px"></div>';
-  target.parentNode.insertBefore(box,target.nextSibling);
-  const btn=box.querySelector('#ccSafeSyncRepair'),out=box.querySelector('#ccSafeSyncReport');
+  // Static control lives in Cash Counter markup; no dynamic-button dependency.
+  const btn=document.getElementById('ccSafeSyncRepair');
+  const out=document.getElementById('ccSafeSyncReport');
+  if(!btn||!out)return;
   btn.addEventListener('click',async()=>{
     if(btn.disabled)return;
     let snapshot;
