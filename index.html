@@ -4912,6 +4912,7 @@ body > .hero{
     <div id="ccSettingsPanel" class="card" hidden style="margin-top:10px">
       <p class="note" style="margin:0 0 12px">Back up your saved bills and coins, or check your physical cash. Neither action changes your balances.</p>
       <button id="ccBackupNowBtn" class="btn btn-secondary" type="button">Back Up Cash Counter</button>
+      <button id="gcashDeviceBackupSettings" class="btn btn-secondary" type="button" style="margin-top:10px">Save Device Records</button>
       <div id="ccBackupStatus" class="status" role="status" aria-live="polite"></div>
       <button id="ccSettingsCount" class="btn btn-secondary" type="button" style="margin-top:10px">Count Physical Cash</button>
       <details id="ccAdvancedSettings" style="margin-top:20px;border-top:1px solid #d9e5f5;padding-top:12px">
@@ -5950,7 +5951,7 @@ body > .hero{
         </div>
       </div>
 
-      ${ccPiecePanel(ccLinkedRecord(tx))}
+      ${ccLinkedRecord(tx) ? ccPiecePanel(ccLinkedRecord(tx)) : '<div class="cc-hist-pieces"><div class="cc-hist-side"><strong>Cash Count: Not recorded</strong></div></div>'}
       <div class="history-tx-actions"><button class="link-btn" type="button" data-cal-remove="${escapeHtml(tx.id)}">Remove</button></div>
     </div>`).join('');
     const exchangeHtml=ccHistoryRecords.filter(r=>r&&r.action==='CHANGE_MONEY'&&r.details&&r.details.dateKey===key).map(ccExchangeCard).join('');
@@ -10590,7 +10591,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     let pane=document.getElementById('gcashRescuePane');if(!pane){
       pane=document.createElement('section');pane.id='gcashRescuePane';
       pane.style.cssText='position:fixed;inset:0;z-index:2147483647;background:#fff;color:#111;padding:18px;overflow:auto;font:16px system-ui';
-      pane.innerHTML='<h2>Save your pending records first</h2><p>Copy the complete text below into Notes or a file on this same device. It may contain private transaction details. Do not clear browser data. This is a backup, not a reset or sync repair.</p><textarea id="gcashRescueText" readonly style="width:100%;height:48vh;font:12px monospace"></textarea><p id="gcashRescueCount"></p><button id="gcashRescueCopy" type="button">Copy backup text</button> <button id="gcashRescueDownload" type="button">Download JSON</button> <button id="gcashRescueClose" type="button">Close</button> <button id="gcashRescueErase" type="button" style="background:#a21d1d;color:white;padding:10px;border:0;border-radius:8px">Permanently clear pending queues</button><p id="gcashRescueStatus" role="status"></p>';
+      pane.innerHTML='<h2>Save device records</h2><p>Copy the complete text below into Notes or a file on this same device. It may contain private transaction details. Do not clear browser data. This is a backup, not a reset or sync repair.</p><textarea id="gcashRescueText" readonly style="width:100%;height:48vh;font:12px monospace"></textarea><p id="gcashRescueCount"></p><button id="gcashRescueCopy" type="button">Copy backup text</button> <button id="gcashRescueDownload" type="button">Download JSON</button> <button id="gcashRescueClose" type="button">Close</button> <button id="gcashRescueErase" type="button" style="background:#a21d1d;color:white;padding:10px;border:0;border-radius:8px">Permanently clear pending queues</button><p id="gcashRescueStatus" role="status"></p>';
       document.body.appendChild(pane);
       pane.querySelector('#gcashRescueClose').onclick=()=>pane.remove();
       pane.querySelector('#gcashRescueErase').onclick=()=>{
@@ -10620,7 +10621,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     pane.querySelector('#gcashRescueText').value=backup();
     pane.querySelector('#gcashRescueCount').textContent=keys.map(k=>{try{const x=JSON.parse(localStorage.getItem(k)||'[]');return k+': '+(Array.isArray(x)?x.length:'saved data')}catch(e){return k+': unreadable JSON (raw text preserved)'}}).join(' | ');
   }
-  function init(){const b=document.createElement('button');b.type='button';b.textContent='SAVE DEVICE RECORDS';b.style.cssText='position:fixed;bottom:82px;right:12px;z-index:2147483646;background:#1b4332;color:white;border:2px solid white;border-radius:12px;padding:12px;font-weight:800;box-shadow:0 2px 12px #0006';b.onclick=show;document.body.appendChild(b)}
+  function init(){const b=document.getElementById('gcashDeviceBackupSettings');if(b)b.addEventListener('click',show)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>
