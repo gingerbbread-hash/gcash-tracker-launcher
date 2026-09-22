@@ -10590,9 +10590,30 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     let pane=document.getElementById('gcashRescuePane');if(!pane){
       pane=document.createElement('section');pane.id='gcashRescuePane';
       pane.style.cssText='position:fixed;inset:0;z-index:2147483647;background:#fff;color:#111;padding:18px;overflow:auto;font:16px system-ui';
-      pane.innerHTML='<h2>Save your pending records first</h2><p>Copy the complete text below into Notes or a file on this same device. It may contain private transaction details. Do not clear browser data. This is a backup, not a reset or sync repair.</p><textarea id="gcashRescueText" readonly style="width:100%;height:48vh;font:12px monospace"></textarea><p id="gcashRescueCount"></p><button id="gcashRescueCopy" type="button">Copy backup text</button> <button id="gcashRescueDownload" type="button">Download JSON</button> <button id="gcashRescueClose" type="button">Close</button><p id="gcashRescueStatus" role="status"></p>';
+      pane.innerHTML='<h2>Save your pending records first</h2><p>Copy the complete text below into Notes or a file on this same device. It may contain private transaction details. Do not clear browser data. This is a backup, not a reset or sync repair.</p><textarea id="gcashRescueText" readonly style="width:100%;height:48vh;font:12px monospace"></textarea><p id="gcashRescueCount"></p><button id="gcashRescueCopy" type="button">Copy backup text</button> <button id="gcashRescueDownload" type="button">Download JSON</button> <button id="gcashRescueClose" type="button">Close</button> <button id="gcashRescueErase" type="button" style="background:#a21d1d;color:white;padding:10px;border:0;border-radius:8px">Permanently clear pending queues</button><p id="gcashRescueStatus" role="status"></p>';
       document.body.appendChild(pane);
       pane.querySelector('#gcashRescueClose').onclick=()=>pane.remove();
+      pane.querySelector('#gcashRescueErase').onclick=()=>{
+        const status=pane.querySelector('#gcashRescueStatus');
+        const eraseKeys=['gcash_tracker_pending_tx_v1','gcash_tracker_pending_cash_pieces_v1','gcashTrackerOfflineActionsV1','gcash_online_unconfirmed_tx_v1'];
+        const counts=[];
+        for(const key of eraseKeys){
+          const raw=localStorage.getItem(key);
+          if(raw===null){counts.push(key+': 0');continue;}
+          let parsed;
+          try{parsed=JSON.parse(raw);}catch(e){status.textContent='Stopped: '+key+' contains unreadable data. No records removed.';return;}
+          if(!Array.isArray(parsed)){status.textContent='Stopped: '+key+' is not a list. No records removed.';return;}
+          counts.push(key+': '+parsed.length);
+        }
+        if(!confirm('Permanently remove ONLY pending/unconfirmed device queues?\n\n'+counts.join('\n')+'\n\nThis does not delete confirmed transactions, Google Sheets rows, Cash Counter history, or change wallet balances. Downloaded backup files must be deleted separately.'))return;
+        if(prompt('Type ERASE to permanently clear these device queues:')!=='ERASE')return;
+        try{
+          eraseKeys.forEach(key=>localStorage.removeItem(key));
+          if(eraseKeys.some(key=>localStorage.getItem(key)!==null))throw new Error('Some queue keys remain.');
+          status.textContent='Pending and unconfirmed device queues cleared. Reloading to refresh the display.';
+          setTimeout(()=>location.reload(),250);
+        }catch(e){status.textContent='Could not complete queue removal: '+String(e.message||e);}
+      };
       pane.querySelector('#gcashRescueCopy').onclick=async()=>{const t=pane.querySelector('textarea');t.select();t.setSelectionRange(0,t.value.length);try{await navigator.clipboard.writeText(t.value);pane.querySelector('#gcashRescueStatus').textContent='Copied. Paste into Notes and save it.'}catch(e){pane.querySelector('#gcashRescueStatus').textContent='Text selected. Use Copy from the selection menu.'}};
       pane.querySelector('#gcashRescueDownload').onclick=()=>{const blob=new Blob([pane.querySelector('textarea').value],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='gcash-device-rescue-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);pane.querySelector('#gcashRescueStatus').textContent='If the download did not appear, use Copy backup text instead.'};
     }
