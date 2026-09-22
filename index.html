@@ -8103,6 +8103,10 @@ body > .hero{
       given:{...cashPiecesGiven}
     };
 
+    if(Math.abs(pieceTotal(cashPiecesReceived)-pieceTotal(cashPiecesGiven)-expectedCashMovement(tx))>0.01){
+      if(stat){stat.textContent='Cash Count does not balance. Nothing recorded.';stat.className='err';}
+      return;
+    }
     save.disabled=true;
 
     // ONLINE-ONLY: transaction is written to Sheets before any local wallet or
@@ -8124,7 +8128,7 @@ body > .hero{
       try{
         const old=JSON.parse(localStorage.getItem(unresolvedKey)||'[]');
         if(!old.some(x=>x.payload&&x.payload.clientTransactionId===payload.clientTransactionId)){
-          old.push({payload,received:{...cashPiecesReceived},given:{...cashPiecesGiven},createdAt:new Date().toISOString()});
+          old.push({payload:{...payload,cashPieces:{received:{...cashPiecesReceived},given:{...cashPiecesGiven}}},received:{...cashPiecesReceived},given:{...cashPiecesGiven},createdAt:new Date().toISOString()});
           localStorage.setItem(unresolvedKey,JSON.stringify(old));
         }
       }catch(e){
@@ -8134,6 +8138,7 @@ body > .hero{
       }
       if(stat){stat.textContent='Waiting for Google Sheets confirmation…';stat.className='';}
       setTransactionSaving(true);
+      payload.cashPieces={received:{...cashPiecesReceived},given:{...cashPiecesGiven}};
       google.script.run.withSuccessHandler(serverTx=>{
         try{
           const old=JSON.parse(localStorage.getItem(unresolvedKey)||'[]');
@@ -8146,25 +8151,11 @@ body > .hero{
         render();saveLocalTrackerCache();
         amount.value='';cashReceived.value='';txType.value='';pendingPayload=null;selectedTransactionWallet='';resetChargeMode();
         delete tx._transactionDraft;delete tx._transactionPayload;
-        // Keep a durable denomination copy until Cash Counter confirms it.
-        queueCashPieces(piecePayload);
-        let localApplied=false;
-        try{
-          localApplied=typeof applyLocalCashPiecesNow==='function' &&
-            applyLocalCashPiecesNow({...piecePayload,expectedCashMovement:expectedCashMovement(serverTx)});
-        }catch(e){}
-        google.script.run.withSuccessHandler(()=>{
-          removeQueuedCashPieces(piecePayload.transactionId);
-          save.disabled=false;setTransactionSaving(false);
-          if(stat){stat.textContent='Transaction and Cash Counter confirmed in Google Sheets.';stat.className='ok';}
-          status.textContent='Saved in Google Sheets.';status.className='status ok';
-          try{window.loadCashCounterLatestStatus&&window.loadCashCounterLatestStatus();}catch(e){}
-          setTimeout(closeCashPiecesRecorder,500);
-        }).withFailureHandler(err=>{
-          save.disabled=false;setTransactionSaving(false);
-          if(stat){stat.textContent='Transaction SAVED in Sheets, but Cash Counter needs review: '+((err&&err.message)||'No confirmation')+'. Do not record it again.';stat.className='err';}
-          status.textContent='Transaction saved; Cash Counter pending review.';status.className='status err';
-        }).recordTransactionCashPiecesBySession(getSessionToken(),piecePayload);
+        save.disabled=false;setTransactionSaving(false);
+        if(stat){stat.textContent='Transaction and Cash Count saved together in Google Sheets.';stat.className='ok';}
+        status.textContent='Saved in Google Sheets.';status.className='status ok';
+        try{window.loadCashCounterLatestStatus&&window.loadCashCounterLatestStatus();}catch(e){}
+        setTimeout(closeCashPiecesRecorder,500);
       }).withFailureHandler(err=>{
         save.disabled=false;setTransactionSaving(false);
         const msg=(err&&err.message)||'No confirmation';
