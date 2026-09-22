@@ -10497,5 +10497,29 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
 })();
 </script>
 
+<script id="gcash-safe-migration-rescue">
+(function(){
+  const keys=['gcash_tracker_pending_tx_v1','gcash_tracker_pending_cash_pieces_v1','gcashTrackerOfflineActionsV1','gcashCashCounterHistoryV1'];
+  function backup(){
+    const records={}; keys.forEach(k=>{records[k]=localStorage.getItem(k)});
+    return JSON.stringify({kind:'gcash-tracker-device-rescue',createdAt:new Date().toISOString(),origin:location.origin,records},null,2);
+  }
+  function show(){
+    let pane=document.getElementById('gcashRescuePane');if(!pane){
+      pane=document.createElement('section');pane.id='gcashRescuePane';
+      pane.style.cssText='position:fixed;inset:0;z-index:2147483647;background:#fff;color:#111;padding:18px;overflow:auto;font:16px system-ui';
+      pane.innerHTML='<h2>Save your pending records first</h2><p>Copy the complete text below into Notes or a file on this same device. It may contain private transaction details. Do not clear browser data. This is a backup, not a reset or sync repair.</p><textarea id="gcashRescueText" readonly style="width:100%;height:48vh;font:12px monospace"></textarea><p id="gcashRescueCount"></p><button id="gcashRescueCopy" type="button">Copy backup text</button> <button id="gcashRescueDownload" type="button">Download JSON</button> <button id="gcashRescueClose" type="button">Close</button><p id="gcashRescueStatus" role="status"></p>';
+      document.body.appendChild(pane);
+      pane.querySelector('#gcashRescueClose').onclick=()=>pane.remove();
+      pane.querySelector('#gcashRescueCopy').onclick=async()=>{const t=pane.querySelector('textarea');t.select();t.setSelectionRange(0,t.value.length);try{await navigator.clipboard.writeText(t.value);pane.querySelector('#gcashRescueStatus').textContent='Copied. Paste into Notes and save it.'}catch(e){pane.querySelector('#gcashRescueStatus').textContent='Text selected. Use Copy from the selection menu.'}};
+      pane.querySelector('#gcashRescueDownload').onclick=()=>{const blob=new Blob([pane.querySelector('textarea').value],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='gcash-device-rescue-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);pane.querySelector('#gcashRescueStatus').textContent='If the download did not appear, use Copy backup text instead.'};
+    }
+    pane.querySelector('#gcashRescueText').value=backup();
+    pane.querySelector('#gcashRescueCount').textContent=keys.map(k=>{try{const x=JSON.parse(localStorage.getItem(k)||'[]');return k+': '+(Array.isArray(x)?x.length:'saved data')}catch(e){return k+': unreadable JSON (raw text preserved)'}}).join(' | ');
+  }
+  function init(){const b=document.createElement('button');b.type='button';b.textContent='SAVE DEVICE RECORDS';b.style.cssText='position:fixed;bottom:82px;right:12px;z-index:2147483646;background:#1b4332;color:white;border:2px solid white;border-radius:12px;padding:12px;font-weight:800;box-shadow:0 2px 12px #0006';b.onclick=show;document.body.appendChild(b)}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
 </body>
 </html>
