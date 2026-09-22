@@ -1370,6 +1370,9 @@ body.app-locked #historyToggle{
     }
     .home-wallet-check.warn strong{color:#b42318 !important}
 
+
+/* Retain historical Change Money entries; hide only the entry control. */
+#ccChangeMoneyBtn,#ccChangeMoneyPanel{display:none!important}
 </style>
 
 <style>
@@ -6776,8 +6779,8 @@ body > .hero{
     btn.style.display=total?'block':'none';
     btn.textContent=total?`Pending Sync (${total})`:'Pending Sync';
     net.innerHTML=navigator.onLine
-      ? 'Internet available. Pending records will sync automatically.'
-      : 'You are offline. Records are safe on this device and will sync when internet returns.';
+      ? 'Older pending records are held for review. They will NOT be resent automatically.'
+      : 'Offline. Older records remain on this device and will NOT be resent automatically.';
 
     const rows=[];
     actions.forEach(a=>rows.push(`<div class="pending-sync-item"><strong>${escapeHtml(actionLabel(a))}</strong><small>${escapeHtml(new Date(a.queuedAt||Date.now()).toLocaleString())}</small></div>`));
@@ -6819,6 +6822,9 @@ body > .hero{
   }
 
   function processOfflineActionQueue(){
+    // Legacy pending records are preserved for manual reconciliation; never replay automatically.
+    return;
+
     if(offlineActionBusy||!navigator.onLine) { renderPendingSyncPanel(); return; }
     const q=loadOfflineActionQueue();
     if(!q.length){offlineActionRetry=1400;renderPendingSyncPanel();return;}
@@ -7363,7 +7369,7 @@ body > .hero{
 
   function refreshFastSyncStatus(){
     const n = pendingSyncCount();
-    if(n > 0) showSync(`SYNCING ${n} record${n===1?'':'s'}…`);
+    if(n > 0) showSync(`${n} older record${n===1?'':'s'} held for review (not auto-resending).`);
     else showSync('Synced.', true);
   }
 
@@ -7421,6 +7427,9 @@ body > .hero{
   }
 
   function processPendingCashPiecesQueue(transactionId){
+    // Legacy pending records are preserved for manual reconciliation; never replay automatically.
+    return;
+
     if(cashPiecesSyncBusy || !unlocked) return;
 
     const all = loadPendingCashPiecesQueue();
@@ -7596,6 +7605,9 @@ body > .hero{
   }
 
   function processPendingTxQueue(){
+    // Legacy pending records are preserved for manual reconciliation; never replay automatically.
+    return;
+
     if(txSyncBusy || !unlocked) return;
     const q = loadPendingTxQueue();
     if(!q.length){
@@ -8092,6 +8104,75 @@ body > .hero{
 
     save.disabled=true;
 
+    // ONLINE-ONLY: transaction is written to Sheets before any local wallet or
+    // Cash Counter mutation. Never queue/replay an ambiguous transaction.
+    if(tx._transactionDraft){
+      if(!navigator.onLine){
+        save.disabled=false;
+        if(stat){stat.textContent='Internet required. Nothing recorded.';stat.className='err';}
+        return;
+      }
+      const payload={...(tx._transactionPayload||{})};
+      if(!payload.clientTransactionId){
+        save.disabled=false;
+        if(stat){stat.textContent='Missing transaction ID. Nothing recorded.';stat.className='err';}
+        return;
+      }
+      const unresolvedKey='gcash_online_unconfirmed_tx_v1';
+      // Keep an independent recovery copy until Sheets acknowledges the ID.
+      try{
+        const old=JSON.parse(localStorage.getItem(unresolvedKey)||'[]');
+        if(!old.some(x=>x.payload&&x.payload.clientTransactionId===payload.clientTransactionId)){
+          old.push({payload,received:{...cashPiecesReceived},given:{...cashPiecesGiven},createdAt:new Date().toISOString()});
+          localStorage.setItem(unresolvedKey,JSON.stringify(old));
+        }
+      }catch(e){
+        save.disabled=false;
+        if(stat){stat.textContent='Cannot save safety copy on this device. Nothing sent.';stat.className='err';}
+        return;
+      }
+      if(stat){stat.textContent='Waiting for Google Sheets confirmation…';stat.className='';}
+      setTransactionSaving(true);
+      google.script.run.withSuccessHandler(serverTx=>{
+        try{
+          const old=JSON.parse(localStorage.getItem(unresolvedKey)||'[]');
+          localStorage.setItem(unresolvedKey,JSON.stringify(old.filter(x=>x.payload&&x.payload.clientTransactionId!==payload.clientTransactionId)));
+        }catch(e){}
+        const existing=history.findIndex(x=>String(x.id)===String(serverTx.id));
+        if(existing>=0)history[existing]=serverTx;else history.unshift(serverTx);
+        window.__gcashTransactions=history;
+        applyTransactionSnapshotImmediately(serverTx);
+        render();saveLocalTrackerCache();
+        amount.value='';cashReceived.value='';txType.value='';pendingPayload=null;selectedTransactionWallet='';resetChargeMode();
+        delete tx._transactionDraft;delete tx._transactionPayload;
+        // Keep a durable denomination copy until Cash Counter confirms it.
+        queueCashPieces(piecePayload);
+        let localApplied=false;
+        try{
+          localApplied=typeof applyLocalCashPiecesNow==='function' &&
+            applyLocalCashPiecesNow({...piecePayload,expectedCashMovement:expectedCashMovement(serverTx)});
+        }catch(e){}
+        google.script.run.withSuccessHandler(()=>{
+          removeQueuedCashPieces(piecePayload.transactionId);
+          save.disabled=false;setTransactionSaving(false);
+          if(stat){stat.textContent='Transaction and Cash Counter confirmed in Google Sheets.';stat.className='ok';}
+          status.textContent='Saved in Google Sheets.';status.className='status ok';
+          try{window.loadCashCounterLatestStatus&&window.loadCashCounterLatestStatus();}catch(e){}
+          setTimeout(closeCashPiecesRecorder,500);
+        }).withFailureHandler(err=>{
+          save.disabled=false;setTransactionSaving(false);
+          if(stat){stat.textContent='Transaction SAVED in Sheets, but Cash Counter needs review: '+((err&&err.message)||'No confirmation')+'. Do not record it again.';stat.className='err';}
+          status.textContent='Transaction saved; Cash Counter pending review.';status.className='status err';
+        }).recordTransactionCashPiecesBySession(getSessionToken(),piecePayload);
+      }).withFailureHandler(err=>{
+        save.disabled=false;setTransactionSaving(false);
+        const msg=(err&&err.message)||'No confirmation';
+        if(stat){stat.textContent='NOT CONFIRMED: '+msg+'. Check Google Sheets for transaction ID '+payload.clientTransactionId+' before retrying. Draft preserved on device.';stat.className='err';}
+        status.textContent='Unconfirmed. Do not submit this transaction again until checked.';status.className='status err';
+      }).addTransactionBySession(getSessionToken(),payload);
+      return;
+    }
+
     if(tx._walletTransferDraft){
       const id=offlineActionId('MOVECASH');
       const payload={
@@ -8226,6 +8307,7 @@ body > .hero{
     }
 
     if(!unlocked){ status.textContent=''; status.className='status err'; return; }
+    if(!navigator.onLine){status.textContent='Internet required. Nothing recorded.';status.className='status err';return;}
 
     const enteredAmount=Number(amount.value);
     const enteredCash=Number(cashReceived.value||0);
