@@ -4787,7 +4787,7 @@ body > .hero{
 #cashCounterNative #editInventoryGrid .edit-piece-middle small{font-size:10px!important;font-weight:800!important;color:#0b5ed7!important;line-height:1.1!important}
 #cashCounterNative #editInventoryGrid .cc-piece-amount{display:block!important;text-align:right!important;font-size:13px!important;overflow-wrap:anywhere}
 </style>
-</head>
+<style id="cash-in-count-update">.cash-in-four-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.cash-in-four-fields>div{padding:9px;border:1px solid #e4e7ec;border-radius:9px;display:flex;flex-direction:column;gap:4px}.cash-in-four-fields span{font-size:11px;color:#667085}.cash-in-four-fields strong{font-size:14px}#cashPiecesModal .cash-pieces-tabs:has(#cashPiecesGivenTab[style*="none"]){display:none}</style></head>
 <body>
 <main class="app">
   <section class="hero">
@@ -5943,15 +5943,15 @@ body > .hero{
             <span class="history-wallet-pill">${escapeHtml(transactionWalletLabel(tx))}</span>
             ${tx._pendingSync ? '<span class="history-sync-pill">SYNCING…</span>' : ''}
           </div>
-          <div class="history-tx-fee">Fee earned ${money(tx.fee)}</div>
+          ${tx.type==='Cash In'?'':`<div class="history-tx-fee">Fee earned ${money(tx.fee)}</div>`}
         </div>
         <div>
-          <div class="history-tx-amount">${money(tx.amount)}</div>
+          ${tx.type==='Cash In'?'':`<div class="history-tx-amount">${money(tx.amount)}</div>`}
           <div class="history-tx-meta">${escapeHtml(tx.date||'')}</div>
         </div>
       </div>
 
-      ${ccLinkedRecord(tx) ? ccPiecePanel(ccLinkedRecord(tx)) : '<div class="cc-hist-pieces"><div class="cc-hist-side"><strong>Cash Count: Not recorded</strong></div></div>'}
+      ${tx.type==='Cash In' ? `<div class="cash-in-four-fields"><div><span>Transaction amount</span><strong>${money(tx.amount)}</strong></div><div><span>Fee</span><strong>${money(tx.fee)}</strong></div><div><span>Cash received</span><strong>${money(ccLinkedRecord(tx)?.details?.received ? ccHistoryDenoms.reduce((sum,[k])=>sum+Number(ccLinkedRecord(tx).details.received[k]||0)*({'1000':1000,'500':500,'200':200,'100':100,'50':50,'20b':20,'20c':20,'10':10,'5':5,'1':1}[k]),0) : Number(tx.cashReceived||tx.received||tx.total||0))}</strong></div><div><span>Change</span><strong>${money(ccLinkedRecord(tx)?.details?.given ? ccHistoryDenoms.reduce((sum,[k])=>sum+Number(ccLinkedRecord(tx).details.given[k]||0)*({'1000':1000,'500':500,'200':200,'100':100,'50':50,'20b':20,'20c':20,'10':10,'5':5,'1':1}[k]),0) : Math.max(0,Number(tx.cashReceived||tx.received||tx.total||0)-Number(tx.total||0)))}</strong></div></div>` : (ccLinkedRecord(tx) ? ccPiecePanel(ccLinkedRecord(tx)) : '<div class="cc-hist-pieces"><div class="cc-hist-side"><strong>Cash Count: Not recorded</strong></div></div>')}
       <div class="history-tx-actions"><button class="link-btn" type="button" data-cal-remove="${escapeHtml(tx.id)}">Remove</button></div>
     </div>`).join('');
     const exchangeHtml=ccHistoryRecords.filter(r=>r&&r.action==='CHANGE_MONEY'&&r.details&&r.details.dateKey===key).map(ccExchangeCard).join('');
@@ -7874,8 +7874,36 @@ body > .hero{
     updateCashPiecesTotals();
   }
 
+  // Cash In only: choose change from saved inventory plus the bills just received.
+  // Do not ask the operator to count or select change denominations.
+  function autoCashInChange(received,change){
+    if(!Number.isInteger(change)||change<0) return null;
+    if(change===0) return zeroCashPieces();
+    let inventory={};
+    try{inventory=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'{}').pieces||{};}catch(e){}
+    const denominations=CASH_PIECE_DENOMS.map(d=>({...d,available:Math.max(0,Math.floor(Number(inventory[d.key]||0)))+Math.max(0,Math.floor(Number(received[d.key]||0)))}));
+    const result=zeroCashPieces(), failed=new Set();
+    function choose(i,left){
+      if(left===0)return true;
+      if(i===denominations.length)return false;
+      const key=i+':'+left;
+      if(failed.has(key))return false;
+      const d=denominations[i],max=Math.min(d.available,Math.floor(left/d.value));
+      for(let n=max;n>=0;n--){
+        result[d.key]=n;
+        if(choose(i+1,left-n*d.value))return true;
+      }
+      result[d.key]=0;failed.add(key);return false;
+    }
+    return choose(0,change)?result:null;
+  }
+
   function updateCashPiecesTotals(){
     const receivedTotal=pieceTotal(cashPiecesReceived);
+    const cashIn=cashPiecesPendingTx&&cashPiecesPendingTx.type==='Cash In';
+    const changeDue=Math.round((receivedTotal-expectedCashMovement(cashPiecesPendingTx))*100)/100;
+    const autoGiven=cashIn&&changeDue>=0 ? autoCashInChange(cashPiecesReceived,changeDue) : null;
+    if(cashIn) cashPiecesGiven=autoGiven||zeroCashPieces();
     const givenTotal=pieceTotal(cashPiecesGiven);
     const net=receivedTotal-givenTotal;
     const expected=expectedCashMovement(cashPiecesPendingTx);
@@ -7909,14 +7937,14 @@ body > .hero{
           : `Enter Cash Given ${money(needGiven)} and Cash Fee Received ${money(needReceived)}.`;
       }
     }else{
-      ok=Math.abs(net-expected)<0.01;
+      ok=Math.abs(net-expected)<0.01 && (!cashIn || (changeDue>=0 && !!autoGiven));
       if(match){
         match.className='cash-pieces-match '+(ok?'ok':'bad');
         if(ok){
           match.textContent=cashPiecesPendingTx&&cashPiecesPendingTx.type==='Move Money'?'MATCHED. Cash pieces equal the transfer amount.':'MATCHED. Cash pieces equal the transaction.';
         }else{
           const diff=expected-net;
-          match.textContent=`Not matched. ${diff>0?'Need +':'Need '}${money(diff)} more net cash movement.`;
+          match.textContent=cashIn ? (changeDue<0 ? `Cash received is short by ${money(-changeDue)}.` : !autoGiven ? `Cannot make exact change of ${money(changeDue)} with available bills and coins.` : `Cash count does not match.`) : `Not matched. ${diff>0?'Need +':'Need '}${money(diff)} more net cash movement.`;
         }
       }
     }
@@ -7985,7 +8013,11 @@ body > .hero{
     }
 
     const netRow=document.getElementById('cashPiecesNetTotal')?.closest('.cash-pieces-live-row');
-    if(netRow) netRow.style.display=specialCashOutCashFee?'none':'';
+    if(netRow) netRow.style.display=(tx.type==='Cash In'||specialCashOutCashFee)?'none':'';
+    const receivedRow=document.getElementById('cashPiecesReceivedTotal')?.closest('.cash-pieces-live-row');
+    const givenRow=document.getElementById('cashPiecesGivenTotal')?.closest('.cash-pieces-live-row');
+    if(receivedRow) receivedRow.querySelector('span').textContent=tx.type==='Cash In'?'Cash received':'Money Received';
+    if(givenRow) givenRow.querySelector('span').textContent=tx.type==='Cash In'?'Change (automatic)':'Money Given';
 
     if(recTab){
       recTab.textContent=tx.type==='Move Money'?'Cash Added':'Money Received';
@@ -7993,9 +8025,9 @@ body > .hero{
       recTab.style.display=(tx.type==='Move Money'&&tx.fromWallet==='Cash on Hand')?'none':'';
     }
     if(givTab){
-      givTab.textContent=tx.type==='Move Money'?'Cash Removed':'Money Given';
+      givTab.textContent=tx.type==='Cash In'?'Change (automatic)':tx.type==='Move Money'?'Cash Removed':'Money Given';
       givTab.classList.toggle('active',cashPiecesMode==='given');
-      givTab.style.display=(tx.type==='Move Money'&&tx.toWallet==='Cash on Hand')?'none':'';
+      givTab.style.display=(tx.type==='Cash In'||(tx.type==='Move Money'&&tx.toWallet==='Cash on Hand'))?'none':'';
     }
     if(stat) stat.textContent='';
 
@@ -8058,6 +8090,7 @@ body > .hero{
   });
 
   document.getElementById('cashPiecesGivenTab')?.addEventListener('click',()=>{
+    if(cashPiecesPendingTx?.type==='Cash In')return;
     cashPiecesMode='given';
     document.getElementById('cashPiecesGivenTab')?.classList.add('active');
     document.getElementById('cashPiecesReceivedTab')?.classList.remove('active');
@@ -8095,10 +8128,24 @@ body > .hero{
     const save=document.getElementById('cashPiecesSave');
     const stat=document.getElementById('cashPiecesStatus');
 
+    if(tx.type==='Cash In'){
+      updateCashPiecesTotals();
+      const changeDue=pieceTotal(cashPiecesReceived)-expectedCashMovement(tx);
+      if(changeDue<0 || !autoCashInChange(cashPiecesReceived,changeDue)){
+        if(stat){stat.textContent='Cash received is insufficient or exact change is unavailable. Nothing recorded.';stat.className='err';}
+        return;
+      }
+      // Counted physical cash is the source of truth for the transaction and Sheets.
+      const counted=pieceTotal(cashPiecesReceived);
+      tx.cashReceived=counted;
+      tx.change=changeDue;
+      if(tx._transactionPayload) tx._transactionPayload.cashReceived=counted;
+      cashReceived.value=String(counted);
+    }
     const piecePayload={
       transactionId:String(tx.id||''),
       transactionType:String(tx.type||''),
-      amount:Number(tx.amount||tx.total||0),
+      amount:Number(tx.amount||tx.total||0),fee:Number(tx.fee||0),
       received:{...cashPiecesReceived},
       given:{...cashPiecesGiven}
     };
@@ -8138,7 +8185,7 @@ body > .hero{
       }
       if(stat){stat.textContent='Waiting for Google Sheets confirmation…';stat.className='';}
       setTransactionSaving(true);
-      payload.cashPieces={received:{...cashPiecesReceived},given:{...cashPiecesGiven}};
+      payload.cashPieces={received:{...cashPiecesReceived},given:{...cashPiecesGiven},fee:Number(tx.fee||0)};
       google.script.run.withSuccessHandler(serverTx=>{
         try{
           const old=JSON.parse(localStorage.getItem(unresolvedKey)||'[]');
@@ -8202,7 +8249,7 @@ body > .hero{
     }
     const localPiecesDetail={
       transactionId:String(tx.id||''), transactionType:String(tx.type||''),
-      amount:Number(tx.amount||tx.total||0),
+      amount:Number(tx.amount||tx.total||0),fee:Number(tx.fee||0),
       received:{...cashPiecesReceived},given:{...cashPiecesGiven},
       expectedCashMovement:expectedCashMovement(tx)
     };
@@ -10146,6 +10193,12 @@ function loadHistory(){
 
   function detailsHtml(r){
     const d=r.details||{};
+    if((r.action==='TRANSACTION_PIECES'||r.action==='CASH_IN_PIECES')&&d.transactionType==='Cash In'){
+      const counted=d.receivedTotal!=null?Number(d.receivedTotal):total(d.received||{});
+      const change=d.givenTotal!=null?Number(d.givenTotal):total(d.given||{});
+      const fee=Number(d.fee||0);
+      return `<div class="cc-piece-row"><span>Transaction amount</span><strong>${money(Number(d.amount||0))}</strong></div><div class="cc-piece-row"><span>Fee</span><strong>${money(fee)}</strong></div><div class="cc-piece-row"><span>Cash received</span><strong>${money(counted)}</strong></div><div class="cc-piece-row"><span>Change</span><strong>${money(change)}</strong></div>`;
+    }
     let out='';
 
     if(r.action==='COUNT'){
