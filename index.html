@@ -1371,7 +1371,8 @@ body.app-locked #historyToggle{
     .home-wallet-check.warn strong{color:#b42318 !important}
 
 
-/* Change Money is accessible from Wallets and Cash Counter. */
+/* Retain historical Change Money entries; hide only the entry control. */
+#ccChangeMoneyBtn,#ccChangeMoneyPanel{display:none!important}
 </style>
 
 <style>
@@ -5063,14 +5064,11 @@ body > .hero{
         <strong id="cashOutAvailable">₱0.00</strong>
         <span>Cash on Hand</span>
       </div>
-      <div class="wallet-money-actions"><button type="button" id="mayaTransferBtn" class="wallet-transfer-card">
+      <button type="button" id="mayaTransferBtn" class="wallet-transfer-card">
         <span>Transfer Money</span>
         <strong>Move Money</strong>
         <small>Cash · GCash · Maya · MariBank</small>
       </button>
-      <button type="button" id="walletChangeMoneyBtn" class="wallet-transfer-card" style="background:#f1e8ff;border-color:#d8b4fe;color:#6f42c1">
-        <span>Cash Counter</span><strong>Change Money</strong><small>Exchange bills and coins</small>
-      </button></div>
     </div>
 
     <div class="current-capital-focus">
@@ -10479,8 +10477,6 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
 #tabHistoryPage .cc-hist-piece{display:inline-block;background:#fff;border-radius:8px;padding:6px 9px;margin:3px 5px 0 0;font-weight:800}
 #tabHistoryPage .cc-exchange-badge{background:#efe6ff;color:#6f42c1}
 #tabHistoryPage .cc-hist-zero{background:#edf5ff;border-radius:10px;padding:9px;margin-top:7px;text-align:center;font-size:12px;font-weight:800}
-#tabWalletsPage .wallet-money-actions{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px}
-#tabWalletsPage .wallet-money-actions .wallet-transfer-card{width:100%;min-width:0;min-height:82px}
 </style>
 <script id="cc-change-money-script">
 (function(){
@@ -10546,13 +10542,6 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   function closeOverlays(){panel.hidden=true;panel.classList.remove('cc-overlay-open');if(settings){settings.hidden=true;settings.classList.remove('cc-overlay-open')}const bd=$('ccPanelBackdrop');if(bd)bd.hidden=true;document.documentElement.style.overflow='';$('ccChangeMoneyBtn').setAttribute('aria-expanded','false');$('ccSettingsGear').setAttribute('aria-expanded','false')}
   function openOverlay(which){if(typeof setCashCounterMode==='function')setCashCounterMode('cash');closeOverlays();const bd=$('ccPanelBackdrop');if(bd)bd.hidden=false;document.documentElement.style.overflow='hidden';which.hidden=false;which.classList.add('cc-overlay-open')}
   $('ccChangeMoneyBtn').addEventListener('click',()=>{reset();openOverlay(panel);$('ccChangeMoneyBtn').setAttribute('aria-expanded','true')});
-  const walletChange=$('walletChangeMoneyBtn');
-  if(walletChange)walletChange.addEventListener('click',()=>{
-    const tab=$('tabCashCounter');
-    if(tab)tab.click();
-    else if(typeof setActiveTab==='function')setActiveTab('cashCounter');
-    reset();openOverlay(panel);$('ccChangeMoneyBtn').setAttribute('aria-expanded','true');
-  });
   $('ccChangeClose').addEventListener('click',closeOverlays);
   $('ccSettingsGear').addEventListener('click',()=>{openOverlay(settings);$('ccSettingsGear').setAttribute('aria-expanded','true')});
   const sc=$('ccSettingsOverlayClose'); if(sc)sc.addEventListener('click',closeOverlays);
@@ -10562,8 +10551,8 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   root.addEventListener('input',e=>{if(e.target.matches('input[data-change-kind]'))refresh()});
   $('ccChangeSave').addEventListener('click',()=>{
     if(!navigator.onLine){$('ccChangeStatus').textContent='Connect to the internet before using Change Money.';$('ccChangeStatus').style.color='#c62828';return}
-    if(pendingSync()){$('ccChangeStatus').textContent='Checking Cash Counter against Google Sheets before saving…';}
-    if(!current||!current.pieces){$('ccChangeStatus').textContent='Cash Counter inventory is not loaded. Refresh Cash Counter.';$('ccChangeStatus').style.color='#c62828';return}
+    if(pendingSync()){$('ccChangeStatus').textContent='Wait until Pending Sync is empty before changing denominations.';$('ccChangeStatus').style.color='#c62828';return}
+    if(!current||!current.pieces){$('ccChangeStatus').textContent='Cash Counter inventory is not loaded.';$('ccChangeStatus').style.color='#c62828';return}
     const receive=readSide('receive'),give=readSide('give'),rt=valueOf(receive),gt=valueOf(give);
     if(rt<=0||gt<=0||Math.abs(rt-gt)>.005){$('ccChangeStatus').textContent='The customer-gives total and you-give total must be exactly the same.';$('ccChangeStatus').style.color='#c62828';return}
     const next={...current.pieces};
@@ -10571,21 +10560,12 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     if(Math.abs(valueOf(next)-valueOf(current.pieces))>.005){$('ccChangeStatus').textContent='Safety check failed: Cash Counter total would change.';$('ccChangeStatus').style.color='#c62828';return}
     if(!confirm('Save this money change?\n\nCustomer gives: '+fmt(rt)+'\nYou give: '+fmt(gt)+'\n\nTotal Cash Counter will stay the same.'))return;
     const id='CHANGE_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
-    const save=$('ccChangeSave'),status=$('ccChangeStatus');
-    save.disabled=true;status.style.color='#475467';status.textContent='Saving to Google Sheets…';
-    google.script.run.withSuccessHandler(result=>{
-      if(!result||!result.pieces){status.style.color='#c62828';status.textContent='Save response was incomplete. Check History before trying again.';return;}
-      current={...result,_localPending:false};
-      try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current))}catch(e){}
-      renderCashCounterInventory(current);renderSummary(current);
-      try{sendCashCounterStatusToTracker()}catch(e){}
-      try{if(typeof loadHistory==='function')loadHistory()}catch(e){}
-      status.style.color='#0f7b45';status.textContent='Change Money saved in Google Sheets.';
-      setTimeout(closeOverlays,900);
-    }).withFailureHandler(err=>{
-      status.style.color='#c62828';status.textContent=(err&&err.message)||'Save not confirmed. Check History before trying again.';
-      save.disabled=true;
-    }).saveCashCounterChangeMoney({received:receive,given:give},id);
+    current={...current,pieces:{...next},physicalCash:valueOf(next),physicalTotal:valueOf(next),_localPending:true};
+    try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current))}catch(e){}
+    renderCashCounterInventory(current);renderSummary(current);try{sendCashCounterStatusToTracker()}catch(e){}
+    window.dispatchEvent(new CustomEvent('gcash-queue-offline-action',{detail:{id:id,method:'saveCashCounterChangeMoney',payload:{pieces:{...next},exchange:{received:{...receive},given:{...give}}}}}));
+    $('ccChangeStatus').textContent='Change saved. Syncing denomination counts…';$('ccChangeStatus').style.color='#0f7b45';
+    setTimeout(closeOverlays,500);
   });
   refresh();
 })();
