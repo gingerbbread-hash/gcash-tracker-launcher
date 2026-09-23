@@ -10473,31 +10473,55 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
       const list=Array.isArray(window.__gcashTransactions)?window.__gcashTransactions:[];
       if(!list.length)return null;
       return list.slice().sort((a,b)=>{
-        const ta=new Date(a.timestamp||a.date||0).getTime()||0;
-        const tb=new Date(b.timestamp||b.date||0).getTime()||0;
+        const ta=txTime(a);
+        const tb=txTime(b);
         return tb-ta;
       })[0]||null;
     }catch(_e){return null}
   }
-  function restoreLatestTransaction(){
+  // History is authoritative. The old fast-card cache is only a placeholder
+  // while History is loading, never a reason to override a newer record.
+  function txTime(tx){
+    const iso=Date.parse(String(tx?.timestamp||''));
+    if(Number.isFinite(iso))return iso;
+    const raw=String(tx?.date||'');
+    const parsed=Date.parse(raw);
+    return Number.isFinite(parsed)?parsed:0;
+  }
+  let displayedId='', displayedTime=0;
+  function showLatest(force){
     ensureCard();
-    let cached=null;
-    try{cached=JSON.parse(localStorage.getItem('gcashLastTransactionFastV1')||'null')}catch(_e){}
-    if(cached){renderTx(cached,false);return true}
     const latest=newestTrackerTransaction();
-    if(latest){renderTx(latest,false);return true}
+    if(latest){
+      const id=String(latest.id||latest.clientTransactionId||'');
+      const time=txTime(latest);
+      if(force||id!==displayedId||time!==displayedTime){
+        displayedId=id;displayedTime=time;
+        renderTx(latest,false);
+      }
+      return true;
+    }
+    // No History loaded yet: show cached confirmation temporarily.
+    if(!displayedId){
+      try{
+        const cached=JSON.parse(localStorage.getItem('gcashLastTransactionFastV1')||'null');
+        if(cached){displayedId=String(cached.id||cached.clientTransactionId||'cached');displayedTime=txTime(cached);renderTx(cached,false);return true}
+      }catch(_e){}
+    }
     return false;
   }
-  window.addEventListener('gcash-local-transaction-recorded',e=>renderTx(e.detail||null,true));
+  window.addEventListener('gcash-local-transaction-recorded',e=>{
+    const tx=e.detail||null;
+    if(!tx)return;
+    displayedId=String(tx.id||tx.clientTransactionId||'');
+    displayedTime=txTime(tx);
+    renderTx(tx,true);
+  });
   document.addEventListener('DOMContentLoaded',()=>{
-    ensureCard();
-    if(!restoreLatestTransaction()){
-      let tries=0;
-      const timer=setInterval(()=>{
-        tries++;
-        if(restoreLatestTransaction()||tries>=30)clearInterval(timer);
-      },250);
-    }
+    ensureCard();showLatest(false);
+    // History can load asynchronously or be replaced after Google Sheets sync.
+    // Reconcile the card with the same records the History tab displays.
+    setInterval(()=>showLatest(false),1000);
   });
   const sync=document.getElementById('syncStatus'); if(sync)new MutationObserver(()=>{const t=String(sync.textContent||'');const el=document.getElementById('ltfSync');if(el){if(/^synced\.?$/i.test(t.trim()))el.textContent='SYNCED ✓';else if(/sync/i.test(t))el.textContent='Saved locally · Syncing…';}}).observe(sync,{childList:true,subtree:true,characterData:true});
 })();
