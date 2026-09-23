@@ -5914,6 +5914,27 @@ body > .hero{
   function ccLinkedRecord(tx){
     return ccHistoryRecords.find(r=>r&&r.details&&String(r.details.transactionId||'')===String(tx.id||'')&&['TRANSACTION_PIECES','CASH_IN_PIECES','CASH_OUT_PIECES'].includes(r.action));
   }
+  function ccTransactionCountHtml(tx){
+    const record=ccLinkedRecord(tx);
+    if(!record){
+      return `<div class="cc-hist-pieces"><div class="cc-hist-side"><strong>Cash Count · Needs attention</strong><div>No linked bill-and-coin record is available for this transaction. The transaction amount alone cannot identify denominations.</div></div></div>`;
+    }
+    const d=record.details||{};
+    const received=ccPieceLines(d.received);
+    const given=ccPieceLines(d.given||d.change);
+    const values=ccHistoryDenoms.reduce((sum,[key])=>{
+      const value=key==='20b'||key==='20c'?20:Number(key);
+      return sum+(Number(d.received&&d.received[key]||0)-Number((d.given||d.change)&& (d.given||d.change)[key]||0))*value;
+    },0);
+    const pending=!!d.localPending;
+    return `<div class="cc-hist-pieces"><div class="cc-hist-side"><strong>Cash Count · ${pending?'Saved on device':'Recorded'}</strong>
+      ${received?`<div class="cc-hist-side cc-hist-in"><strong>Money received</strong><div>${received}</div></div>`:''}
+      ${given?`<div class="cc-hist-side cc-hist-out"><strong>Money given</strong><div>${given}</div></div>`:''}
+      ${!received&&!given?'<div>No denominations saved in this record.</div>':''}
+      <div class="cc-hist-zero">Net Cash Counter movement: ${values>=0?'+':'−'}${money(Math.abs(values))}</div>
+      ${pending?'<div class="cc-count-pending">Cash Count sync confirmation pending.</div>':''}
+    </div></div>`;
+  }
   function ccExchangeCard(r){
     const d=r.details||{};
     return `<div class="history-tx-card cc-exchange-card"><div class="history-tx-head"><div><span class="badge cc-exchange-badge">Change Money</span><div class="history-tx-meta">${escapeHtml(r.date||'')}</div></div><strong class="history-tx-amount">${money(Number(d.receivedTotal||r.receiveTotal||0))}</strong></div>${ccPiecePanel(r)}<div class="cc-hist-zero">Net change to total cash: ${money(0)}</div></div>`;
@@ -5927,8 +5948,11 @@ body > .hero{
     if(!navigator.onLine)return;
     google.script.run.withSuccessHandler(rows=>{
       if(!Array.isArray(rows))return;
-      ccHistoryRecords=rows;
-      try{localStorage.setItem('gcashCashCounterHistoryV1',JSON.stringify(rows));}catch(e){}
+      const serverTxIds=new Set(rows.map(r=>String(r&&r.details&&r.details.transactionId||'')));
+      const localOnly=ccHistoryRecords.filter(r=>r&&r.details&&r.details.localPending&&
+        !serverTxIds.has(String(r.details.transactionId||'')));
+      ccHistoryRecords=[...localOnly,...rows];
+      try{localStorage.setItem('gcashCashCounterHistoryV1',JSON.stringify(ccHistoryRecords));}catch(e){}
       if(calSelected)renderDay(calSelected);
     }).withFailureHandler(()=>{}).getCashCountHistory();
   }
@@ -5956,7 +5980,8 @@ body > .hero{
         </div>
       </div>
 
-      ${tx.type==='Cash In' ? `<div class="cash-in-four-fields"><div><span>Transaction amount</span><strong>${money(tx.amount)}</strong></div><div><span>Fee</span><strong>${money(tx.fee)}</strong></div><div><span>Cash received</span><strong>${money(ccLinkedRecord(tx)?.details?.received ? ccHistoryDenoms.reduce((sum,[k])=>sum+Number(ccLinkedRecord(tx).details.received[k]||0)*({'1000':1000,'500':500,'200':200,'100':100,'50':50,'20b':20,'20c':20,'10':10,'5':5,'1':1}[k]),0) : Number(tx.cashReceived||tx.received||tx.total||0))}</strong></div><div><span>Change</span><strong>${money(ccLinkedRecord(tx)?.details?.given ? ccHistoryDenoms.reduce((sum,[k])=>sum+Number(ccLinkedRecord(tx).details.given[k]||0)*({'1000':1000,'500':500,'200':200,'100':100,'50':50,'20b':20,'20c':20,'10':10,'5':5,'1':1}[k]),0) : Math.max(0,Number(tx.cashReceived||tx.received||tx.total||0)-Number(tx.total||0)))}</strong></div></div>` : (ccLinkedRecord(tx) ? ccPiecePanel(ccLinkedRecord(tx)) : '<div class="cc-hist-pieces"><div class="cc-hist-side"><strong>Cash Count: Not recorded</strong></div></div>')}
+      ${tx.type==='Cash In' ? `<div class="cash-in-four-fields"><div><span>Transaction amount</span><strong>${money(tx.amount)}</strong></div><div><span>Fee</span><strong>${money(tx.fee)}</strong></div><div><span>Cash received</span><strong>${money(ccLinkedRecord(tx)?.details?.received ? ccHistoryDenoms.reduce((sum,[k])=>sum+Number(ccLinkedRecord(tx).details.received[k]||0)*({'1000':1000,'500':500,'200':200,'100':100,'50':50,'20b':20,'20c':20,'10':10,'5':5,'1':1}[k]),0) : Number(tx.cashReceived||tx.received||tx.total||0))}</strong></div><div><span>Change</span><strong>${money(ccLinkedRecord(tx)?.details?.given ? ccHistoryDenoms.reduce((sum,[k])=>sum+Number(ccLinkedRecord(tx).details.given[k]||0)*({'1000':1000,'500':500,'200':200,'100':100,'50':50,'20b':20,'20c':20,'10':10,'5':5,'1':1}[k]),0) : Math.max(0,Number(tx.cashReceived||tx.received||tx.total||0)-Number(tx.total||0)))}</strong></div></div>` : ''}
+      ${ccTransactionCountHtml(tx)}
       <div class="history-tx-actions"><button class="link-btn" type="button" data-cal-remove="${escapeHtml(tx.id)}">Remove</button></div>
     </div>`).join('');
     const exchangeHtml=ccHistoryRecords.filter(r=>r&&r.action==='CHANGE_MONEY'&&r.details&&r.details.dateKey===key).map(ccExchangeCard).join('');
