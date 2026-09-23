@@ -10968,5 +10968,99 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
 })();
 </script>
 
+
+
+<script id="safe-recovery-freeze-and-recount-v1">
+(function(){
+  const QUEUE_KEY='gcashTrackerOfflineActionsV1';
+  const QUARANTINE_KEY='gcashQuarantinedMoveMoneyRecoveryV1';
+  const HOLD_KEY='gcashMoveMoneyRecoveryHoldV1';
+
+  function moneySafe(n){
+    try{return money(Number(n||0))}catch(e){return '₱'+Number(n||0).toFixed(2)}
+  }
+  function readQueue(){
+    try{const q=JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]');return Array.isArray(q)?q:[]}catch(e){return []}
+  }
+  function isMove(a){
+    return !!(a && (a.method==='addMayaTransferWithCashPiecesBySession'||a.method==='addMayaTransferBySession'));
+  }
+  function quarantinePendingMoves(){
+    const q=readQueue();
+    const moves=q.filter(isMove);
+    if(!moves.length){
+      try{localStorage.removeItem(HOLD_KEY)}catch(e){}
+      return 0;
+    }
+    let old=[];
+    try{old=JSON.parse(localStorage.getItem(QUARANTINE_KEY)||'[]');if(!Array.isArray(old))old=[]}catch(e){old=[]}
+    const seen=new Set(old.map(x=>String(x&&x.id||'')));
+    for(const a of moves){if(!seen.has(String(a.id||''))) old.push({...a,_quarantinedAt:new Date().toISOString()})}
+    try{
+      localStorage.setItem(QUARANTINE_KEY,JSON.stringify(old));
+      localStorage.setItem(QUEUE_KEY,JSON.stringify(q.filter(a=>!isMove(a))));
+      localStorage.removeItem(HOLD_KEY);
+    }catch(e){}
+    try{if(typeof renderPendingSyncPanel==='function')renderPendingSyncPanel()}catch(e){}
+    return moves.length;
+  }
+  function currentDifference(){
+    let cur=null;
+    try{cur=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null')}catch(e){}
+    let counted=NaN;
+    try{
+      if(cur&&cur.pieces&&typeof cashCounterPiecesTotal==='function') counted=Number(cashCounterPiecesTotal(cur.pieces));
+      else if(cur) counted=Number(cur.physicalTotal!=null?cur.physicalTotal:cur.physicalCash);
+    }catch(e){}
+    let cash=NaN;
+    try{cash=Number(capitalData&&capitalData.cashOnHand)}catch(e){}
+    if(!Number.isFinite(cash)){
+      try{cash=Number(String(document.getElementById('homeCashBalance')?.textContent||'').replace(/[^0-9.-]/g,''))}catch(e){}
+    }
+    return {counted,cash,diff:(Number.isFinite(counted)&&Number.isFinite(cash))?counted-cash:NaN};
+  }
+  function lockMoveMoney(){
+    const b=document.getElementById('mayaTransferBtn');
+    if(!b)return;
+    const d=currentDifference();
+    const bad=!Number.isFinite(d.diff)||Math.abs(d.diff)>0.01;
+    b.disabled=bad;
+    b.title=bad?'Move Money is temporarily locked until the physical Cash Counter is recounted and matches Cash on Hand.':'';
+    if(bad){b.style.opacity='.55';b.style.cursor='not-allowed'}else{b.style.opacity='';b.style.cursor=''}
+  }
+  function showSafeNotice(quarantined){
+    const old=document.getElementById('moveMoneyRecoveryNotice'); if(old) old.remove();
+    let box=document.getElementById('safeRecoveryRecountNotice');
+    if(!box){
+      box=document.createElement('div'); box.id='safeRecoveryRecountNotice';
+      const home=document.getElementById('tabHomePage')||document.body;
+      home.insertBefore(box,home.firstChild);
+    }
+    const d=currentDifference();
+    const mismatch=Number.isFinite(d.diff)&&Math.abs(d.diff)>0.01;
+    if(!mismatch){box.remove();lockMoveMoney();return}
+    box.style.cssText='margin:10px 16px;padding:13px;border:1px solid #f0b429;border-radius:14px;background:#fff8e1;color:#5d4200;font:600 13px system-ui;line-height:1.45';
+    box.innerHTML='<div style="font-size:15px;font-weight:850;margin-bottom:5px">Safe recovery: physical recount required</div>'+
+      '<div>No automatic wallet or Cash Counter correction was made. '+(quarantined?quarantined+' old pending Move Money record'+(quarantined===1?' was':'s were')+' safely quarantined and will not replay. ':'')+'Your current wallet balances are being preserved.</div>'+
+      '<div style="margin-top:7px">Cash Counter: <strong>'+moneySafe(d.counted)+'</strong> · Cash on Hand: <strong>'+moneySafe(d.cash)+'</strong> · Difference: <strong>'+(d.diff>0?'+':'')+moneySafe(d.diff)+'</strong></div>'+
+      '<div style="margin-top:7px;font-weight:500">Count the cash you physically have now. Saving that physical count changes only the Cash Counter inventory; it does not change GCash, Maya, MariBank, Cash on Hand, capital, or earnings.</div>'+
+      '<button type="button" id="safeRecoveryStartRecount" style="margin-top:9px;border:0;border-radius:9px;padding:9px 12px;background:#172033;color:#fff;font-weight:800">Recount Physical Cash</button>';
+    lockMoveMoney();
+  }
+  function startRecount(){
+    try{if(typeof setTab==='function')setTab('cashcounter')}catch(e){}
+    try{document.querySelector('[data-main-tab="cashcounter"]')?.click()}catch(e){}
+    setTimeout(()=>{try{document.getElementById('startNewCheck')?.click()}catch(e){}},80);
+  }
+  const quarantined=quarantinePendingMoves();
+  function init(){
+    showSafeNotice(quarantined);
+    document.addEventListener('click',function(e){if(e.target.closest('#safeRecoveryStartRecount'))startRecount()},true);
+    window.addEventListener('gcash-local-transaction-recorded',()=>setTimeout(()=>{showSafeNotice(0)},0));
+    setInterval(lockMoveMoney,1000);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
+</script>
 </body>
 </html>
