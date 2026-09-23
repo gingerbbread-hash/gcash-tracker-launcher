@@ -5243,11 +5243,11 @@ body > .hero{
 
 <div id="deleteTxModal" class="delete-tx-modal" aria-hidden="true">
   <div class="delete-tx-card" role="dialog" aria-modal="true" aria-labelledby="deleteTxTitle">
-    <div id="deleteTxTitle" class="delete-tx-title">Delete this transaction? Linked Cash Counter pieces will be reversed automatically.</div>
-    <div class="delete-tx-note">This will permanently remove the transaction and recalculate your Capital Monitor.</div>
+    <div id="deleteTxTitle" class="delete-tx-title">Undo this transaction?</div>
+    <div class="delete-tx-note">Wallet balances, earnings, Cash Counter bills and coins, and History totals will all be reversed.</div>
     <div class="delete-tx-actions">
       <button type="button" id="deleteTxNo" class="delete-tx-no">No</button>
-      <button type="button" id="deleteTxYes" class="delete-tx-yes">Yes, Delete</button>
+      <button type="button" id="deleteTxYes" class="delete-tx-yes">Yes, Undo</button>
     </div>
   </div>
 </div>
@@ -5994,7 +5994,7 @@ body > .hero{
 
       ${tx.type==='Cash In' ? `<div class="cash-in-four-fields"><div><span>Transaction amount</span><strong>${money(tx.amount)}</strong></div><div><span>Fee</span><strong>${money(tx.fee)}</strong></div><div><span>Cash received</span><strong>${money(ccLinkedRecord(tx)?.details?.received ? ccHistoryDenoms.reduce((sum,[k])=>sum+Number(ccLinkedRecord(tx).details.received[k]||0)*({'1000':1000,'500':500,'200':200,'100':100,'50':50,'20b':20,'20c':20,'10':10,'5':5,'1':1}[k]),0) : Number(tx.cashReceived||tx.received||tx.total||0))}</strong></div><div><span>Change</span><strong>${money(ccLinkedRecord(tx)?.details?.given ? ccHistoryDenoms.reduce((sum,[k])=>sum+Number(ccLinkedRecord(tx).details.given[k]||0)*({'1000':1000,'500':500,'200':200,'100':100,'50':50,'20b':20,'20c':20,'10':10,'5':5,'1':1}[k]),0) : Math.max(0,Number(tx.cashReceived||tx.received||tx.total||0)-Number(tx.total||0)))}</strong></div></div>` : ''}
       ${ccTransactionCountHtml(tx)}
-      <div class="history-tx-actions"><button class="link-btn" type="button" data-cal-remove="${escapeHtml(tx.id)}">Remove</button></div>
+      <div class="history-tx-actions"><button class="link-btn" type="button" data-cal-remove="${escapeHtml(tx.id)}">Undo Transaction</button></div>
     </div>`).join('');
     const exchangeHtml=ccHistoryRecords.filter(r=>r&&r.action==='CHANGE_MONEY'&&r.details&&r.details.dateKey===key).map(ccExchangeCard).join('');
     box.innerHTML=`<div class="cal-head"><strong>${d.toLocaleDateString('en-PH',{month:'long',day:'numeric',year:'numeric'})}</strong><strong>${money(fees)} fees</strong></div><div class="cal-sum"><div class="metric"><small>Cash In</small><strong>${money(ci)}</strong></div><div class="metric"><small>Cash Out</small><strong>${money(co)}</strong></div></div>${txhtml}${exchangeHtml}${(!txhtml&&!exchangeHtml)?'<div class="history-empty">No transactions on this date.</div>':''}`;
@@ -7379,8 +7379,8 @@ body > .hero{
     pendingDeleteKind='transaction';
     pendingDeleteTxId=String(b.dataset.calRemove||'');
     if(!pendingDeleteTxId)return;
-    document.getElementById('deleteTxTitle').textContent='Delete this transaction? Linked Cash Counter pieces will be reversed automatically.';
-    document.querySelector('.delete-tx-note').textContent='This will permanently remove the transaction and recalculate your Capital Monitor.';
+    document.getElementById('deleteTxTitle').textContent='Undo this transaction?';
+    document.querySelector('.delete-tx-note').textContent='Wallet balances, earnings, Cash Counter bills and coins, and History totals will all be reversed.';
     deleteTxModal.classList.add('show');
     deleteTxModal.setAttribute('aria-hidden','false')
   });
@@ -8549,8 +8549,8 @@ body > .hero{
     pendingDeleteTxId = String(btn.dataset.id || '');
     if(!pendingDeleteTxId) return;
 
-    document.getElementById('deleteTxTitle').textContent='Delete this transaction? Linked Cash Counter pieces will be reversed automatically.';
-    document.querySelector('.delete-tx-note').textContent='This will permanently remove the transaction and recalculate your Capital Monitor.';
+    document.getElementById('deleteTxTitle').textContent='Undo this transaction?';
+    document.querySelector('.delete-tx-note').textContent='Wallet balances, earnings, Cash Counter bills and coins, and History totals will all be reversed.';
     deleteTxModal.classList.add('show');
     deleteTxModal.setAttribute('aria-hidden','false');
   });
@@ -8560,6 +8560,7 @@ body > .hero{
     pendingDeleteKind = 'transaction';
     deleteTxModal.classList.remove('show');
     deleteTxModal.setAttribute('aria-hidden','true');
+    deleteTxYes.textContent = 'Yes, Undo';
   }
 
   deleteTxNo.addEventListener('click', closeDeleteTxModal);
@@ -8650,16 +8651,24 @@ body > .hero{
     if(!id) return;
 
     deleteTxYes.disabled = true;
-    deleteTxYes.textContent = 'Deleting…';
+    deleteTxYes.textContent = kind === 'transaction' ? 'Undoing…' : 'Deleting…';
 
-    // Transactions are local-first. When offline, delete them locally now and
-    // queue the server cancellation instead of blocking the user on the network.
-    if(kind === 'transaction' && !navigator.onLine){
+    // Undo transactions LOCAL-FIRST on every connection state. The complete
+    // one-record transaction is reversed immediately on this device: wallet
+    // balances, fee/earnings, exact Cash Counter pieces and History. The server
+    // reversal is queued and synced in the background, so Undo never waits for
+    // Google Sheets / Apps Script.
+    if(kind === 'transaction'){
       deleteTransactionLocallyAndQueue(id);
       deleteTxYes.disabled = false;
-      deleteTxYes.textContent = 'Yes, Delete';
+      deleteTxYes.textContent = 'Yes, Undo';
       closeDeleteTxModal();
-      showSync('Deleted on this device. Server deletion will sync when online.', true);
+      showSync(navigator.onLine
+        ? 'Transaction undone on this device. Server reversal is syncing in the background.'
+        : 'Transaction undone on this device. Server reversal will sync when online.', true);
+      if(navigator.onLine){
+        try{ setTimeout(flushOfflineActions, 0); }catch(e){}
+      }
       return;
     }
 
