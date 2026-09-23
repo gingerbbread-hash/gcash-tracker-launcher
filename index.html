@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+<!-- GCash Tracker: One Record Transaction + Cash Count build, 2026-09-23 -->
   <base target="_top">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -5912,12 +5913,23 @@ body > .hero{
     return `<div class="cc-hist-pieces">${received?`<div class="cc-hist-side cc-hist-in"><strong>Money received</strong><div>${received}</div></div>`:''}${given?`<div class="cc-hist-side cc-hist-out"><strong>Money given</strong><div>${given}</div></div>`:''}</div>`;
   }
   function ccLinkedRecord(tx){
+    // New architecture: Cash Count belongs to the transaction itself.
+    // Keep the old Cash Counter History lookup only as a compatibility fallback.
+    if(tx && tx.cashPieces && (tx.cashPieces.received || tx.cashPieces.given || tx.cashPieces.change)){
+      return {action:'TRANSACTION_PIECES',details:{
+        transactionId:String(tx.id||''), transactionType:String(tx.type||''),
+        amount:Number(tx.amount||0), fee:Number(tx.fee||0),
+        received:{...(tx.cashPieces.received||{})},
+        given:{...(tx.cashPieces.given||tx.cashPieces.change||{})},
+        localPending:!!tx._pendingSync
+      }};
+    }
     return ccHistoryRecords.find(r=>r&&r.details&&String(r.details.transactionId||'')===String(tx.id||'')&&['TRANSACTION_PIECES','CASH_IN_PIECES','CASH_OUT_PIECES'].includes(r.action));
   }
   function ccTransactionCountHtml(tx){
     const record=ccLinkedRecord(tx);
     if(!record){
-      return `<div class="cc-hist-pieces"><div class="cc-hist-side"><strong>Cash Count · Needs attention</strong><div>No linked bill-and-coin record is available for this transaction. The transaction amount alone cannot identify denominations.</div></div></div>`;
+      return `<div class="cc-hist-pieces"><div class="cc-hist-side"><strong>Cash Count · Needs attention</strong><div>This older transaction has no saved bill-and-coin details. New transactions save the Cash Count inside the transaction automatically.</div></div></div>`;
     }
     const d=record.details||{};
     const received=ccPieceLines(d.received);
@@ -7658,6 +7670,12 @@ body > .hero{
     google.script.run
       .withSuccessHandler(serverTx=>{
         const idx = history.findIndex(x => String(x.id) === String(serverTx.id));
+        // Preserve locally recorded Cash Count even when an older Apps Script
+        // response does not echo the cashPieces field back to the browser.
+        const localTx = idx >= 0 ? history[idx] : null;
+        if(localTx && localTx.cashPieces && !serverTx.cashPieces){
+          serverTx.cashPieces=localTx.cashPieces;
+        }
         if(idx >= 0) history[idx] = serverTx;
         else history.unshift(serverTx);
         window.__gcashTransactions = history;
@@ -8326,6 +8344,14 @@ body > .hero{
       if(stat){stat.textContent='Nothing recorded. '+((e&&e.message)||'Cash Counter did not update.');stat.className='err';}
       return;
     }
+    // ONE RECORD: attach the exact denomination data to the transaction itself.
+    // History, local cache, recovery queue and Google Sheets payload now carry the
+    // same Cash Count instead of relying on a second record to be linked later.
+    tx.cashPieces={received:{...cashPiecesReceived},given:{...cashPiecesGiven}};
+    if(payloadToSave){
+      payloadToSave.cashPieces={received:{...cashPiecesReceived},given:{...cashPiecesGiven}};
+    }
+
     // Denominations are now durable on this device. Only now save the transaction.
     if(isDraft){
       window.gcashCashCounterUpdatePending=true;
