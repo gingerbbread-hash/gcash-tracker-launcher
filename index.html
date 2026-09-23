@@ -5298,6 +5298,11 @@ body > .hero{
         <button id="cashPiecesGivenTab" class="cash-pieces-tab" type="button">Money Given</button>
       </div>
 
+      <div id="cashPiecesTargetPanel" class="cash-pieces-summary-box expected" style="display:none;margin:9px 0 12px;padding:13px 15px">
+        <small id="cashPiecesTargetLabel">Cash Received: required</small>
+        <strong id="cashPiecesTargetAmount" style="font-size:1.55rem">₱0.00</strong>
+        <div id="cashPiecesTargetProgress" style="margin-top:5px;font-weight:600"></div>
+      </div>
       <div id="cashPiecesSectionNote" class="cash-pieces-section-note"></div>
       <div id="cashPiecesGrid" class="cash-pieces-grid"></div>
 
@@ -7874,10 +7879,42 @@ body > .hero{
     updateCashPiecesTotals();
   }
 
+  function cashInRequiredReceived(tx){
+    const entered=Number(tx && (tx._transactionPayload?.cashReceived ?? tx.cashReceived));
+    return Number.isFinite(entered) && entered>0 ? entered : expectedCashMovement(tx);
+  }
+
+  function updateCashPiecesTarget(){
+    const tx=cashPiecesPendingTx;
+    const panel=document.getElementById('cashPiecesTargetPanel');
+    if(!panel)return;
+    const isCashIn=!!tx&&tx.type==='Cash In';
+    panel.style.display=isCashIn?'':'none';
+    if(!isCashIn)return;
+    const requiredReceived=cashInRequiredReceived(tx);
+    const due=Math.round((requiredReceived-expectedCashMovement(tx))*100)/100;
+    const received=pieceTotal(cashPiecesReceived);
+    const given=pieceTotal(cashPiecesGiven);
+    const isReceived=cashPiecesMode==='received';
+    const target=isReceived?requiredReceived:due;
+    const counted=isReceived?received:given;
+    const label=document.getElementById('cashPiecesTargetLabel');
+    const amount=document.getElementById('cashPiecesTargetAmount');
+    const progress=document.getElementById('cashPiecesTargetProgress');
+    if(label)label.textContent=isReceived?'Cash Received · amount to count':'Change Given · amount to give';
+    if(amount)amount.textContent=money(target);
+    if(progress){
+      const delta=Math.round((target-counted)*100)/100;
+      progress.textContent=`Counted ${money(counted)} · ${Math.abs(delta)<0.01?'Matched':delta>0?money(delta)+' remaining':money(-delta)+' too much'}`;
+      progress.style.color=Math.abs(delta)<0.01?'#137547':'#a52720';
+    }
+  }
+
   function updateCashPiecesTotals(){
     const receivedTotal=pieceTotal(cashPiecesReceived);
     const cashIn=cashPiecesPendingTx&&cashPiecesPendingTx.type==='Cash In';
-    const changeDue=Math.round((receivedTotal-expectedCashMovement(cashPiecesPendingTx))*100)/100;
+    const requiredReceived=cashIn?cashInRequiredReceived(cashPiecesPendingTx):0;
+    const changeDue=Math.round((requiredReceived-expectedCashMovement(cashPiecesPendingTx))*100)/100;
     const givenTotal=pieceTotal(cashPiecesGiven);
     const net=receivedTotal-givenTotal;
     const expected=expectedCashMovement(cashPiecesPendingTx);
@@ -7891,6 +7928,7 @@ body > .hero{
     if(a) a.textContent=money(receivedTotal);
     if(b) b.textContent=money(givenTotal);
     if(c) c.textContent=(net>=0?'+':'')+money(net);
+    updateCashPiecesTarget();
 
     const specialCashOutCashFee =
       cashPiecesPendingTx &&
@@ -7911,14 +7949,16 @@ body > .hero{
           : `Enter Cash Given ${money(needGiven)} and Cash Fee Received ${money(needReceived)}.`;
       }
     }else{
-      ok=Math.abs(net-expected)<0.01 && (!cashIn || (changeDue>=0 && Math.abs(givenTotal-changeDue)<0.01));
+      ok=cashIn
+        ? changeDue>=0 && Math.abs(receivedTotal-requiredReceived)<0.01 && Math.abs(givenTotal-changeDue)<0.01
+        : Math.abs(net-expected)<0.01;
       if(match){
         match.className='cash-pieces-match '+(ok?'ok':'bad');
         if(ok){
           match.textContent=cashIn ? `MATCHED. Cash received ${money(receivedTotal)}; change given ${money(givenTotal)}.` : cashPiecesPendingTx&&cashPiecesPendingTx.type==='Move Money'?'MATCHED. Cash pieces equal the transfer amount.':'MATCHED. Cash pieces equal the transaction.';
         }else{
           const diff=expected-net;
-          match.textContent=cashIn ? (changeDue<0 ? `Cash received is short by ${money(-changeDue)}.` : `Change due ${money(changeDue)}. Count the actual change given; recorded ${money(givenTotal)}.`) : `Not matched. ${diff>0?'Need +':'Need '}${money(diff)} more net cash movement.`;
+          match.textContent=cashIn ? (changeDue<0 ? 'Cash received entered on Home is less than the amount due. Nothing recorded.' : Math.abs(receivedTotal-requiredReceived)>=0.01 ? `Count ${money(requiredReceived)} received on Home; counted ${money(receivedTotal)}. Nothing recorded until matched.` : `Change to give ${money(changeDue)}; counted ${money(givenTotal)}. Nothing recorded until matched.`) : `Not matched. ${diff>0?'Need +':'Need '}${money(diff)} more net cash movement.`;
         }
       }
     }
@@ -8103,9 +8143,10 @@ body > .hero{
 
     if(tx.type==='Cash In'){
       updateCashPiecesTotals();
-      const changeDue=pieceTotal(cashPiecesReceived)-expectedCashMovement(tx);
-      if(changeDue<0 || Math.abs(pieceTotal(cashPiecesGiven)-changeDue)>0.01){
-        if(stat){stat.textContent='Cash received is insufficient or the counted change does not match the change due. Nothing recorded.';stat.className='err';}
+      const requiredReceived=cashInRequiredReceived(tx);
+      const changeDue=requiredReceived-expectedCashMovement(tx);
+      if(changeDue<0 || Math.abs(pieceTotal(cashPiecesReceived)-requiredReceived)>0.01 || Math.abs(pieceTotal(cashPiecesGiven)-changeDue)>0.01){
+        if(stat){stat.textContent='Cash received must match Home and change given must match the change due. Nothing recorded.';stat.className='err';}
         return;
       }
       // Counted physical cash is the source of truth for the transaction and Sheets.
