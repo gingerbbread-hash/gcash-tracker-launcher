@@ -1372,8 +1372,7 @@ body.app-locked #historyToggle{
     .home-wallet-check.warn strong{color:#b42318 !important}
 
 
-/* Retain historical Change Money entries; hide only the entry control. */
-#ccChangeMoneyBtn,#ccChangeMoneyPanel{display:none!important}
+/* Change Money is active and uses the same local-first one-record design. */
 </style>
 
 <style>
@@ -5949,7 +5948,7 @@ body > .hero{
   }
   function ccExchangeCard(r){
     const d=r.details||{};
-    return `<div class="history-tx-card cc-exchange-card"><div class="history-tx-head"><div><span class="badge cc-exchange-badge">Change Money</span><div class="history-tx-meta">${escapeHtml(r.date||'')}</div></div><strong class="history-tx-amount">${money(Number(d.receivedTotal||r.receiveTotal||0))}</strong></div>${ccPiecePanel(r)}<div class="cc-hist-zero">Net change to total cash: ${money(0)}</div></div>`;
+    return `<div class="history-tx-card cc-exchange-card"><div class="history-tx-head"><div><span class="badge cc-exchange-badge">Change Money</span><div class="history-tx-meta">${escapeHtml(r.date||'')}</div></div><strong class="history-tx-amount">${money(Number(d.receivedTotal||r.receiveTotal||0))}</strong></div>${ccPiecePanel(r)}<div class="cc-hist-zero">Net change to total cash: ${money(0)}</div><div class="history-tx-actions"><button class="link-btn" type="button" data-cc-change-undo="${escapeHtml(String(d.transactionId||r.id||''))}">Undo Change Money</button></div></div>`;
   }
   function ccLoadMainHistory(){
     try{
@@ -5960,6 +5959,9 @@ body > .hero{
     if(!navigator.onLine)return;
     google.script.run.withSuccessHandler(rows=>{
       if(!Array.isArray(rows))return;
+      let undoneChangeIds=[];try{undoneChangeIds=JSON.parse(localStorage.getItem('gcashChangeMoneyUndoneV1')||'[]')||[]}catch(e){}
+      const undoneChangeSet=new Set(Array.isArray(undoneChangeIds)?undoneChangeIds.map(String):[]);
+      rows=rows.filter(r=>!(r&&r.action==='CHANGE_MONEY'&&r.details&&undoneChangeSet.has(String(r.details.transactionId||''))));
       const serverTxIds=new Set(rows.map(r=>String(r&&r.details&&r.details.transactionId||'')));
       const localOnly=ccHistoryRecords.filter(r=>r&&r.details&&r.details.localPending&&
         !serverTxIds.has(String(r.details.transactionId||'')));
@@ -10724,8 +10726,6 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   root.addEventListener('click',e=>{const b=e.target.closest('.cc-change-plus,.cc-change-minus');if(!b)return;const i=root.querySelector(`input[data-change-kind="${b.dataset.kind}"][data-key="${b.dataset.key}"]`);if(!i)return;let n=Math.max(0,Math.floor(Number(i.value||0)));n=b.classList.contains('cc-change-plus')?n+1:Math.max(0,n-1);i.value=n;refresh()});
   root.addEventListener('input',e=>{if(e.target.matches('input[data-change-kind]'))refresh()});
   $('ccChangeSave').addEventListener('click',()=>{
-    if(!navigator.onLine){$('ccChangeStatus').textContent='Connect to the internet before using Change Money.';$('ccChangeStatus').style.color='#c62828';return}
-    if(pendingSync()){$('ccChangeStatus').textContent='Wait until Pending Sync is empty before changing denominations.';$('ccChangeStatus').style.color='#c62828';return}
     if(!current||!current.pieces){$('ccChangeStatus').textContent='Cash Counter inventory is not loaded.';$('ccChangeStatus').style.color='#c62828';return}
     const receive=readSide('receive'),give=readSide('give'),rt=valueOf(receive),gt=valueOf(give);
     if(rt<=0||gt<=0||Math.abs(rt-gt)>.005){$('ccChangeStatus').textContent='The customer-gives total and you-give total must be exactly the same.';$('ccChangeStatus').style.color='#c62828';return}
@@ -10736,9 +10736,19 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     const id='CHANGE_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
     current={...current,pieces:{...next},physicalCash:valueOf(next),physicalTotal:valueOf(next),_localPending:true};
     try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current))}catch(e){}
+    // One local Change Money record contains both sides of the denomination exchange.
+    // It is written before any network call, so Cash Counter and History stay together.
+    try{
+      const key='gcashCashCounterHistoryV1';
+      let rows=JSON.parse(localStorage.getItem(key)||'[]');if(!Array.isArray(rows))rows=[];
+      const now=new Date(), dateKey=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+      rows.unshift({id:id,action:'CHANGE_MONEY',date:now.toLocaleString('en-PH'),details:{transactionId:id,dateKey:dateKey,received:{...receive},given:{...give},receivedTotal:rt,givenTotal:gt,localPending:true}});
+      localStorage.setItem(key,JSON.stringify(rows));
+    }catch(e){}
     renderCashCounterInventory(current);renderSummary(current);try{sendCashCounterStatusToTracker()}catch(e){}
-    window.dispatchEvent(new CustomEvent('gcash-queue-offline-action',{detail:{id:id,method:'saveCashCounterChangeMoney',payload:{pieces:{...next},exchange:{received:{...receive},given:{...give}}}}}));
-    $('ccChangeStatus').textContent='Change saved. Syncing denomination counts…';$('ccChangeStatus').style.color='#0f7b45';
+    try{if(typeof window.__loadGcashCashPiecesHistory==='function')window.__loadGcashCashPiecesHistory()}catch(e){}
+    window.dispatchEvent(new CustomEvent('gcash-queue-offline-action',{detail:{id:id,method:'saveCashCounterChangeMoney',payload:{pieces:{...next},exchange:{received:{...receive},given:{...give},transactionId:id}}}}));
+    $('ccChangeStatus').textContent=navigator.onLine?'Change saved on this device. Syncing in the background…':'Change saved on this device. It will sync when online.';$('ccChangeStatus').style.color='#0f7b45';
     setTimeout(closeOverlays,500);
   });
   refresh();
@@ -10790,5 +10800,44 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>
+
+<style id="cc-change-money-one-record-undo-style">
+#cashCounterNative #ccChangeMoneyBtn{display:block!important}
+</style>
+<script id="cc-change-money-one-record-undo">
+(function(){
+  const DCM=[['1000',1000],['500',500],['200',200],['100',100],['50',50],['20b',20],['20c',20],['10',10],['5',5],['1',1]];
+  const sum=p=>DCM.reduce((s,d)=>s+Number(p&&p[d[0]]||0)*d[1],0);
+  document.addEventListener('click',function(e){
+    const b=e.target.closest('[data-cc-change-undo]');if(!b)return;
+    const id=String(b.getAttribute('data-cc-change-undo')||'');if(!id)return;
+    let rows=[];try{rows=JSON.parse(localStorage.getItem('gcashCashCounterHistoryV1')||'[]');if(!Array.isArray(rows))rows=[]}catch(err){rows=[]}
+    const rec=rows.find(r=>r&&r.action==='CHANGE_MONEY'&&String(r.details&&r.details.transactionId||r.id||'')===id);
+    if(!rec||!rec.details){alert('This Change Money record is not available on this device.');return}
+    const received=rec.details.received||{}, given=rec.details.given||{};
+    if(!confirm('Undo this Change Money record?\n\nThe exact bills and coins will be restored. Total Cash on Hand will stay the same.'))return;
+    let cur=null;try{cur=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null')}catch(err){}
+    if(!cur||!cur.pieces){alert('Cash Counter inventory is not loaded.');return}
+    const restored={...cur.pieces};
+    for(const d of DCM){const k=d[0];const n=Number(restored[k]||0)-Number(received[k]||0)+Number(given[k]||0);if(n<0){alert('Undo cannot be completed because the current Cash Counter no longer has enough '+k+' denomination pieces.');return}restored[k]=n}
+    if(Math.abs(sum(restored)-sum(cur.pieces))>.005){alert('Safety check failed. Cash Counter total would change.');return}
+    cur={...cur,pieces:restored,physicalCash:sum(restored),physicalTotal:sum(restored),_localPending:true};
+    try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(cur))}catch(err){}
+    try{current=cur}catch(err){}
+    rows=rows.filter(r=>!(r&&r.action==='CHANGE_MONEY'&&String(r.details&&r.details.transactionId||r.id||'')===id));
+    try{localStorage.setItem('gcashCashCounterHistoryV1',JSON.stringify(rows))}catch(err){}
+    try{let u=JSON.parse(localStorage.getItem('gcashChangeMoneyUndoneV1')||'[]');if(!Array.isArray(u))u=[];if(!u.map(String).includes(id))u.push(id);localStorage.setItem('gcashChangeMoneyUndoneV1',JSON.stringify(u))}catch(err){}
+    try{if(typeof renderCashCounterInventory==='function')renderCashCounterInventory(cur);if(typeof renderSummary==='function')renderSummary(cur);if(typeof sendCashCounterStatusToTracker==='function')sendCashCounterStatusToTracker()}catch(err){}
+    // Queue the inverse denomination exchange. This preserves an auditable server reversal
+    // while the original record stays hidden locally through the undo tombstone above.
+    const undoId='UNDO_CHANGE_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+    window.dispatchEvent(new CustomEvent('gcash-queue-offline-action',{detail:{id:undoId,method:'saveCashCounterChangeMoney',payload:{pieces:{...restored},exchange:{received:{...given},given:{...received},undoOf:id}}}}));
+    try{if(typeof window.__loadGcashCashPiecesHistory==='function')window.__loadGcashCashPiecesHistory()}catch(err){}
+    try{if(typeof window.loadCashCounterLatestStatus==='function')window.loadCashCounterLatestStatus()}catch(err){}
+    alert(navigator.onLine?'Change Money undone on this device. The reversal will sync in the background.':'Change Money undone on this device. The reversal will sync when online.');
+  });
+})();
+</script>
+
 </body>
 </html>
