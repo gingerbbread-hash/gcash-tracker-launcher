@@ -6867,9 +6867,8 @@ body > .hero{
   }
 
   function processOfflineActionQueue(){
-    // Legacy pending records are preserved for manual reconciliation; never replay automatically.
-    return;
-
+    // Process queued actions again. Every action carries a stable client ID so retries are idempotent.
+    // This is required for Move Money: a local wallet move must not be lost after a server refresh.
     if(offlineActionBusy||!navigator.onLine) { renderPendingSyncPanel(); return; }
     const q=loadOfflineActionQueue();
     if(!q.length){offlineActionRetry=1400;renderPendingSyncPanel();return;}
@@ -8302,18 +8301,31 @@ body > .hero{
         received:{...cashPiecesReceived}, given:{...cashPiecesGiven}, clientActionId:id
       };
 
-      try{applyLocalMoveMoney(payload,id);}catch(e){
+      // MOVE MONEY IS ATOMIC LOCALLY: wallet balances and exact cash pieces must both succeed.
+      // If the denomination update fails, restore the wallet snapshot immediately.
+      const beforeCapital=capitalData?{...capitalData}:null;
+      const beforeTransfers=Array.isArray(mayaTransfers)?mayaTransfers.slice():[];
+      try{
+        applyLocalMoveMoney(payload,id);
+        const piecesDetail={
+          transactionId:id, transactionType:'Move Money', amount:Number(tx.amount||0),
+          received:{...cashPiecesReceived}, given:{...cashPiecesGiven},
+          expectedCashMovement:(tx.toWallet==='Cash on Hand'?Number(tx.amount||0):-Number(tx.amount||0))
+        };
+        if(typeof applyLocalCashPiecesNow!=='function' || !applyLocalCashPiecesNow(piecesDetail)){
+          throw new Error('Cash Counter did not update.');
+        }
+      }catch(e){
+        if(beforeCapital) renderCapital(beforeCapital);
+        mayaTransfers=beforeTransfers;
+        renderMayaTransfers(); renderCapitalActivity(); saveLocalTrackerCache();
         save.disabled=false; save.textContent='Save Cash Pieces';
-        if(stat){stat.textContent=(e&&e.message)||'Could not save transfer.';stat.className='err';}
+        if(stat){stat.textContent='Nothing recorded. '+((e&&e.message)||'Could not save transfer.');stat.className='err';}
         return;
       }
 
-      try{
-        window.dispatchEvent(new CustomEvent('gcash-local-cash-pieces',{
-          detail:{transactionId:id,received:{...cashPiecesReceived},given:{...cashPiecesGiven},expectedCashMovement:(tx.toWallet==='Cash on Hand'?Number(tx.amount||0):-Number(tx.amount||0))}
-        }));
-      }catch(e){}
-
+      // One queued transfer carries the same ID and denomination payload. The server sync
+      // completes the wallet move without changing the already-applied local Cash Counter twice.
       queueOfflineAction({id:id,method:'addMayaTransferWithCashPiecesBySession',payload:payload});
       save.disabled=false; save.textContent='Saved';
       if(stat){stat.textContent=navigator.onLine?'Saved. Syncing transfer and Cash Counter…':'Saved offline. Waiting to sync.';stat.className='ok';}
@@ -10836,6 +10848,41 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     try{if(typeof window.loadCashCounterLatestStatus==='function')window.loadCashCounterLatestStatus()}catch(err){}
     alert(navigator.onLine?'Change Money undone on this device. The reversal will sync in the background.':'Change Money undone on this device. The reversal will sync when online.');
   });
+})();
+</script>
+
+
+<script id="move-money-atomic-recovery-v1">
+(function(){
+  const KEY='gcashTrackerOfflineActionsV1';
+  function pendingMoves(){
+    try{
+      const q=JSON.parse(localStorage.getItem(KEY)||'[]');
+      return Array.isArray(q)?q.filter(a=>a&&a.method==='addMayaTransferWithCashPiecesBySession'):[];
+    }catch(e){return []}
+  }
+  function refreshRecoveryNotice(){
+    const moves=pendingMoves();
+    let box=document.getElementById('moveMoneyRecoveryNotice');
+    if(!moves.length){ if(box) box.remove(); return; }
+    const total=moves.reduce((n,a)=>n+Number(a&&a.payload&&a.payload.amount||0),0);
+    if(!box){
+      box=document.createElement('div'); box.id='moveMoneyRecoveryNotice';
+      box.style.cssText='margin:10px 16px;padding:12px;border:1px solid #f0b429;border-radius:14px;background:#fff8e1;color:#5d4200;font:600 13px system-ui;line-height:1.4';
+      const home=document.getElementById('tabHomePage')||document.body;
+      home.insertBefore(box,home.firstChild);
+    }
+    box.textContent='Move Money recovery: '+moves.length+' pending transfer'+(moves.length===1?'':'s')+' ('+money(total)+') found on this device. They will sync using their original IDs. Do not record them again.';
+  }
+  window.addEventListener('offline-wallet-action-synced',refreshRecoveryNotice);
+  window.addEventListener('online',function(){refreshRecoveryNotice();try{processOfflineActionQueue()}catch(e){}});
+  function init(){
+    refreshRecoveryNotice();
+    // Existing failed attempts remain in the queue with their original unique IDs.
+    // Replaying those IDs repairs the destination wallet without reapplying local cash pieces.
+    try{processOfflineActionQueue()}catch(e){}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>
 
