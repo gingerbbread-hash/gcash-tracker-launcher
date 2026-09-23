@@ -10858,153 +10858,36 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
 })();
 </script>
 
-
-<script id="move-money-atomic-recovery-v2-cancel-pending">
+<script id="move-money-clean-atomic-v3">
 (function(){
-  const KEY='gcashTrackerOfflineActionsV1';
-  const HOLD='gcashMoveMoneyRecoveryHoldV1';
-  const DENOMS=[['1000',1000],['500',500],['200',200],['100',100],['50',50],['20b',20],['20c',20],['10',10],['5',5],['1',1]];
-  function loadQ(){try{const q=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(q)?q:[]}catch(e){return []}}
-  function saveQ(q){try{localStorage.setItem(KEY,JSON.stringify(q||[]))}catch(e){} try{if(typeof renderPendingSyncPanel==='function')renderPendingSyncPanel()}catch(e){}}
-  function pendingMoves(){return loadQ().filter(a=>a&&(a.method==='addMayaTransferWithCashPiecesBySession'||a.method==='addMayaTransferBySession'))}
-  function fmt(n){try{return money(Number(n||0))}catch(e){return '₱'+Number(n||0).toFixed(2)}}
-  function sumPieces(p){return DENOMS.reduce((n,d)=>n+Number(p&&p[d[0]]||0)*d[1],0)}
-  function moveWasAppliedLocally(id){
-    try{return Array.isArray(mayaTransfers)&&mayaTransfers.some(t=>t&&String(t.id||'')===String(id||''))}catch(e){return false}
-  }
-  function reverseLocalWalletIfNeeded(a){
-    const id=String(a.id||''), p=a.payload||{};
-    if(!moveWasAppliedLocally(id)) return;
-    const map={'Cash on Hand':'cashOnHand','GCash':'gcashBalance','Maya':'mayaBalance','MariBank':'maribankBalance'};
-    const fk=map[p.fromWallet],tk=map[p.toWallet],amt=Number(p.amount||0);
-    if(!capitalData||!fk||!tk||!isFinite(amt)||amt<=0) throw new Error('Wallet reversal data is incomplete.');
-    const c={...capitalData};
-    if(Number(c[tk]||0)+0.001<amt) throw new Error('Destination wallet no longer has enough balance to cancel this pending transfer.');
-    c[fk]=Number(c[fk]||0)+amt;
-    c[tk]=Number(c[tk]||0)-amt;
-    mayaTransfers=mayaTransfers.filter(t=>!(t&&String(t.id||'')===id));
-    renderCapital(c); renderMayaTransfers(); renderCapitalActivity(); saveLocalTrackerCache();
-  }
-  function reverseCashPiecesIfNeeded(a){
-    const p=a.payload||{}, id=String(a.id||'');
-    // A Cash-on-Hand move has exact denomination payload. Reverse it once.
-    if(p.fromWallet!=='Cash on Hand'&&p.toWallet!=='Cash on Hand') return;
-    const received=p.received||{}, given=p.given||{};
-    if(sumPieces(received)===0&&sumPieces(given)===0) throw new Error('Exact bill-and-coin record is missing.');
-    let cur=null;try{cur=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null')}catch(e){}
-    if(!cur||!cur.pieces) throw new Error('Cash Counter inventory is unavailable.');
-    const restored={...cur.pieces};
-    // Original local movement was +received -given. Cancellation is the inverse.
-    for(const d of DENOMS){
-      const k=d[0];
-      const n=Number(restored[k]||0)-Number(received[k]||0)+Number(given[k]||0);
-      if(n<0) throw new Error('Not enough '+k+' denomination pieces to cancel safely.');
-      restored[k]=n;
-    }
-    const expectedDelta=(p.fromWallet==='Cash on Hand'?-Number(p.amount||0):Number(p.amount||0));
-    const actualDelta=sumPieces(received)-sumPieces(given);
-    if(Math.abs(actualDelta-expectedDelta)>0.01) throw new Error('Cash Count does not match this transfer. Cancellation stopped.');
-    cur={...cur,pieces:restored,physicalCash:sumPieces(restored),physicalTotal:sumPieces(restored),_localPending:true};
-    localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(cur));
-    try{current=cur}catch(e){}
-    // Remove the applied-id tombstone so this cancelled operation is no longer considered active.
-    try{let ids=JSON.parse(localStorage.getItem('gcashCashPiecesAppliedV1')||'[]');if(Array.isArray(ids)){ids=ids.filter(x=>String(x)!==id);localStorage.setItem('gcashCashPiecesAppliedV1',JSON.stringify(ids))}}catch(e){}
-    try{if(typeof renderCashCounterInventory==='function')renderCashCounterInventory(cur);if(typeof renderSummary==='function')renderSummary(cur);if(typeof sendCashCounterStatusToTracker==='function')sendCashCounterStatusToTracker()}catch(e){}
-  }
-  function cancelPending(id){
-    const q=loadQ(); const idx=q.findIndex(a=>a&&String(a.id||'')===String(id||''));
-    if(idx<0){alert('This pending transfer is no longer on this device.');refresh();return}
-    const a=q[idx], p=a.payload||{};
-    if(!confirm('Cancel this pending transfer?\n\n'+String(p.fromWallet||'')+' → '+String(p.toWallet||'')+' · '+fmt(p.amount)+'\n\nAny local wallet and Cash Counter changes from this pending transfer will be reversed.'))return;
-    try{
-      // For old broken attempts, only Cash Counter was applied. For newer atomic
-      // attempts, both wallet and Cash Counter were applied. These checks handle both.
-      reverseLocalWalletIfNeeded(a);
-      reverseCashPiecesIfNeeded(a);
-      q.splice(idx,1); saveQ(q);
-      try{localStorage.setItem('gcashCancelledPendingMovesV1',JSON.stringify([...(JSON.parse(localStorage.getItem('gcashCancelledPendingMovesV1')||'[]')||[]),String(id)]))}catch(e){}
-      try{if(typeof window.loadCashCounterLatestStatus==='function')window.loadCashCounterLatestStatus()}catch(e){}
-      try{if(typeof window.refreshTodayDashboard==='function')window.refreshTodayDashboard()}catch(e){}
-      refresh();
-    }catch(e){alert('Cancellation stopped: '+String((e&&e.message)||e));}
-  }
-  function continueOne(id){
-    const q=loadQ();
-    // Keep only the selected transfer eligible while recovery hold is released.
-    // Other pending Move Money records stay held by moving them behind a temporary marker.
-    const selected=q.find(a=>a&&String(a.id||'')===String(id||''));
-    if(!selected)return;
-    const others=q.filter(a=>a!==selected);
-    saveQ([selected,...others]);
-    localStorage.removeItem(HOLD);
-    refresh();
-    try{processOfflineActionQueue()}catch(e){}
-  }
-  function refresh(){
-    const moves=pendingMoves(); let box=document.getElementById('moveMoneyRecoveryNotice');
-    if(!moves.length){localStorage.removeItem(HOLD);if(box)box.remove();return}
-    // If more than one recovery transfer remains, hold automatic replay until the
-    // accidental duplicate is cancelled. With one remaining, user explicitly continues it.
-    if(moves.length>1)localStorage.setItem(HOLD,'1');
-    if(!box){box=document.createElement('div');box.id='moveMoneyRecoveryNotice';const home=document.getElementById('tabHomePage')||document.body;home.insertBefore(box,home.firstChild)}
-    box.style.cssText='margin:10px 16px;padding:12px;border:1px solid #f0b429;border-radius:14px;background:#fff8e1;color:#5d4200;font:600 13px system-ui;line-height:1.4';
-    const total=moves.reduce((n,a)=>n+Number(a&&a.payload&&a.payload.amount||0),0);
-    let html='<div style="font-size:14px;margin-bottom:8px">Move Money recovery: '+moves.length+' pending transfer'+(moves.length===1?'':'s')+' ('+fmt(total)+').</div>';
-    html+='<div style="font-weight:500;margin-bottom:8px">Choose the transfer you want to keep. Cancel accidental duplicates before continuing.</div>';
-    moves.forEach((a,i)=>{const p=a.payload||{};html+='<div style="background:#fff;border:1px solid #ead28a;border-radius:10px;padding:9px;margin:7px 0"><div><strong>Pending '+(i+1)+':</strong> '+String(p.fromWallet||'')+' → '+String(p.toWallet||'')+' · '+fmt(p.amount)+'</div><div style="display:flex;gap:7px;margin-top:7px;flex-wrap:wrap"><button type="button" data-mm-cancel="'+String(a.id||'').replace(/"/g,'')+'" style="border:0;border-radius:8px;padding:8px 10px;background:#b42318;color:#fff;font-weight:700">Cancel Pending Transfer</button>'+(moves.length===1?'<button type="button" data-mm-continue="'+String(a.id||'').replace(/"/g,'')+'" style="border:0;border-radius:8px;padding:8px 10px;background:#1261d8;color:#fff;font-weight:700">Continue This Transfer</button>':'')+'</div></div>'});
-    box.innerHTML=html;
-  }
-  document.addEventListener('click',e=>{const c=e.target.closest('[data-mm-cancel]');if(c){cancelPending(c.getAttribute('data-mm-cancel'));return}const k=e.target.closest('[data-mm-continue]');if(k)continueOne(k.getAttribute('data-mm-continue'))});
-  window.addEventListener('offline-wallet-action-synced',refresh);
-  window.addEventListener('online',refresh);
-  function init(){
-    const moves=pendingMoves();
-    if(moves.length)localStorage.setItem(HOLD,'1');
-    refresh();
-  }
-  // Set the hold synchronously before the older queue timer can replay recovery transfers.
-  if(pendingMoves().length)localStorage.setItem(HOLD,'1');
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
-})();
-</script>
-
-
-
-<script id="safe-recovery-freeze-and-recount-v1">
-(function(){
+  'use strict';
   const QUEUE_KEY='gcashTrackerOfflineActionsV1';
-  const QUARANTINE_KEY='gcashQuarantinedMoveMoneyRecoveryV1';
-  const HOLD_KEY='gcashMoveMoneyRecoveryHoldV1';
+  const QUARANTINE_KEY='gcashOldMoveMoneyQuarantineV2';
+  const MIGRATION_KEY='gcashMoveMoneyCleanAtomicV3Migrated';
 
-  function moneySafe(n){
-    try{return money(Number(n||0))}catch(e){return '₱'+Number(n||0).toFixed(2)}
+  function isMoveAction(a){
+    return !!(a && (a.method==='addMayaTransferBySession' || a.method==='addMayaTransferWithCashPiecesBySession'));
   }
-  function readQueue(){
-    try{const q=JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]');return Array.isArray(q)?q:[]}catch(e){return []}
-  }
-  function isMove(a){
-    return !!(a && (a.method==='addMayaTransferWithCashPiecesBySession'||a.method==='addMayaTransferBySession'));
-  }
-  function quarantinePendingMoves(){
-    const q=readQueue();
-    const moves=q.filter(isMove);
-    if(!moves.length){
-      try{localStorage.removeItem(HOLD_KEY)}catch(e){}
-      return 0;
-    }
-    let old=[];
-    try{old=JSON.parse(localStorage.getItem(QUARANTINE_KEY)||'[]');if(!Array.isArray(old))old=[]}catch(e){old=[]}
-    const seen=new Set(old.map(x=>String(x&&x.id||'')));
-    for(const a of moves){if(!seen.has(String(a.id||''))) old.push({...a,_quarantinedAt:new Date().toISOString()})}
+  function quarantineLegacyMoveActionsOnce(){
+    if(localStorage.getItem(MIGRATION_KEY)==='1') return;
     try{
-      localStorage.setItem(QUARANTINE_KEY,JSON.stringify(old));
-      localStorage.setItem(QUEUE_KEY,JSON.stringify(q.filter(a=>!isMove(a))));
-      localStorage.removeItem(HOLD_KEY);
+      let q=JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]');
+      if(!Array.isArray(q)) q=[];
+      const oldMoves=q.filter(isMoveAction);
+      if(oldMoves.length){
+        let old=[];
+        try{old=JSON.parse(localStorage.getItem(QUARANTINE_KEY)||'[]');if(!Array.isArray(old))old=[];}catch(e){old=[];}
+        const ids=new Set(old.map(x=>String(x&&x.id||'')));
+        oldMoves.forEach(a=>{if(!ids.has(String(a.id||''))) old.push({...a,_quarantinedAt:new Date().toISOString(),_reason:'legacy pre-clean-atomic recovery record'});});
+        localStorage.setItem(QUARANTINE_KEY,JSON.stringify(old));
+        localStorage.setItem(QUEUE_KEY,JSON.stringify(q.filter(a=>!isMoveAction(a))));
+      }
+      // Retire every temporary recovery control. They must never replay old moves.
+      localStorage.removeItem('gcashMoveMoneyRecoveryHoldV1');
+      localStorage.setItem(MIGRATION_KEY,'1');
     }catch(e){}
-    try{if(typeof renderPendingSyncPanel==='function')renderPendingSyncPanel()}catch(e){}
-    return moves.length;
   }
-  function currentDifference(){
+  function counterState(){
     let cur=null;
     try{cur=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null')}catch(e){}
     let counted=NaN;
@@ -11015,52 +10898,47 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     let cash=NaN;
     try{cash=Number(capitalData&&capitalData.cashOnHand)}catch(e){}
     if(!Number.isFinite(cash)){
-      try{cash=Number(String(document.getElementById('homeCashBalance')?.textContent||'').replace(/[^0-9.-]/g,''))}catch(e){}
+      const el=document.getElementById('homeCashBalance')||document.getElementById('cashOutAvailable');
+      if(el) cash=Number(String(el.textContent||'').replace(/[^0-9.-]/g,''));
     }
     return {counted,cash,diff:(Number.isFinite(counted)&&Number.isFinite(cash))?counted-cash:NaN};
   }
-  function lockMoveMoney(){
-    const b=document.getElementById('mayaTransferBtn');
-    if(!b)return;
-    const d=currentDifference();
+  function updateMoveGuard(){
+    const btn=document.getElementById('mayaTransferBtn');
+    if(!btn) return;
+    const d=counterState();
     const bad=!Number.isFinite(d.diff)||Math.abs(d.diff)>0.01;
-    b.disabled=bad;
-    b.title=bad?'Move Money is temporarily locked until the physical Cash Counter is recounted and matches Cash on Hand.':'';
-    if(bad){b.style.opacity='.55';b.style.cursor='not-allowed'}else{b.style.opacity='';b.style.cursor=''}
+    btn.disabled=bad;
+    btn.style.opacity=bad?'.55':'';
+    btn.style.cursor=bad?'not-allowed':'';
+    btn.title=bad?'Move Money is locked because Cash Counter and Cash on Hand do not match. Fix the physical cash difference first.':'';
   }
-  function showSafeNotice(quarantined){
-    const old=document.getElementById('moveMoneyRecoveryNotice'); if(old) old.remove();
-    let box=document.getElementById('safeRecoveryRecountNotice');
-    if(!box){
-      box=document.createElement('div'); box.id='safeRecoveryRecountNotice';
-      const home=document.getElementById('tabHomePage')||document.body;
-      home.insertBefore(box,home.firstChild);
-    }
-    const d=currentDifference();
-    const mismatch=Number.isFinite(d.diff)&&Math.abs(d.diff)>0.01;
-    if(!mismatch){box.remove();lockMoveMoney();return}
-    box.style.cssText='margin:10px 16px;padding:13px;border:1px solid #f0b429;border-radius:14px;background:#fff8e1;color:#5d4200;font:600 13px system-ui;line-height:1.45';
-    box.innerHTML='<div style="font-size:15px;font-weight:850;margin-bottom:5px">Safe recovery: physical recount required</div>'+
-      '<div>No automatic wallet or Cash Counter correction was made. '+(quarantined?quarantined+' old pending Move Money record'+(quarantined===1?' was':'s were')+' safely quarantined and will not replay. ':'')+'Your current wallet balances are being preserved.</div>'+
-      '<div style="margin-top:7px">Cash Counter: <strong>'+moneySafe(d.counted)+'</strong> · Cash on Hand: <strong>'+moneySafe(d.cash)+'</strong> · Difference: <strong>'+(d.diff>0?'+':'')+moneySafe(d.diff)+'</strong></div>'+
-      '<div style="margin-top:7px;font-weight:500">Count the cash you physically have now. Saving that physical count changes only the Cash Counter inventory; it does not change GCash, Maya, MariBank, Cash on Hand, capital, or earnings.</div>'+
-      '<button type="button" id="safeRecoveryStartRecount" style="margin-top:9px;border:0;border-radius:9px;padding:9px 12px;background:#172033;color:#fff;font-weight:800">Recount Physical Cash</button>';
-    lockMoveMoney();
+  function removeOldRecoveryUI(){
+    document.getElementById('moveMoneyRecoveryNotice')?.remove();
+    document.getElementById('safeRecoveryRecountNotice')?.remove();
   }
-  function startRecount(){
-    try{if(typeof setTab==='function')setTab('cashcounter')}catch(e){}
-    try{document.querySelector('[data-main-tab="cashcounter"]')?.click()}catch(e){}
-    setTimeout(()=>{try{document.getElementById('startNewCheck')?.click()}catch(e){}},80);
-  }
-  const quarantined=quarantinePendingMoves();
   function init(){
-    showSafeNotice(quarantined);
-    document.addEventListener('click',function(e){if(e.target.closest('#safeRecoveryStartRecount'))startRecount()},true);
-    window.addEventListener('gcash-local-transaction-recorded',()=>setTimeout(()=>{showSafeNotice(0)},0));
-    setInterval(lockMoveMoney,1000);
+    quarantineLegacyMoveActionsOnce();
+    removeOldRecoveryUI();
+    updateMoveGuard();
+    try{if(typeof renderPendingSyncPanel==='function')renderPendingSyncPanel();}catch(e){}
+    // Guard is recalculated after any wallet/counter mutation. This does not alter balances.
+    ['gcash-local-transaction-recorded','offline-wallet-action-synced','offline-cashcounter-action-synced','tracker-cash-balance-updated']
+      .forEach(name=>window.addEventListener(name,()=>setTimeout(updateMoveGuard,0)));
+    document.addEventListener('click',function(e){
+      const b=e.target.closest('#mayaTransferBtn');
+      if(!b) return;
+      const d=counterState();
+      if(!Number.isFinite(d.diff)||Math.abs(d.diff)>0.01){
+        e.preventDefault();e.stopImmediatePropagation();
+        alert('Move Money is locked because Cash Counter and Cash on Hand do not match. Fix the physical cash difference first. No transfer was recorded.');
+      }
+    },true);
+    setInterval(function(){removeOldRecoveryUI();updateMoveGuard();},1500);
   }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true}); else init();
 })();
 </script>
+
 </body>
 </html>
