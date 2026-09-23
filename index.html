@@ -8215,7 +8215,34 @@ body > .hero{
         save.disabled=false;setTransactionSaving(false);
         if(stat){stat.textContent='Transaction and Cash Count saved together in Google Sheets.';stat.className='ok';}
         status.textContent='Saved in Google Sheets.';status.className='status ok';
-        try{window.loadCashCounterLatestStatus&&window.loadCashCounterLatestStatus();}catch(e){}
+        // The online-first path previously saved History and the wallet but
+        // never applied the counted denominations to the local Cash Counter.
+        // Use the SAME transaction ID for idempotency, and retain the local
+        // inventory until the server's inventory catches up.
+        try{
+          const id=String(serverTx.id||payload.clientTransactionId||'');
+          const countedDetail={transactionId:id,transactionType:String(serverTx.type||tx.type||''),
+            amount:Number(serverTx.amount||tx.amount||0),fee:Number(serverTx.fee||tx.fee||0),
+            received:{...cashPiecesReceived},given:{...cashPiecesGiven}};
+          const already=loadLocalCashPiecesAppliedIds().includes(id);
+          const saved=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null');
+          const expected=Number(serverTx.newCash);
+          const alreadyAtExpected=saved&&saved.pieces&&Number.isFinite(expected)&&
+            Math.abs(total(saved.pieces)-expected)<0.005;
+          if(!already && !alreadyAtExpected){
+            applyLocalCashPiecesNow(countedDetail);
+          }else if(id && !already){
+            saveLocalCashPiecesAppliedIds([...loadLocalCashPiecesAppliedIds(),id]);
+          }
+          if(typeof window.loadCashCounterLatestStatus==='function')window.loadCashCounterLatestStatus();
+        }catch(cashErr){
+          // Do not claim a failed Cash Counter update is a missing transaction:
+          // the transaction was already committed to Google Sheets.
+          status.textContent='Transaction saved, but Cash Counter needs review: '+
+            String((cashErr&&cashErr.message)||'denominations not updated');
+          status.className='status err';
+          if(stat){stat.textContent=status.textContent;stat.className='err';}
+        }
         setTimeout(closeCashPiecesRecorder,500);
       }).withFailureHandler(err=>{
         save.disabled=false;setTransactionSaving(false);
