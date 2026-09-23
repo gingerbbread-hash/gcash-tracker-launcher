@@ -1371,7 +1371,7 @@ body.app-locked #historyToggle{
     .home-wallet-check.warn strong{color:#b42318 !important}
 
 
-/* Change Money is accessible from Wallets and Cash Counter. */
+/* Change Money is accessible from Cash Counter only. */
 </style>
 
 <style>
@@ -4786,12 +4786,6 @@ body > .hero{
 #cashCounterNative #editInventoryGrid .edit-piece-middle small{font-size:10px!important;font-weight:800!important;color:#0b5ed7!important;line-height:1.1!important}
 #cashCounterNative #editInventoryGrid .cc-piece-amount{display:block!important;text-align:right!important;font-size:13px!important;overflow-wrap:anywhere}
 </style>
-<style id="wallet-money-actions-layout">
-.wallet-money-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px;margin-top:9px}
-.wallet-money-actions .wallet-transfer-card{width:100%;min-width:0;min-height:82px}
-.wallet-money-actions .wallet-transfer-card strong{overflow-wrap:anywhere}
-@media(max-width:390px){.wallet-money-actions{gap:6px}.wallet-money-actions .wallet-transfer-card{padding:9px 7px}.wallet-money-actions .wallet-transfer-card strong{font-size:14px}}
-</style>
 </head>
 <body>
 <main class="app">
@@ -5069,15 +5063,10 @@ body > .hero{
         <strong id="cashOutAvailable">₱0.00</strong>
         <span>Cash on Hand</span>
       </div>
-    </div>
-    <div class="wallet-money-actions">
       <button type="button" id="mayaTransferBtn" class="wallet-transfer-card">
         <span>Transfer Money</span>
         <strong>Move Money</strong>
         <small>Cash · GCash · Maya · MariBank</small>
-      </button>
-      <button type="button" id="walletChangeMoneyBtn" class="wallet-transfer-card" style="background:#f1e8ff;border-color:#d8b4fe;color:#6f42c1">
-        <span>Cash Counter</span><strong>Change Money</strong><small>Exchange bills and coins</small>
       </button>
     </div>
 
@@ -10552,13 +10541,6 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   function closeOverlays(){panel.hidden=true;panel.classList.remove('cc-overlay-open');if(settings){settings.hidden=true;settings.classList.remove('cc-overlay-open')}const bd=$('ccPanelBackdrop');if(bd)bd.hidden=true;document.documentElement.style.overflow='';$('ccChangeMoneyBtn').setAttribute('aria-expanded','false');$('ccSettingsGear').setAttribute('aria-expanded','false')}
   function openOverlay(which){if(typeof setCashCounterMode==='function')setCashCounterMode('cash');closeOverlays();const bd=$('ccPanelBackdrop');if(bd)bd.hidden=false;document.documentElement.style.overflow='hidden';which.hidden=false;which.classList.add('cc-overlay-open')}
   $('ccChangeMoneyBtn').addEventListener('click',()=>{reset();openOverlay(panel);$('ccChangeMoneyBtn').setAttribute('aria-expanded','true')});
-  const walletChange=$('walletChangeMoneyBtn');
-  if(walletChange)walletChange.addEventListener('click',()=>{
-    const tab=$('tabCashCounter');
-    if(tab)tab.click();
-    else if(typeof setActiveTab==='function')setActiveTab('cashCounter');
-    reset();openOverlay(panel);$('ccChangeMoneyBtn').setAttribute('aria-expanded','true');
-  });
   $('ccChangeClose').addEventListener('click',closeOverlays);
   $('ccSettingsGear').addEventListener('click',()=>{openOverlay(settings);$('ccSettingsGear').setAttribute('aria-expanded','true')});
   const sc=$('ccSettingsOverlayClose'); if(sc)sc.addEventListener('click',closeOverlays);
