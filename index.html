@@ -4786,6 +4786,12 @@ body > .hero{
 #cashCounterNative #editInventoryGrid .edit-piece-middle small{font-size:10px!important;font-weight:800!important;color:#0b5ed7!important;line-height:1.1!important}
 #cashCounterNative #editInventoryGrid .cc-piece-amount{display:block!important;text-align:right!important;font-size:13px!important;overflow-wrap:anywhere}
 </style>
+<style id="wallet-money-actions-layout">
+.wallet-money-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px;margin-top:9px}
+.wallet-money-actions .wallet-transfer-card{width:100%;min-width:0;min-height:82px}
+.wallet-money-actions .wallet-transfer-card strong{overflow-wrap:anywhere}
+@media(max-width:390px){.wallet-money-actions{gap:6px}.wallet-money-actions .wallet-transfer-card{padding:9px 7px}.wallet-money-actions .wallet-transfer-card strong{font-size:14px}}
+</style>
 </head>
 <body>
 <main class="app">
@@ -5063,6 +5069,8 @@ body > .hero{
         <strong id="cashOutAvailable">₱0.00</strong>
         <span>Cash on Hand</span>
       </div>
+    </div>
+    <div class="wallet-money-actions">
       <button type="button" id="mayaTransferBtn" class="wallet-transfer-card">
         <span>Transfer Money</span>
         <strong>Move Money</strong>
@@ -10546,8 +10554,9 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   $('ccChangeMoneyBtn').addEventListener('click',()=>{reset();openOverlay(panel);$('ccChangeMoneyBtn').setAttribute('aria-expanded','true')});
   const walletChange=$('walletChangeMoneyBtn');
   if(walletChange)walletChange.addEventListener('click',()=>{
-    const tab=document.querySelector('[data-main-tab="cashcounter"]');
+    const tab=$('tabCashCounter');
     if(tab)tab.click();
+    else if(typeof setActiveTab==='function')setActiveTab('cashCounter');
     reset();openOverlay(panel);$('ccChangeMoneyBtn').setAttribute('aria-expanded','true');
   });
   $('ccChangeClose').addEventListener('click',closeOverlays);
@@ -10576,7 +10585,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
       try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current))}catch(e){}
       renderCashCounterInventory(current);renderSummary(current);
       try{sendCashCounterStatusToTracker()}catch(e){}
-      try{if(typeof window.__loadGcashCashPiecesHistory==='function')window.__loadGcashCashPiecesHistory()}catch(e){}
+      try{if(typeof loadHistory==='function')loadHistory()}catch(e){}
       status.style.color='#0f7b45';status.textContent='Change Money saved in Google Sheets.';
       setTimeout(closeOverlays,900);
     }).withFailureHandler(err=>{
