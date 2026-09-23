@@ -1371,8 +1371,7 @@ body.app-locked #historyToggle{
     .home-wallet-check.warn strong{color:#b42318 !important}
 
 
-/* Retain historical Change Money entries; hide only the entry control. */
-#ccChangeMoneyBtn,#ccChangeMoneyPanel{display:none!important}
+/* Change Money is accessible from Wallets and Cash Counter. */
 </style>
 
 <style>
@@ -5068,6 +5067,9 @@ body > .hero{
         <span>Transfer Money</span>
         <strong>Move Money</strong>
         <small>Cash · GCash · Maya · MariBank</small>
+      </button>
+      <button type="button" id="walletChangeMoneyBtn" class="wallet-transfer-card" style="background:#f1e8ff;border-color:#d8b4fe;color:#6f42c1">
+        <span>Cash Counter</span><strong>Change Money</strong><small>Exchange bills and coins</small>
       </button>
     </div>
 
@@ -10542,6 +10544,12 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   function closeOverlays(){panel.hidden=true;panel.classList.remove('cc-overlay-open');if(settings){settings.hidden=true;settings.classList.remove('cc-overlay-open')}const bd=$('ccPanelBackdrop');if(bd)bd.hidden=true;document.documentElement.style.overflow='';$('ccChangeMoneyBtn').setAttribute('aria-expanded','false');$('ccSettingsGear').setAttribute('aria-expanded','false')}
   function openOverlay(which){if(typeof setCashCounterMode==='function')setCashCounterMode('cash');closeOverlays();const bd=$('ccPanelBackdrop');if(bd)bd.hidden=false;document.documentElement.style.overflow='hidden';which.hidden=false;which.classList.add('cc-overlay-open')}
   $('ccChangeMoneyBtn').addEventListener('click',()=>{reset();openOverlay(panel);$('ccChangeMoneyBtn').setAttribute('aria-expanded','true')});
+  const walletChange=$('walletChangeMoneyBtn');
+  if(walletChange)walletChange.addEventListener('click',()=>{
+    const tab=document.querySelector('[data-main-tab="cashcounter"]');
+    if(tab)tab.click();
+    reset();openOverlay(panel);$('ccChangeMoneyBtn').setAttribute('aria-expanded','true');
+  });
   $('ccChangeClose').addEventListener('click',closeOverlays);
   $('ccSettingsGear').addEventListener('click',()=>{openOverlay(settings);$('ccSettingsGear').setAttribute('aria-expanded','true')});
   const sc=$('ccSettingsOverlayClose'); if(sc)sc.addEventListener('click',closeOverlays);
@@ -10560,12 +10568,21 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     if(Math.abs(valueOf(next)-valueOf(current.pieces))>.005){$('ccChangeStatus').textContent='Safety check failed: Cash Counter total would change.';$('ccChangeStatus').style.color='#c62828';return}
     if(!confirm('Save this money change?\n\nCustomer gives: '+fmt(rt)+'\nYou give: '+fmt(gt)+'\n\nTotal Cash Counter will stay the same.'))return;
     const id='CHANGE_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
-    current={...current,pieces:{...next},physicalCash:valueOf(next),physicalTotal:valueOf(next),_localPending:true};
-    try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current))}catch(e){}
-    renderCashCounterInventory(current);renderSummary(current);try{sendCashCounterStatusToTracker()}catch(e){}
-    window.dispatchEvent(new CustomEvent('gcash-queue-offline-action',{detail:{id:id,method:'saveCashCounterChangeMoney',payload:{pieces:{...next},exchange:{received:{...receive},given:{...give}}}}}));
-    $('ccChangeStatus').textContent='Change saved. Syncing denomination counts…';$('ccChangeStatus').style.color='#0f7b45';
-    setTimeout(closeOverlays,500);
+    const save=$('ccChangeSave'),status=$('ccChangeStatus');
+    save.disabled=true;status.style.color='#475467';status.textContent='Saving to Google Sheets…';
+    google.script.run.withSuccessHandler(result=>{
+      if(!result||!result.pieces){status.style.color='#c62828';status.textContent='Save response was incomplete. Check History before trying again.';return;}
+      current={...result,_localPending:false};
+      try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current))}catch(e){}
+      renderCashCounterInventory(current);renderSummary(current);
+      try{sendCashCounterStatusToTracker()}catch(e){}
+      try{if(typeof window.__loadGcashCashPiecesHistory==='function')window.__loadGcashCashPiecesHistory()}catch(e){}
+      status.style.color='#0f7b45';status.textContent='Change Money saved in Google Sheets.';
+      setTimeout(closeOverlays,900);
+    }).withFailureHandler(err=>{
+      status.style.color='#c62828';status.textContent=(err&&err.message)||'Save not confirmed. Check History before trying again.';
+      save.disabled=false;
+    }).saveCashCounterChangeMoney({received:receive,given:give},id);
   });
   refresh();
 })();
