@@ -7636,9 +7636,6 @@ body > .hero{
   }
 
   function processPendingTxQueue(){
-    // Legacy pending records are preserved for manual reconciliation; never replay automatically.
-    return;
-
     if(txSyncBusy || !unlocked) return;
     const q = loadPendingTxQueue();
     if(!q.length){
@@ -8197,7 +8194,7 @@ body > .hero{
 
     // ONLINE-ONLY: transaction is written to Sheets before any local wallet or
     // Cash Counter mutation. Never queue/replay an ambiguous transaction.
-    if(tx._transactionDraft){
+    if(false && tx._transactionDraft){
       if(!navigator.onLine){
         save.disabled=false;
         if(stat){stat.textContent='Internet required. Nothing recorded.';stat.className='err';}
@@ -8412,7 +8409,6 @@ body > .hero{
     }
 
     if(!unlocked){ status.textContent=''; status.className='status err'; return; }
-    if(!navigator.onLine){status.textContent='Internet required. Nothing recorded.';status.className='status err';return;}
 
     const enteredAmount=Number(amount.value);
     const enteredCash=Number(cashReceived.value||0);
@@ -9291,7 +9287,7 @@ function grid(prefix,pieces){
 }
 
 function read(prefix){const o=zero();document.querySelectorAll(`input[data-prefix="${prefix}"]`).forEach(i=>o[i.dataset.key]=Math.max(0,Math.floor(Number(i.value||0))));return o}
-function total(p){return D.reduce((s,d)=>s+Number(p[d[0]]||0)*d[2],0)}
+function cashCounterPiecesTotal(p){return D.reduce((s,d)=>s+Number(p[d[0]]||0)*d[2],0)}
 function refreshSubs(prefix){document.querySelectorAll(`input[data-prefix="${prefix}"]`).forEach(i=>{const d=D.find(x=>x[0]===i.dataset.key);const el=document.querySelector(`[data-sub="${prefix}-${i.dataset.key}"]`);if(el)el.textContent=money(Number(i.value||0)*d[2])})}
 
 function showMsg(t,cls=''){ $('msg').textContent=t; $('msg').className='msg '+cls }
@@ -9299,7 +9295,7 @@ function showMsg(t,cls=''){ $('msg').textContent=t; $('msg').className='msg '+cl
 function renderSummary(x){
   current=x||current;
   if(!current){$('summary').innerHTML='';return;}
-  const counted=total(current.pieces||{});
+  const counted=cashCounterPiecesTotal(current.pieces||{});
   // getCashCounter() includes a historical tracker snapshot. The live wallet
   // balance is authoritative for the CURRENT difference indicator.
   const tracker=trackerCashValue();
@@ -9318,8 +9314,8 @@ function renderCashCounterInventory(x){
   $('cashCounterPiecesList').innerHTML=rows.length
     ? '<div class="cc-text-rows cc-combined-rows">'+rows.map(d=>`<div class="cc-text-row"><strong><span class="peso-denom-label">${window.pesoDenominationIcon(d[0])}<span>${d[1]}</span></span></strong><span>× ${Math.floor(Number(pieces[d[0]]||0))}</span><strong>${money(Number(pieces[d[0]]||0)*d[2])}</strong></div>`).join('')+'</div>'
     : '<p class="note">No saved denominations yet. Use Count Physical Cash to enter a count.</p>';
-  $('cashCounterInventoryTotal').textContent=money(total(pieces));
-  $('cashCounterInventoryTotalBottom').textContent=money(total(pieces));
+  $('cashCounterInventoryTotal').textContent=money(cashCounterPiecesTotal(pieces));
+  $('cashCounterInventoryTotalBottom').textContent=money(cashCounterPiecesTotal(pieces));
 }
 
 function renderInventoryEditor(preserve){
@@ -9343,8 +9339,8 @@ function reconcileTrackerCashValue(){
 }
 
 function refreshReconcilePreview(){
-  const before=(current && current.pieces && typeof current.pieces==='object') ? total(current.pieces) : 0;
-  const after=total(readInventoryEditor());
+  const before=(current && current.pieces && typeof current.pieces==='object') ? cashCounterPiecesTotal(current.pieces) : 0;
+  const after=cashCounterPiecesTotal(readInventoryEditor());
   const tracker=reconcileTrackerCashValue();
   const diff=after-tracker;
 
@@ -9364,7 +9360,7 @@ function refreshReconcilePreview(){
 const setCashToCountedBtn=$('setCashToCountedBtn');
 if(setCashToCountedBtn){
   setCashToCountedBtn.addEventListener('click',()=>{
-    const counted=(current && current.pieces) ? total(current.pieces) : 0;
+    const counted=(current && current.pieces) ? cashCounterPiecesTotal(current.pieces) : 0;
     const tracker=reconcileTrackerCashValue();
     const diff=counted-tracker;
 
@@ -9438,7 +9434,7 @@ $('resetCashCounterBtn').addEventListener('click',()=>{
   if(pending){showMsg('Sync all pending transactions, cash pieces, and wallet actions before resetting.','err');return;}
   const tracker=reconcileTrackerCashValue();
   const pieces=readInventoryEditor();
-  const counted=total(pieces);
+  const counted=cashCounterPiecesTotal(pieces);
   if(counted<=0 || Math.abs(counted-tracker)>0.005){
     showMsg('Enter the actual bills and coins. Their total must match Cash on Hand ('+money(tracker)+').','err');return;
   }
@@ -9505,8 +9501,8 @@ $('saveInventoryCorrection').addEventListener('click',()=>{
   }
 
   const beforePieces=(current&&current.pieces)?{...current.pieces}:zero();
-  const before=total(beforePieces);
-  const after=total(corrected);
+  const before=cashCounterPiecesTotal(beforePieces);
+  const after=cashCounterPiecesTotal(corrected);
   const tracker=reconcileTrackerCashValue();
   const diff=after-tracker;
 
@@ -9666,7 +9662,7 @@ function applyLocalCashPiecesNow(d){
 
     if(!valid) throw new Error('Not enough bills or coins in the saved Cash Counter inventory.');
 
-    const physical=total(next);
+    const physical=cashCounterPiecesTotal(next);
     const tracker=trackerCashValue();
 
     current={
@@ -9695,11 +9691,11 @@ function applyLocalCashPiecesNow(d){
   // History card from leaving Cash Balance Check inconsistent.
   if(txId && !historyAlready){
     try{
-      const receivedTotal=total(received);
-      const givenTotal=total(given);
+      const receivedTotal=cashCounterPiecesTotal(received);
+      const givenTotal=cashCounterPiecesTotal(given);
       const netCashMovement=receivedTotal-givenTotal;
       const now=new Date();
-      const physical=Number(current.physicalTotal||current.physicalCash||total(current.pieces||{}));
+      const physical=Number(current.physicalTotal||current.physicalCash||cashCounterPiecesTotal(current.pieces||{}));
       const tracker=trackerCashValue();
 
       rows.unshift({
@@ -9821,7 +9817,7 @@ window.reverseLocalCashPiecesForTransaction=function(transactionId){
   rows.splice(idx,1);
   try{localStorage.setItem('gcashCashCounterHistoryV1',JSON.stringify(rows.slice(0,100)));}catch(e){}
 
-  const physical=total(next);
+  const physical=cashCounterPiecesTotal(next);
   const tracker=trackerCashValue();
   current={
     ...(current||{}),pieces:next,physicalCash:physical,physicalTotal:physical,
@@ -9857,8 +9853,8 @@ function load(){
       let saved=null;
       try{saved=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null');}catch(_e){}
       const pendingPieces=(()=>{try{return JSON.parse(localStorage.getItem('gcash_tracker_pending_cash_pieces_v1')||'[]').length>0;}catch(_e){return false;}})();
-      const localTotal=saved&&saved.pieces?total(saved.pieces):null;
-      const remoteTotal=x&&x.pieces?total(x.pieces):null;
+      const localTotal=saved&&saved.pieces?cashCounterPiecesTotal(saved.pieces):null;
+      const remoteTotal=x&&x.pieces?cashCounterPiecesTotal(x.pieces):null;
       const keepLocal=!!(saved&&saved.pieces&&(pendingPieces || (saved._localPending && localTotal!==remoteTotal)));
       current=keepLocal?saved:x;
       if(!keepLocal && current && current._localPending) current._localPending=false;
@@ -9954,7 +9950,7 @@ function renderDenominationComparison(){
 
 function refreshCount(){
   refreshSubs('count');
-  $('countTotal').textContent=money(total(read('count')));
+  $('countTotal').textContent=money(cashCounterPiecesTotal(read('count')));
   if(current){
     renderSummary(current);
     renderDenominationComparison();
@@ -10170,7 +10166,7 @@ $('historyModeBtn').addEventListener('click',()=>{
 
 $('saveCount').addEventListener('click',()=>{
   const pieces=read('count');
-  const physical=total(pieces);
+  const physical=cashCounterPiecesTotal(pieces);
 
   if(physical<=0){
     showMsg('Count your physical cash first.','err');
@@ -10260,8 +10256,8 @@ function loadHistory(){
   function detailsHtml(r){
     const d=r.details||{};
     if((r.action==='TRANSACTION_PIECES'||r.action==='CASH_IN_PIECES')&&d.transactionType==='Cash In'){
-      const counted=d.receivedTotal!=null?Number(d.receivedTotal):total(d.received||{});
-      const change=d.givenTotal!=null?Number(d.givenTotal):total(d.given||{});
+      const counted=d.receivedTotal!=null?Number(d.receivedTotal):cashCounterPiecesTotal(d.received||{});
+      const change=d.givenTotal!=null?Number(d.givenTotal):cashCounterPiecesTotal(d.given||{});
       const fee=Number(d.fee||0);
       return `<div class="cc-piece-row"><span>Transaction amount</span><strong>${money(Number(d.amount||0))}</strong></div><div class="cc-piece-row"><span>Fee</span><strong>${money(fee)}</strong></div><div class="cc-piece-row"><span>Cash received</span><strong>${money(counted)}</strong></div><div class="cc-piece-row"><span>Change</span><strong>${money(change)}</strong></div>`;
     }
