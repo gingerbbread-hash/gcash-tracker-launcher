@@ -4807,7 +4807,7 @@ body > .hero{
 .multi-step-title{font-weight:900;margin:14px 0 7px}.multi-piece-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
 .multi-piece-row{display:grid;grid-template-columns:1fr 78px;align-items:center;gap:7px;border:1px solid #e0e6ef;border-radius:9px;padding:7px}
 .multi-piece-row input{width:100%;box-sizing:border-box;min-height:36px;border:1px solid #cbd6e3;border-radius:8px;padding:5px;font-size:16px;text-align:center}
-.multi-balance{border-radius:12px;padding:11px;margin:12px 0;font-weight:800;text-align:center}.multi-balance.ok{background:#e9f7ee;color:#137333}.multi-balance.bad{background:#fff0f0;color:#b3261e}
+.multi-balance{border-radius:12px;padding:11px;margin:12px 0;font-weight:800;text-align:center}.multi-change-due{border:2px solid #1264d8;background:#eef5ff;border-radius:14px;padding:13px;margin:12px 0;text-align:center}.multi-change-due small{display:block;color:#52657e;font-weight:800}.multi-change-due strong{display:block;font-size:28px;color:#0d55b5;margin:3px 0}.multi-change-due span{display:block;font-size:14px;font-weight:800}.multi-change-due.ok{border-color:#1a8f4a;background:#e9f7ee}.multi-change-due.ok strong{color:#137333}.multi-change-due.over{border-color:#c72b25;background:#fff0f0}.multi-change-due.over strong{color:#b3261e}.multi-balance.ok{background:#e9f7ee;color:#137333}.multi-balance.bad{background:#fff0f0;color:#b3261e}
 .multi-save{width:100%;border:0;background:#1264d8;color:#fff;border-radius:12px;padding:14px;font-size:16px;font-weight:900}.multi-save:disabled{opacity:.45}
 .multi-session-undo{margin-top:8px;border:1px solid #e0b0b0;background:#fff6f6;color:#a61b1b;border-radius:9px;padding:8px 10px;font-weight:800}
 @media(max-width:520px){.multi-piece-grid{grid-template-columns:1fr}.multi-summary{grid-template-columns:1fr 1fr}.multi-summary div:last-child{grid-column:1/-1}}
@@ -11175,12 +11175,16 @@ setTimeout(()=>{
     </div>
     <div class="multi-step-title">Money Received</div>
     <div id="multiReceivedPieces" class="multi-piece-grid"></div>
-    <div class="multi-step-title">Change Given</div>
+    <div class="multi-step-title">Count Change to Give</div>
     <div id="multiGivenPieces" class="multi-piece-grid"></div>
     <div class="multi-summary">
       <div><small>Cash received</small><strong id="multiReceivedTotal">₱0.00</strong></div>
-      <div><small>Change</small><strong id="multiGivenTotal">₱0.00</strong></div>
+      <div><small>Change counted</small><strong id="multiGivenTotal">₱0.00</strong></div>
       <div><small>Net cash</small><strong id="multiNetCash">₱0.00</strong></div>
+    </div>
+    <div id="multiChangeDue" class="multi-change-due">
+      <small>YOU NEED TO GIVE</small><strong>₱0.00</strong>
+      <span id="multiChangeRemaining">Count the customer's cash first.</span>
     </div>
     <div id="multiBalanceState" class="multi-balance bad">Add at least two transactions and count the cash.</div>
     <button type="button" id="multiSave" class="multi-save" disabled>Record All Transactions</button>
@@ -11201,8 +11205,20 @@ setTimeout(()=>{
   const zeroM=()=>Object.fromEntries(denoms.map(d=>[d[0],0]));
   const pieceTotalM=p=>denoms.reduce((s,d)=>s+Number(p[d[0]]||0)*d[2],0);
 
+  function sharedInventoryM(){
+    try{
+      const c=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null');
+      return c&&c.pieces?c.pieces:{};
+    }catch(e){return {};}
+  }
   function pieceGrid(prefix){
-    return denoms.map(d=>`<label class="multi-piece-row"><span>${d[1]}</span><input type="number" min="0" step="1" inputmode="numeric" data-multi-piece="${prefix}" data-key="${d[0]}" value="0"></label>`).join('');
+    const inv=sharedInventoryM();
+    return denoms.map(d=>{
+      const available=Math.max(0,Math.floor(Number(inv[d[0]]||0)));
+      const hint=prefix==='given'?` <small style="color:#718096">Available ${available}</small>`:'';
+      const max=prefix==='given'?` max="${available}"`:'';
+      return `<label class="multi-piece-row"><span>${d[1]}${hint}</span><input type="number" min="0"${max} step="1" inputmode="numeric" data-multi-piece="${prefix}" data-key="${d[0]}" value="0"></label>`;
+    }).join('');
   }
   $m('multiReceivedPieces').innerHTML=pieceGrid('received');
   $m('multiGivenPieces').innerHTML=pieceGrid('given');
@@ -11265,23 +11281,51 @@ setTimeout(()=>{
     $m('multiReceivedTotal').textContent=moneyM(t.received);
     $m('multiGivenTotal').textContent=moneyM(t.given);
     $m('multiNetCash').textContent=moneyM(t.net);
-    const balanced=t.valid && t.received>0 && Math.abs(t.net-t.required)<0.005;
+    const changeDue=Math.max(0,t.received-t.required);
+    const remaining=changeDue-t.given;
+    const dueBox=$m('multiChangeDue'), remainEl=$m('multiChangeRemaining');
+    if(dueBox){
+      dueBox.querySelector('strong').textContent=moneyM(changeDue);
+      dueBox.className='multi-change-due'+(t.received>0&&Math.abs(remaining)<0.005?' ok':(remaining<0?' over':''));
+    }
+    if(remainEl){
+      if(!(t.received>0)) remainEl.textContent='Count the customer\'s cash first.';
+      else if(t.received<t.required) remainEl.textContent='Customer still needs to give '+moneyM(t.required-t.received)+'.';
+      else if(remaining>0.004) remainEl.textContent='REMAINING TO GIVE: '+moneyM(remaining);
+      else if(remaining<-0.004) remainEl.textContent='TOO MUCH CHANGE BY '+moneyM(Math.abs(remaining))+'. Remove some change.';
+      else remainEl.textContent='CHANGE COUNT COMPLETE';
+    }
+    const balanced=t.valid && t.received>=t.required && Math.abs(remaining)<0.005 && Math.abs(t.net-t.required)<0.005;
     const state=$m('multiBalanceState');
     state.className='multi-balance '+(balanced?'ok':'bad');
     state.textContent=balanced
       ? `BALANCED: ${moneyM(t.received)} received − ${moneyM(t.given)} change = ${moneyM(t.required)}`
       : (t.items.length<2?'Add at least two transactions.':
-        `NOT BALANCED: must receive net ${moneyM(t.required)}. Current net cash is ${moneyM(t.net)}.`);
+        (t.received<t.required
+          ? `NOT READY: customer must pay ${moneyM(t.required)}. Count the cash received.`
+          : `NOT BALANCED: count exactly ${moneyM(changeDue)} change. Remaining ${moneyM(Math.max(0,remaining))}.`));
     saveBtn.disabled=!balanced||saving;
     return {t,balanced};
   }
-  modal.addEventListener('input',e=>{if(e.target.matches('[data-multi-piece]'))refresh();});
+  modal.addEventListener('input',e=>{
+    if(e.target.matches('[data-multi-piece]')){
+      if(e.target.dataset.multiPiece==='given'){
+        const max=Number(e.target.max);
+        if(Number.isFinite(max)&&Number(e.target.value||0)>max){
+          e.target.value=String(max);
+          alert('Only '+max+' of this denomination is available in the Cash Counter.');
+        }
+      }
+      refresh();
+    }
+  });
   $m('multiAddItem').addEventListener('click',()=>addItem());
   $m('multiClose').addEventListener('click',()=>{if(!saving){modal.classList.remove('show');modal.setAttribute('aria-hidden','true');}});
   $m('openMultiTransaction').addEventListener('click',()=>{
     if(!navigator.onLine){alert('Multiple Transaction is online-only so the whole customer session can be saved atomically.');return;}
     itemsBox.innerHTML='';
-    modal.querySelectorAll('[data-multi-piece]').forEach(i=>i.value='0');
+    $m('multiReceivedPieces').innerHTML=pieceGrid('received');
+    $m('multiGivenPieces').innerHTML=pieceGrid('given');
     addItem({wallet:'GCash'});addItem({wallet:'GCash'});
     modal.classList.add('show');modal.setAttribute('aria-hidden','false');refresh();
   });
