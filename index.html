@@ -9981,7 +9981,17 @@ function load(){
           return Array.isArray(q) && q.some(p=>p&&p.cashPieces);
         }catch(_e){return false;}
       })();
-      const keepLocal=!!(saved&&saved.pieces&&(pendingPieces||pendingCashAction||pendingTransactionWithPieces));
+      // Keep a locally BALANCED inventory long enough to publish it as the shared
+      // cross-device snapshot. Previously load() immediately replaced the good
+      // iPhone inventory with an older server counter before saveCashCount()
+      // finished, which left the Mac permanently SHORT/OVER.
+      const savedTotal=(saved&&saved.pieces)?cashCounterPiecesTotal(saved.pieces):NaN;
+      const serverTotal=(x&&x.pieces)?cashCounterPiecesTotal(x.pieces):NaN;
+      const liveTracker=trackerCashValue();
+      const localBalanced=Number.isFinite(savedTotal) && Math.abs(savedTotal-liveTracker)<=0.01;
+      const serverBalanced=Number.isFinite(serverTotal) && Math.abs(serverTotal-liveTracker)<=0.01;
+      const keepBalancedBridge=!!(saved&&saved.pieces&&localBalanced&&!serverBalanced);
+      const keepLocal=!!(saved&&saved.pieces&&(pendingPieces||pendingCashAction||pendingTransactionWithPieces||keepBalancedBridge));
       // If this is the already-balanced device (for example the iPhone), publish
       // its exact denomination inventory once so another device can load it.
       // A device showing SHORT or OVER is never allowed to publish this bridge snapshot.
@@ -10018,6 +10028,70 @@ function load(){
     })
     .getCashCounter();
 }
+
+
+// Cross-device recovery path: getCashCounter() can lag behind the Cash Count
+// history sheet. Read the newest server COUNT snapshot whose exact denomination
+// total matches the live Cash on Hand, and use it only when this device has no
+// unsynced cash-changing work. This makes iPhone -> Mac and Mac -> iPhone converge
+// without creating a Reconcile entry or changing wallet balances.
+function hasUnsyncedLocalCashWork(){
+  try{
+    const pp=JSON.parse(localStorage.getItem('gcash_tracker_pending_cash_pieces_v1')||'[]');
+    if(Array.isArray(pp)&&pp.some(x=>x&&x.atomicCashCountV2===true)) return true;
+  }catch(_e){}
+  try{
+    const pt=JSON.parse(localStorage.getItem('gcash_tracker_pending_transactions_v1')||'[]');
+    if(Array.isArray(pt)&&pt.some(x=>x&&x.cashPieces)) return true;
+  }catch(_e){}
+  try{
+    const qa=JSON.parse(localStorage.getItem('gcashTrackerOfflineActionsV1')||'[]');
+    const methods=new Set(['saveCashCount','saveManualCashCounterCorrection','saveCashCounterChangeMoney','addMayaTransferWithCashPiecesBySession','saveTransactionCashPieces']);
+    if(Array.isArray(qa)&&qa.some(a=>a&&methods.has(String(a.method||'')))) return true;
+  }catch(_e){}
+  return false;
+}
+
+function loadSharedBalancedCashSnapshot(){
+  if(!navigator.onLine || hasUnsyncedLocalCashWork()) return;
+  try{
+    google.script.run.withSuccessHandler(rows=>{
+      if(hasUnsyncedLocalCashWork()) return;
+      rows=Array.isArray(rows)?rows:[];
+      const tracker=trackerCashValue();
+      // Newest first regardless of backend ordering.
+      rows=rows.slice().sort((a,b)=>new Date(b&&b.timestamp||0)-new Date(a&&a.timestamp||0));
+      let chosen=null;
+      for(const r of rows){
+        if(!r || r.action!=='COUNT') continue;
+        const d=r.details||{};
+        const pieces=(d.inventory&&typeof d.inventory==='object')?d.inventory:
+          ((d.pieces&&typeof d.pieces==='object')?d.pieces:null);
+        if(!pieces) continue;
+        const total=cashCounterPiecesTotal(pieces);
+        if(Math.abs(total-tracker)<=0.01){ chosen={record:r,pieces:{...pieces},total}; break; }
+      }
+      if(!chosen) return;
+      const localTotal=current&&current.pieces?cashCounterPiecesTotal(current.pieces):NaN;
+      if(Number.isFinite(localTotal)&&Math.abs(localTotal-chosen.total)<=0.01) return;
+      current={
+        ...(current||{}),pieces:{...chosen.pieces},physicalCash:chosen.total,physicalTotal:chosen.total,
+        trackerCashOnHand:tracker,difference:chosen.total-tracker,status:'MATCHED',_localPending:false,
+        sharedSnapshotTimestamp:String(chosen.record.timestamp||'')
+      };
+      try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(_e){}
+      renderCashCounterInventory(current);
+      renderSummary(current);
+      setTimeout(sendCashCounterStatusToTracker,0);
+      showMsg('Shared Cash Counter loaded from your latest balanced server count.','ok');
+    }).withFailureHandler(()=>{}).getCashCountHistory();
+  }catch(_e){}
+}
+
+// Run after the normal counter load and whenever the device comes online/focuses.
+setTimeout(loadSharedBalancedCashSnapshot,900);
+window.addEventListener('online',()=>setTimeout(loadSharedBalancedCashSnapshot,500));
+window.addEventListener('focus',()=>setTimeout(loadSharedBalancedCashSnapshot,500));
 
 function renderDenominationComparison(){
   if(!current) return;
