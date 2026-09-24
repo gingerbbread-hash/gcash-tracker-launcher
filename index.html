@@ -4832,6 +4832,17 @@ body > .hero{
 .multi-item{background:#fff}.multi-item-bottom{margin-top:7px}.multi-item .multi-fee{color:#b3261e;font-weight:800}
 @media(max-width:520px){.multi-normal-summary{grid-template-columns:repeat(3,1fr)}.multi-normal-summary strong{font-size:18px}.multi-actions{grid-template-columns:1fr 1.25fr 1fr}.multi-action-secondary{font-size:13px;padding:7px}}
 .multi-settlement,.multi-change-compact{border:1px solid #dce5f0;background:#fff;border-radius:12px;padding:9px 10px;margin:9px 0}.multi-settlement label{display:block;font-size:12px;font-weight:800;color:#657184;margin-bottom:5px}.multi-settlement-row{display:grid;grid-template-columns:1fr auto;gap:7px}.multi-settlement-row input{min-width:0;height:42px;border:1px solid #cbd6e3;border-radius:9px;padding:7px 10px;font-size:17px;font-weight:800}.multi-settlement-row button,.multi-change-compact button{border:0;background:#1264d8;color:#fff;border-radius:9px;padding:8px 11px;font-weight:800}.multi-verify-line{display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:12px;color:#6c7889}.multi-change-compact{display:flex;align-items:center;justify-content:space-between;gap:10px}.multi-change-compact small{display:block;color:#657184;font-weight:700}.multi-change-compact strong{display:block;font-size:21px}.multi-change-compact span{font-size:11px;color:#6c7889}.multi-change-verify{padding:0 3px;margin-top:-4px;margin-bottom:8px}.multi-counter-target,.multi-counter-footer{display:flex;justify-content:space-between;gap:10px}.multi-counter-target{padding:7px 2px 9px;font-weight:800}.multi-counter-target strong{font-size:21px}.multi-compact-pieces{display:flex;flex-direction:column;gap:5px;max-height:270px;overflow:auto}.multi-compact-row{display:grid;grid-template-columns:68px 34px 38px 34px 1fr;align-items:center;gap:4px;min-height:36px;border:1px solid #e0e6ef;border-radius:9px;padding:3px 5px}.multi-compact-row .dlabel{font-weight:800;font-size:13px}.multi-compact-row .qty{text-align:center;font-weight:900}.multi-compact-row .sub{text-align:right;font-weight:800;font-size:12px;color:#596678}.multi-compact-row button{height:29px;border:0;border-radius:7px;background:#edf2f8;font-size:19px;font-weight:900}.multi-add-denom{width:100%;margin:7px 0;border:1px dashed #9fb2ca;background:#f7f9fc;color:#31547c;border-radius:9px;padding:8px;font-weight:800}.multi-counter-footer{font-size:12px;padding:6px 2px 9px;color:#596678}.multi-denom-picker{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0}.multi-denom-picker button{border:1px solid #cbd6e3;background:#fff;border-radius:8px;padding:6px 8px;font-weight:800;font-size:12px}.multi-denom-picker button:disabled{opacity:.35}.multi-actions.multi-actions-two{grid-template-columns:1.5fr 1fr}
+
+<style id="multiQuickCashCountStyles">
+.multi-quick-denoms{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:10px 0}
+.multi-quick-denom{border:1px solid #b9cbe1;background:#f7faff;color:#17345d;border-radius:10px;padding:10px 4px;font-size:13px;font-weight:900;min-height:42px}
+.multi-quick-denom:active{transform:scale(.97);background:#e8f2ff}
+.multi-quick-denom small{display:block;font-size:9px;font-weight:700;color:#667085;margin-top:2px}
+.multi-compact-pieces:empty{display:none}
+.multi-compact-pieces:not(:empty){margin-top:8px;padding-top:8px;border-top:1px solid #e4eaf2}
+.multi-counter-help{font-size:11px;color:#667085;margin-top:2px}
+@media(max-width:380px){.multi-quick-denoms{gap:5px}.multi-quick-denom{padding:8px 2px;font-size:12px}}
+</style>
 </style>
 
 </head>
@@ -11209,7 +11220,9 @@ setTimeout(()=>{
   <div id="multiChangeCounterModal" class="multi-received-modal" aria-hidden="true"><div class="multi-received-card">
       <div class="multi-head"><h2>Count Change</h2><button type="button" id="multiChangeClose" class="multi-close">Done</button></div>
       <div class="multi-counter-target"><span>Change to Give</span><strong id="multiChangePopupDue">₱0.00</strong></div>
-      <div id="multiGivenPieces" class="multi-compact-pieces"></div><button type="button" id="multiAddGivenDenom" class="multi-add-denom">+ Add Denomination</button>
+      <div class="multi-counter-help">Tap each bill or coin you give. Each tap adds 1 piece.</div>
+      <div id="multiGivenQuickDenoms" class="multi-quick-denoms"></div>
+      <div id="multiGivenPieces" class="multi-compact-pieces"></div>
       <div class="multi-counter-footer"><span>Counted <strong id="multiChangePopupCounted">₱0.00</strong></span><span>Remaining <strong id="multiChangePopupRemaining">₱0.00</strong></span></div>
       <button type="button" id="multiChangeDone" class="multi-save">Done</button>
     </div></div>
@@ -11217,8 +11230,9 @@ setTimeout(()=>{
     <div class="multi-received-card">
       <div class="multi-head"><h2>Count Cash Received</h2><button type="button" id="multiReceivedClose" class="multi-close">Done</button></div>
       <div class="multi-counter-target"><span>Cash Received</span><strong id="multiReceivedTarget">₱0.00</strong></div>
+      <div class="multi-counter-help">Tap each bill or coin received. Each tap adds 1 piece.</div>
+      <div id="multiReceivedQuickDenoms" class="multi-quick-denoms"></div>
       <div id="multiReceivedPieces" class="multi-compact-pieces"></div>
-      <button type="button" id="multiAddReceivedDenom" class="multi-add-denom">+ Add Denomination</button>
       <div class="multi-counter-footer"><span>Counted <strong id="multiReceivedPopupTotal">₱0.00</strong></span><span>Remaining <strong id="multiReceivedRemaining">₱0.00</strong></span></div>
       <button type="button" id="multiReceivedDone" class="multi-save">Done</button>
     </div>
@@ -11247,10 +11261,38 @@ setTimeout(()=>{
   }
   function pieceGrid(prefix){ return ''; }
   const selectedDenomsM={received:[],given:[]};
+  function renderQuickDenomsM(kind){
+    const host=$m(kind==='received'?'multiReceivedQuickDenoms':'multiGivenQuickDenoms');
+    if(!host)return;
+    const inv=sharedInventoryM();
+    host.innerHTML=denoms.map(d=>{
+      const available=Math.max(0,Math.floor(Number(inv[d[0]]||0)));
+      const note=kind==='given'?`<small>${available} available</small>`:(d[0]==='20b'?'<small>bill</small>':(d[0]==='20c'?'<small>coin</small>':''));
+      const label=(d[0]==='20b'||d[0]==='20c')?'₱20':d[1];
+      return `<button type="button" class="multi-quick-denom" data-quick-kind="${kind}" data-quick-key="${d[0]}">${label}${note}</button>`;
+    }).join('');
+  }
   function compactPiecesM(kind){const box=$m(kind==='received'?'multiReceivedPieces':'multiGivenPieces');if(!box)return;box._qty=box._qty||{};box.innerHTML=selectedDenomsM[kind].map(key=>{const d=denoms.find(x=>x[0]===key),q=Number(box._qty[key]||0);return `<div class="multi-compact-row"><span class="dlabel">${d[1]}</span><button type="button" data-step="-1" data-kind="${kind}" data-key="${key}">−</button><span class="qty">${q}</span><button type="button" data-step="1" data-kind="${kind}" data-key="${key}">+</button><span class="sub">${moneyM(q*d[2])}</span><input type="hidden" value="${q}" data-multi-piece="${kind}" data-key="${key}"></div>`;}).join('');}
   function addDenomPickerM(kind,btn){let p=btn.nextElementSibling;if(p&&p.classList.contains('multi-denom-picker')){p.remove();return;}p=document.createElement('div');p.className='multi-denom-picker';p.innerHTML=denoms.map(d=>`<button type="button" data-pick-kind="${kind}" data-pick-key="${d[0]}" ${selectedDenomsM[kind].includes(d[0])?'disabled':''}>${d[1]}</button>`).join('');btn.after(p);}
   function addDenomM(kind,key){if(!selectedDenomsM[kind].includes(key))selectedDenomsM[kind].push(key);const box=$m(kind==='received'?'multiReceivedPieces':'multiGivenPieces');box._qty=box._qty||{};box._qty[key]=box._qty[key]||0;compactPiecesM(kind);refresh();}
-  function stepDenomM(kind,key,delta){const box=$m(kind==='received'?'multiReceivedPieces':'multiGivenPieces');box._qty=box._qty||{};box._qty[key]=Math.max(0,Number(box._qty[key]||0)+delta);compactPiecesM(kind);refresh();}
+  function stepDenomM(kind,key,delta){
+    const box=$m(kind==='received'?'multiReceivedPieces':'multiGivenPieces');box._qty=box._qty||{};
+    let next=Math.max(0,Number(box._qty[key]||0)+delta);
+    if(kind==='given'){
+      const available=Math.max(0,Math.floor(Number(sharedInventoryM()[key]||0)));
+      if(next>available){alert('Only '+available+' of this denomination is available in the Cash Counter.');next=available;}
+    }
+    box._qty[key]=next;
+    if(next<=0)selectedDenomsM[kind]=selectedDenomsM[kind].filter(k=>k!==key);
+    else if(!selectedDenomsM[kind].includes(key))selectedDenomsM[kind].push(key);
+    compactPiecesM(kind);refresh();
+  }
+  function quickAddDenomM(kind,key){
+    const box=$m(kind==='received'?'multiReceivedPieces':'multiGivenPieces');box._qty=box._qty||{};
+    if(!selectedDenomsM[kind].includes(key))selectedDenomsM[kind].push(key);
+    stepDenomM(kind,key,1);
+  }
+  renderQuickDenomsM('received');renderQuickDenomsM('given');
   compactPiecesM('received');compactPiecesM('given');
 
   function addItem(data){
@@ -11360,12 +11402,21 @@ setTimeout(()=>{
     }
   });
   $m('multiAddItem').addEventListener('click',()=>addItem());
-  document.addEventListener('click',e=>{const step=e.target.closest('[data-step]');if(step && (step.closest('#multiReceivedCounterModal')||step.closest('#multiChangeCounterModal'))){stepDenomM(step.dataset.kind,step.dataset.key,Number(step.dataset.step));return;}const pick=e.target.closest('[data-pick-kind]');if(pick && (pick.closest('#multiReceivedCounterModal')||pick.closest('#multiChangeCounterModal'))){addDenomM(pick.dataset.pickKind,pick.dataset.pickKey);const p=pick.closest('.multi-denom-picker');if(p)p.remove();return;}});
-  $m('multiAddReceivedDenom').addEventListener('click',e=>addDenomPickerM('received',e.currentTarget));$m('multiAddGivenDenom').addEventListener('click',e=>addDenomPickerM('given',e.currentTarget));
-  const changeModal=$m('multiChangeCounterModal');function openChangeCounter(){compactPiecesM('given');refresh();changeModal.classList.add('show');changeModal.setAttribute('aria-hidden','false');}function closeChangeCounter(){changeModal.classList.remove('show');changeModal.setAttribute('aria-hidden','true');refresh();}
+  document.addEventListener('click',e=>{
+    const quick=e.target.closest('[data-quick-kind]');
+    if(quick && (quick.closest('#multiReceivedCounterModal')||quick.closest('#multiChangeCounterModal'))){
+      quickAddDenomM(quick.dataset.quickKind,quick.dataset.quickKey);return;
+    }
+    const step=e.target.closest('[data-step]');
+    if(step && (step.closest('#multiReceivedCounterModal')||step.closest('#multiChangeCounterModal'))){
+      stepDenomM(step.dataset.kind,step.dataset.key,Number(step.dataset.step));return;
+    }
+  });
+  const changeModal=$m('multiChangeCounterModal');function openChangeCounter(){renderQuickDenomsM('given');compactPiecesM('given');refresh();changeModal.classList.add('show');changeModal.setAttribute('aria-hidden','false');}function closeChangeCounter(){changeModal.classList.remove('show');changeModal.setAttribute('aria-hidden','true');refresh();}
   $m('multiOpenChangeCounter').addEventListener('click',openChangeCounter);$m('multiChangeClose').addEventListener('click',closeChangeCounter);$m('multiChangeDone').addEventListener('click',closeChangeCounter);
   const receivedModal=$m('multiReceivedCounterModal');
   function openReceivedCounter(){
+    renderQuickDenomsM('received');
     receivedModal.classList.add('show');receivedModal.setAttribute('aria-hidden','false');refresh();
   }
   function closeReceivedCounter(){
