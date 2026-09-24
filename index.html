@@ -4833,6 +4833,9 @@ body > .hero{
 @media(max-width:520px){.multi-normal-summary{grid-template-columns:repeat(3,1fr)}.multi-normal-summary strong{font-size:18px}.multi-actions{grid-template-columns:1fr 1.25fr 1fr}.multi-action-secondary{font-size:13px;padding:7px}}
 .multi-settlement,.multi-change-compact{border:1px solid #dce5f0;background:#fff;border-radius:12px;padding:9px 10px;margin:9px 0}.multi-settlement label{display:block;font-size:12px;font-weight:800;color:#657184;margin-bottom:5px}.multi-settlement-row{display:grid;grid-template-columns:1fr auto;gap:7px}.multi-settlement-row input{min-width:0;height:42px;border:1px solid #cbd6e3;border-radius:9px;padding:7px 10px;font-size:17px;font-weight:800}.multi-settlement-row button,.multi-change-compact button{border:0;background:#1264d8;color:#fff;border-radius:9px;padding:8px 11px;font-weight:800}.multi-verify-line{display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:12px;color:#6c7889}.multi-change-compact{display:flex;align-items:center;justify-content:space-between;gap:10px}.multi-change-compact small{display:block;color:#657184;font-weight:700}.multi-change-compact strong{display:block;font-size:21px}.multi-change-compact span{font-size:11px;color:#6c7889}.multi-change-verify{padding:0 3px;margin-top:-4px;margin-bottom:8px}.multi-counter-target,.multi-counter-footer{display:flex;justify-content:space-between;gap:10px}.multi-counter-target{padding:7px 2px 9px;font-weight:800}.multi-counter-target strong{font-size:21px}.multi-compact-pieces{display:flex;flex-direction:column;gap:5px;max-height:270px;overflow:auto}.multi-compact-row{display:grid;grid-template-columns:68px 34px 38px 34px 1fr;align-items:center;gap:4px;min-height:36px;border:1px solid #e0e6ef;border-radius:9px;padding:3px 5px}.multi-compact-row .dlabel{font-weight:800;font-size:13px}.multi-compact-row .qty{text-align:center;font-weight:900}.multi-compact-row .sub{text-align:right;font-weight:800;font-size:12px;color:#596678}.multi-compact-row button{height:29px;border:0;border-radius:7px;background:#edf2f8;font-size:19px;font-weight:900}.multi-add-denom{width:100%;margin:7px 0;border:1px dashed #9fb2ca;background:#f7f9fc;color:#31547c;border-radius:9px;padding:8px;font-weight:800}.multi-counter-footer{font-size:12px;padding:6px 2px 9px;color:#596678}.multi-denom-picker{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0}.multi-denom-picker button{border:1px solid #cbd6e3;background:#fff;border-radius:8px;padding:6px 8px;font-weight:800;font-size:12px}.multi-denom-picker button:disabled{opacity:.35}.multi-actions.multi-actions-two{grid-template-columns:1.5fr 1fr}
 
+<style id="multiCashCountOnlyStyles">
+.multi-cash-received-display{flex:1;border:1px solid #cbd8e8;background:#f7f9fc;border-radius:10px;padding:12px 14px;font-size:20px;font-weight:900;color:#172033;min-height:48px;display:flex;align-items:center}
+</style>
 <style id="multiQuickCashCountStyles">
 .multi-quick-denoms{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:10px 0}
 .multi-quick-denom{border:1px solid #b9cbe1;background:#f7faff;color:#17345d;border-radius:10px;padding:10px 4px;font-size:13px;font-weight:900;min-height:42px}
@@ -11207,8 +11210,8 @@ setTimeout(()=>{
       <div class="multi-change-box"><small>Change</small><strong id="multiTopChange">₱0.00</strong></div>
     </div>
     <div class="multi-settlement">
-      <label for="multiCashReceivedInput">Cash Received</label>
-      <div class="multi-settlement-row"><input id="multiCashReceivedInput" type="number" inputmode="decimal" min="0" step="0.01" placeholder="₱0.00"><button type="button" id="multiOpenReceivedCounter">Count Cash</button></div>
+      <label>Cash Received</label>
+      <div class="multi-settlement-row"><div id="multiCashReceivedDisplay" class="multi-cash-received-display">₱0.00</div><button type="button" id="multiOpenReceivedCounter">Count Cash Received</button></div>
       <div class="multi-verify-line"><span id="multiReceivedCompactStatus">Not counted</span><strong id="multiReceivedCompactTotal">₱0.00</strong></div>
     </div>
     <div class="multi-change-compact"><div><small>Change</small><strong id="multiChangeDueText">₱0.00</strong><span id="multiChangeHint">Enter cash received first.</span></div><button type="button" id="multiOpenChangeCounter">Count Change</button></div>
@@ -11229,7 +11232,7 @@ setTimeout(()=>{
   <div id="multiReceivedCounterModal" class="multi-received-modal" aria-hidden="true">
     <div class="multi-received-card">
       <div class="multi-head"><h2>Count Cash Received</h2><button type="button" id="multiReceivedClose" class="multi-close">Done</button></div>
-      <div class="multi-counter-target"><span>Cash Received</span><strong id="multiReceivedTarget">₱0.00</strong></div>
+      <div class="multi-counter-target"><span>Amount to Collect</span><strong id="multiReceivedTarget">₱0.00</strong></div>
       <div class="multi-counter-help">Tap each bill or coin received. Each tap adds 1 piece.</div>
       <div id="multiReceivedQuickDenoms" class="multi-quick-denoms"></div>
       <div id="multiReceivedPieces" class="multi-compact-pieces"></div>
@@ -11338,7 +11341,7 @@ setTimeout(()=>{
       required += it.chargeMode==='deduct' ? Math.max(0,it.amount||0) : Math.max(0,it.amount||0)+f;
     });
     const received=pieceTotalM(readPiecesM('received'));
-    const cashInput=Math.max(0,Number(($m('multiCashReceivedInput')&&$m('multiCashReceivedInput').value)||0));
+    const cashInput=received;
     const given=pieceTotalM(readPiecesM('given'));
     return {items,amount,fees,required,received,cashInput,given,net:received-given,valid};
   }
@@ -11351,15 +11354,16 @@ setTimeout(()=>{
     $m('multiRequired').textContent=moneyM(t.required);
     $m('multiReceivedTotal').textContent=moneyM(t.received);
     $m('multiGivenTotal').textContent=moneyM(t.given);
+    if($m('multiCashReceivedDisplay'))$m('multiCashReceivedDisplay').textContent=moneyM(t.received);
     if($m('multiReceivedCompactTotal'))$m('multiReceivedCompactTotal').textContent=moneyM(t.received);
-    if($m('multiReceivedPopupTotal'))$m('multiReceivedPopupTotal').textContent=moneyM(t.received);if($m('multiReceivedTarget'))$m('multiReceivedTarget').textContent=moneyM(t.cashInput);
-    if($m('multiReceivedRemaining'))$m('multiReceivedRemaining').textContent=moneyM(Math.max(0,t.cashInput-t.received));
+    if($m('multiReceivedPopupTotal'))$m('multiReceivedPopupTotal').textContent=moneyM(t.received);if($m('multiReceivedTarget'))$m('multiReceivedTarget').textContent=moneyM(t.required);
+    if($m('multiReceivedRemaining'))$m('multiReceivedRemaining').textContent=moneyM(Math.max(0,t.required-t.received));
     if($m('multiChangeDueText'))$m('multiChangeDueText').textContent=moneyM(changeDue);
     if($m('multiChangeHint'))$m('multiChangeHint').textContent=t.cashInput<=0?'Enter cash received first.':(short>0?'Customer still owes '+moneyM(short):(changeDue>0?'Count the change to give.':'No change needed.'));
     if($m('multiChangePopupDue'))$m('multiChangePopupDue').textContent=moneyM(changeDue);
     if($m('multiChangePopupCounted'))$m('multiChangePopupCounted').textContent=moneyM(t.given);
     if($m('multiChangePopupRemaining'))$m('multiChangePopupRemaining').textContent=moneyM(Math.max(0,changeDue-t.given));
-    if($m('multiReceivedCompactStatus'))$m('multiReceivedCompactStatus').textContent=t.received>0?(Math.abs(t.received-t.cashInput)<0.001?'Cash count verified':'Cash count does not match'):'Not counted';
+    if($m('multiReceivedCompactStatus'))$m('multiReceivedCompactStatus').textContent=t.received>0?'Cash counted':'Not counted';
     if($m('multiOpenReceivedCounter'))$m('multiOpenReceivedCounter').textContent=t.received>0?'Edit Cash Count':'Count Cash Received';
     if($m('multiTopChange'))$m('multiTopChange').textContent=moneyM(Math.max(0,t.cashInput-t.required));
     $m('multiNetCash').textContent=moneyM(t.net);
@@ -11383,13 +11387,12 @@ setTimeout(()=>{
       ? `BALANCED: ${moneyM(t.received)} received − ${moneyM(t.given)} change = ${moneyM(t.required)}`
       : (t.items.length<2?'Add at least two transactions.':
         (t.received<t.required
-          ? `NOT READY: customer must pay ${moneyM(t.required)}. Count the cash received.`
+          ? `NOT READY: collect ${moneyM(t.required)}. Count the cash received.`
           : `NOT BALANCED: count exactly ${moneyM(changeDue)} change. Remaining ${moneyM(Math.max(0,remaining))}.`));
     saveBtn.disabled=!balanced||saving;
     return {t,balanced};
   }
   modal.addEventListener('input',e=>{
-    if(e.target.id==='multiCashReceivedInput'){refresh();return;}
     if(e.target.matches('[data-multi-piece]')){
       if(e.target.dataset.multiPiece==='given'){
         const max=Number(e.target.max);
@@ -11428,7 +11431,7 @@ setTimeout(()=>{
   $m('multiClearBtn').addEventListener('click',()=>{
     if(saving)return;
     itemsBox.innerHTML='';
-    selectedDenomsM.received=[];selectedDenomsM.given=[];$m('multiReceivedPieces')._qty={};$m('multiGivenPieces')._qty={};compactPiecesM('received');compactPiecesM('given');if($m('multiCashReceivedInput'))$m('multiCashReceivedInput').value='';
+    selectedDenomsM.received=[];selectedDenomsM.given=[];$m('multiReceivedPieces')._qty={};$m('multiGivenPieces')._qty={};compactPiecesM('received');compactPiecesM('given');
     addItem({wallet:'GCash'});addItem({wallet:'GCash'});
     refresh();
   });
@@ -11438,7 +11441,7 @@ setTimeout(()=>{
   multiOpenBtn.addEventListener('click',()=>{
     modal.classList.add('show');modal.setAttribute('aria-hidden','false');
     itemsBox.innerHTML='';
-    selectedDenomsM.received=[];selectedDenomsM.given=[];$m('multiReceivedPieces')._qty={};$m('multiGivenPieces')._qty={};compactPiecesM('received');compactPiecesM('given');if($m('multiCashReceivedInput'))$m('multiCashReceivedInput').value='';
+    selectedDenomsM.received=[];selectedDenomsM.given=[];$m('multiReceivedPieces')._qty={};$m('multiGivenPieces')._qty={};compactPiecesM('received');compactPiecesM('given');
     addItem({wallet:'GCash'});addItem({wallet:'GCash'});
     refresh();
   });
