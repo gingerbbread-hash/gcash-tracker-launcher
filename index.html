@@ -11302,6 +11302,8 @@ setTimeout(()=>{
   }
   function refresh(){
     const t=totalsM();
+    const changeDue=Math.max(0,t.cashInput-t.required);
+    const short=Math.max(0,t.required-t.cashInput);
     $m('multiAmountTotal').textContent=moneyM(t.amount);
     $m('multiFeeTotal').textContent=moneyM(t.fees);
     $m('multiRequired').textContent=moneyM(t.required);
@@ -11319,7 +11321,6 @@ setTimeout(()=>{
     if($m('multiOpenReceivedCounter'))$m('multiOpenReceivedCounter').textContent=t.received>0?'Edit Cash Count':'Count Cash Received';
     if($m('multiTopChange'))$m('multiTopChange').textContent=moneyM(Math.max(0,t.cashInput-t.required));
     $m('multiNetCash').textContent=moneyM(t.net);
-    const changeDue=Math.max(0,t.cashInput-t.required);
     const remaining=changeDue-t.given;
     const dueBox=$m('multiChangeDue'), remainEl=$m('multiChangeRemaining');
     if(dueBox){
@@ -11359,7 +11360,7 @@ setTimeout(()=>{
     }
   });
   $m('multiAddItem').addEventListener('click',()=>addItem());
-  modal.addEventListener('click',e=>{const step=e.target.closest('[data-step]');if(step){stepDenomM(step.dataset.kind,step.dataset.key,Number(step.dataset.step));return;}const pick=e.target.closest('[data-pick-kind]');if(pick){addDenomM(pick.dataset.pickKind,pick.dataset.pickKey);const p=pick.closest('.multi-denom-picker');if(p)p.remove();return;}});
+  document.addEventListener('click',e=>{const step=e.target.closest('[data-step]');if(step && (step.closest('#multiReceivedCounterModal')||step.closest('#multiChangeCounterModal'))){stepDenomM(step.dataset.kind,step.dataset.key,Number(step.dataset.step));return;}const pick=e.target.closest('[data-pick-kind]');if(pick && (pick.closest('#multiReceivedCounterModal')||pick.closest('#multiChangeCounterModal'))){addDenomM(pick.dataset.pickKind,pick.dataset.pickKey);const p=pick.closest('.multi-denom-picker');if(p)p.remove();return;}});
   $m('multiAddReceivedDenom').addEventListener('click',e=>addDenomPickerM('received',e.currentTarget));$m('multiAddGivenDenom').addEventListener('click',e=>addDenomPickerM('given',e.currentTarget));
   const changeModal=$m('multiChangeCounterModal');function openChangeCounter(){compactPiecesM('given');refresh();changeModal.classList.add('show');changeModal.setAttribute('aria-hidden','false');}function closeChangeCounter(){changeModal.classList.remove('show');changeModal.setAttribute('aria-hidden','true');refresh();}
   $m('multiOpenChangeCounter').addEventListener('click',openChangeCounter);$m('multiChangeClose').addEventListener('click',closeChangeCounter);$m('multiChangeDone').addEventListener('click',closeChangeCounter);
@@ -11384,10 +11385,11 @@ setTimeout(()=>{
   const multiOpenBtn=$m('openMultiTransaction');
   if(multiOpenBtn){multiOpenBtn.disabled=false;multiOpenBtn.removeAttribute('disabled');multiOpenBtn.setAttribute('aria-disabled','false');}
   multiOpenBtn.addEventListener('click',()=>{
+    modal.classList.add('show');modal.setAttribute('aria-hidden','false');
     itemsBox.innerHTML='';
     selectedDenomsM.received=[];selectedDenomsM.given=[];$m('multiReceivedPieces')._qty={};$m('multiGivenPieces')._qty={};compactPiecesM('received');compactPiecesM('given');if($m('multiCashReceivedInput'))$m('multiCashReceivedInput').value='';
     addItem({wallet:'GCash'});addItem({wallet:'GCash'});
-    modal.classList.add('show');modal.setAttribute('aria-hidden','false');refresh();
+    refresh();
   });
 
   saveBtn.addEventListener('click',()=>{
