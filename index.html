@@ -4820,6 +4820,17 @@ body > .hero{
 .multi-received-popup-total{background:#eef5ff;border-radius:12px;padding:11px;text-align:center;margin:12px 0}.multi-received-popup-total small{display:block;color:#657184;font-weight:800}.multi-received-popup-total strong{display:block;font-size:25px;color:#0d55b5;margin-top:3px}
 .multi-card{position:relative}
 @media(max-width:520px){.multi-received-compact{align-items:stretch}.multi-received-compact button{min-width:145px}}
+
+.multi-normal-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.multi-normal-summary>div{border-radius:13px;padding:12px 10px;min-height:68px;display:flex;flex-direction:column;justify-content:center}
+.multi-normal-summary small{font-weight:800;margin-bottom:5px}.multi-normal-summary strong{font-size:22px}
+.multi-fee-box{background:#fff0f0;border:1px solid #ffc4c4;color:#b3261e}
+.multi-total-box{background:#fff8cf;border:1px solid #efc849;color:#5e4a00}
+.multi-change-box{background:#f0f2f5;border:1px solid #cfd5df;color:#687386}
+.multi-actions{display:grid;grid-template-columns:1fr 1.35fr 1fr;gap:8px;margin-top:12px}
+.multi-actions .multi-save{height:54px;padding:10px}.multi-action-secondary{border:1px solid #cbd6e3;background:#f4f6f9;color:#4c596d;border-radius:12px;font-weight:900;font-size:15px}
+.multi-item{background:#fff}.multi-item-bottom{margin-top:7px}.multi-item .multi-fee{color:#b3261e;font-weight:800}
+@media(max-width:520px){.multi-normal-summary{grid-template-columns:repeat(3,1fr)}.multi-normal-summary strong{font-size:18px}.multi-actions{grid-template-columns:1fr 1.25fr 1fr}.multi-action-secondary{font-size:13px;padding:7px}}
 </style>
 
 </head>
@@ -11174,13 +11185,13 @@ setTimeout(()=>{
 <div id="multiTransactionModal" class="multi-modal" aria-hidden="true">
   <div class="multi-card" role="dialog" aria-modal="true" aria-labelledby="multiTitle">
     <div class="multi-head"><h2 id="multiTitle">Multiple Transaction</h2><button type="button" id="multiClose" class="multi-close">Close</button></div>
-    <div class="multi-note">One customer, several Cash In transactions, one cash payment and one change count. Nothing is recorded unless the whole session balances exactly.</div>
+    <div class="multi-note">Add each Cash In below. Count the customer's money once. Change is calculated automatically.</div>
     <div id="multiItems"></div>
-    <button type="button" id="multiAddItem" class="multi-add">+ Add another Cash In</button>
-    <div class="multi-summary">
-      <div><small>Transaction total</small><strong id="multiAmountTotal">₱0.00</strong></div>
-      <div><small>Total fees</small><strong id="multiFeeTotal">₱0.00</strong></div>
-      <div><small>Customer must pay</small><strong id="multiRequired">₱0.00</strong></div>
+    <button type="button" id="multiAddItem" class="multi-add">+ Add Transaction</button>
+    <div class="multi-normal-summary">
+      <div class="multi-fee-box"><small>Fee</small><strong id="multiFeeTotal">₱0.00</strong></div>
+      <div class="multi-total-box"><small>Total</small><strong id="multiRequired">₱0.00</strong><span id="multiAmountTotal" hidden>₱0.00</span></div>
+      <div class="multi-change-box"><small>Change</small><strong id="multiTopChange">₱0.00</strong></div>
     </div>
     <div class="multi-received-compact">
       <div><small>Cash Received</small><strong id="multiReceivedCompactTotal">₱0.00</strong><span id="multiReceivedCompactStatus">Not counted yet</span></div>
@@ -11198,7 +11209,11 @@ setTimeout(()=>{
       <span id="multiChangeRemaining">Count the customer's cash first.</span>
     </div>
     <div id="multiBalanceState" class="multi-balance bad">Add at least two transactions and count the cash.</div>
-    <button type="button" id="multiSave" class="multi-save" disabled>Record All Transactions</button>
+    <div class="multi-actions">
+      <button type="button" id="multiCountMoneyBtn" class="multi-action-secondary">Count Money</button>
+      <button type="button" id="multiSave" class="multi-save" disabled>Record All</button>
+      <button type="button" id="multiClearBtn" class="multi-action-secondary">Clear</button>
+    </div>
   </div>
   <div id="multiReceivedCounterModal" class="multi-received-modal" aria-hidden="true">
     <div class="multi-received-card">
@@ -11248,16 +11263,12 @@ setTimeout(()=>{
     div.className='multi-item';
     div.innerHTML=`<div class="multi-item-top">
       <select class="multi-wallet" aria-label="Wallet"><option>GCash</option><option>Maya</option><option>MariBank</option></select>
-      <input class="multi-amount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="Cash In amount">
+      <input class="multi-amount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="Enter amount">
     </div>
-    <div class="multi-item-top" style="margin-top:8px">
-      <select class="multi-charge"><option value="add">Add fee on top</option><option value="deduct">Deduct fee</option></select>
-      <div class="multi-item-bottom"><span class="multi-fee">Fee ₱0.00</span><button type="button" class="multi-remove">Remove</button></div>
-    </div>`;
+    <div class="multi-item-bottom"><span class="multi-fee">Fee ₱0.00</span><button type="button" class="multi-remove">Remove</button></div>`;
     if(data){
       div.querySelector('.multi-wallet').value=data.wallet||'GCash';
       div.querySelector('.multi-amount').value=data.amount||'';
-      div.querySelector('.multi-charge').value=data.chargeMode||'add';
     }
     div.addEventListener('input',refresh);
     div.addEventListener('change',refresh);
@@ -11276,7 +11287,7 @@ setTimeout(()=>{
     return [...itemsBox.querySelectorAll('.multi-item')].map(div=>({
       walletDestination:div.querySelector('.multi-wallet').value,
       amount:Number(div.querySelector('.multi-amount').value||0),
-      chargeMode:div.querySelector('.multi-charge').value
+      chargeMode:'add'
     }));
   }
   function totalsM(){
@@ -11304,6 +11315,7 @@ setTimeout(()=>{
     if($m('multiReceivedPopupTotal'))$m('multiReceivedPopupTotal').textContent=moneyM(t.received);
     if($m('multiReceivedCompactStatus'))$m('multiReceivedCompactStatus').textContent=t.received>0?'Exact denominations counted':'Not counted yet';
     if($m('multiOpenReceivedCounter'))$m('multiOpenReceivedCounter').textContent=t.received>0?'Edit Cash Count':'Count Cash Received';
+    if($m('multiTopChange'))$m('multiTopChange').textContent=moneyM(Math.max(0,t.received-t.required));
     $m('multiNetCash').textContent=moneyM(t.net);
     const changeDue=Math.max(0,t.received-t.required);
     const remaining=changeDue-t.given;
@@ -11352,8 +11364,17 @@ setTimeout(()=>{
     receivedModal.classList.remove('show');receivedModal.setAttribute('aria-hidden','true');refresh();
   }
   $m('multiOpenReceivedCounter').addEventListener('click',openReceivedCounter);
+  $m('multiCountMoneyBtn').addEventListener('click',openReceivedCounter);
   $m('multiReceivedClose').addEventListener('click',closeReceivedCounter);
   $m('multiReceivedDone').addEventListener('click',closeReceivedCounter);
+  $m('multiClearBtn').addEventListener('click',()=>{
+    if(saving)return;
+    itemsBox.innerHTML='';
+    $m('multiReceivedPieces').innerHTML=pieceGrid('received');
+    $m('multiGivenPieces').innerHTML=pieceGrid('given');
+    addItem({wallet:'GCash'});addItem({wallet:'GCash'});
+    refresh();
+  });
   $m('multiClose').addEventListener('click',()=>{if(!saving){modal.classList.remove('show');modal.setAttribute('aria-hidden','true');}});
   $m('openMultiTransaction').addEventListener('click',()=>{
     if(!navigator.onLine){alert('Multiple Transaction is online-only so the whole customer session can be saved atomically.');return;}
