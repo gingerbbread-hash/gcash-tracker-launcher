@@ -7052,7 +7052,21 @@ body > .hero{
 
     google.script.run
       .withSuccessHandler(data=>{
-        history=(data && data.transactions)||[];
+        // CASH COUNT PERMANENCE: never let a server refresh erase denomination
+        // snapshots that are already saved inside this device's transaction record.
+        // Older Apps Script rows may not echo cashPieces, so merge by transaction ID.
+        const localHistoryById=new Map((Array.isArray(history)?history:[]).map(tx=>[String(tx&&tx.id||''),tx]));
+        history=((data && data.transactions)||[]).map(serverTx=>{
+          const localTx=localHistoryById.get(String(serverTx&&serverTx.id||''));
+          if(localTx && localTx.cashPieces && (!serverTx.cashPieces ||
+             (!serverTx.cashPieces.received && !serverTx.cashPieces.given && !serverTx.cashPieces.change))){
+            return {...serverTx,cashPieces:{
+              received:{...(localTx.cashPieces.received||{})},
+              given:{...(localTx.cashPieces.given||localTx.cashPieces.change||{})}
+            }};
+          }
+          return serverTx;
+        });
         window.__gcashTransactions = history;
         expenses=(data && data.expenses)||[];
         transfers=(data && data.transfers)||[];
@@ -7681,8 +7695,12 @@ body > .hero{
         // Preserve locally recorded Cash Count even when an older Apps Script
         // response does not echo the cashPieces field back to the browser.
         const localTx = idx >= 0 ? history[idx] : null;
-        if(localTx && localTx.cashPieces && !serverTx.cashPieces){
-          serverTx.cashPieces=localTx.cashPieces;
+        if(localTx && localTx.cashPieces && (!serverTx.cashPieces ||
+           (!serverTx.cashPieces.received && !serverTx.cashPieces.given && !serverTx.cashPieces.change))){
+          serverTx.cashPieces={
+            received:{...(localTx.cashPieces.received||{})},
+            given:{...(localTx.cashPieces.given||localTx.cashPieces.change||{})}
+          };
         }
         if(idx >= 0) history[idx] = serverTx;
         else history.unshift(serverTx);
