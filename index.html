@@ -7496,12 +7496,13 @@ body > .hero{
   }
 
   function processPendingCashPiecesQueue(transactionId){
-    // Legacy pending records are preserved for manual reconciliation; never replay automatically.
-    return;
-
+    // Cross-device Cash Counter sync. Only replay denomination records created by
+    // the current atomic transaction flow. Older legacy queue entries remain
+    // untouched so an old device record can never be applied accidentally.
     if(cashPiecesSyncBusy || !unlocked) return;
 
-    const all = loadPendingCashPiecesQueue();
+    const queuedAll = loadPendingCashPiecesQueue();
+    const all = queuedAll.filter(x=>x && x.atomicCashCountV2===true);
     if(!all.length) return;
 
     let idx = 0;
@@ -7523,7 +7524,8 @@ body > .hero{
     google.script.run
       .withSuccessHandler(result=>{
         const latest = loadPendingCashPiecesQueue().filter(
-          x => String(x.transactionId || '') !== String(payload.transactionId || '')
+          x => !(x && x.atomicCashCountV2===true &&
+            String(x.transactionId || '') === String(payload.transactionId || ''))
         );
         savePendingCashPiecesQueue(latest);
         cashPiecesSyncBusy = false;
@@ -8231,7 +8233,8 @@ body > .hero{
       transactionType:String(tx.type||''),
       amount:Number(tx.amount||tx.total||0),fee:Number(tx.fee||0),
       received:{...cashPiecesReceived},
-      given:{...cashPiecesGiven}
+      given:{...cashPiecesGiven},
+      atomicCashCountV2:true
     };
 
     if(Math.abs(pieceTotal(cashPiecesReceived)-pieceTotal(cashPiecesGiven)-expectedCashMovement(tx))>0.01){
@@ -9913,6 +9916,33 @@ window.reverseLocalCashPiecesForTransaction=function(transactionId){
   return true;
 };
 
+function publishBalancedCashCounterSnapshotIfNeeded(serverCounter,savedCounter){
+  // One-time bridge for devices that already have the correct physical inventory
+  // from before cross-device denomination sync was enabled. A device may publish
+  // its local inventory only when it exactly matches the live Cash on Hand and
+  // there is no unsynced cash-changing work. A SHORT/OVER device can never win.
+  try{
+    if(!navigator.onLine || !savedCounter || !savedCounter.pieces || !serverCounter) return;
+    const localTotal=cashCounterPiecesTotal(savedCounter.pieces);
+    const serverTotal=cashCounterPiecesTotal((serverCounter&&serverCounter.pieces)||{});
+    const tracker=trackerCashValue();
+    if(Math.abs(localTotal-tracker)>0.01 || Math.abs(localTotal-serverTotal)<=0.01) return;
+    const pendingPieces=JSON.parse(localStorage.getItem('gcash_tracker_pending_cash_pieces_v1')||'[]');
+    const pendingTx=JSON.parse(localStorage.getItem('gcash_tracker_pending_transactions_v1')||'[]');
+    const pendingActions=JSON.parse(localStorage.getItem('gcashTrackerOfflineActionsV1')||'[]');
+    if((Array.isArray(pendingPieces)&&pendingPieces.some(x=>x&&x.atomicCashCountV2===true)) ||
+       (Array.isArray(pendingTx)&&pendingTx.length) ||
+       (Array.isArray(pendingActions)&&pendingActions.length)) return;
+    const sig=JSON.stringify(savedCounter.pieces);
+    if(localStorage.getItem('gcashSharedCashSnapshotPublishedV1')===sig) return;
+    const id='DEVICE_SNAPSHOT_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+    google.script.run.withSuccessHandler(()=>{
+      localStorage.setItem('gcashSharedCashSnapshotPublishedV1',sig);
+      if(typeof window.loadCashCounterLatestStatus==='function') setTimeout(window.loadCashCounterLatestStatus,150);
+    }).withFailureHandler(()=>{}).saveCashCount({...savedCounter.pieces},id);
+  }catch(_e){}
+}
+
 function load(){
   showMsg('');
   try{
@@ -9952,6 +9982,10 @@ function load(){
         }catch(_e){return false;}
       })();
       const keepLocal=!!(saved&&saved.pieces&&(pendingPieces||pendingCashAction||pendingTransactionWithPieces));
+      // If this is the already-balanced device (for example the iPhone), publish
+      // its exact denomination inventory once so another device can load it.
+      // A device showing SHORT or OVER is never allowed to publish this bridge snapshot.
+      publishBalancedCashCounterSnapshotIfNeeded(x,saved);
       current=keepLocal?saved:x;
       if(!keepLocal && current && current._localPending) current._localPending=false;
       try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(e){}
