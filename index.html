@@ -5467,6 +5467,16 @@ body > .hero{
 
 <script>
 (function(){
+  // Dual-host transport:
+  // - Apps Script Web App: keep the native google.script.run connection.
+  // - GitHub/static hosting: install the existing JSONP bridge below.
+  const hasNativeAppsScriptRun = !!(window.google && window.google.script && window.google.script.run);
+  if(hasNativeAppsScriptRun){
+    window.GCASH_HOST_MODE = 'APPS_SCRIPT';
+    return;
+  }
+
+  window.GCASH_HOST_MODE = 'EXTERNAL';
   const API_URL = 'https://script.google.com/macros/s/AKfycbzHZBbsTHU5rRMrO4iNCizaQHd1SqVMb1NgWFSRvw8UHf_zdJTLJEQHYZTouUfvpknouw/exec';
   const DEVICE_KEY = 'gcashGithubDeviceTokenV1';
   let deviceToken = '';
