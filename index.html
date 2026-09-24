@@ -4811,6 +4811,15 @@ body > .hero{
 .multi-save{width:100%;border:0;background:#1264d8;color:#fff;border-radius:12px;padding:14px;font-size:16px;font-weight:900}.multi-save:disabled{opacity:.45}
 .multi-session-undo{margin-top:8px;border:1px solid #e0b0b0;background:#fff6f6;color:#a61b1b;border-radius:9px;padding:8px 10px;font-weight:800}
 @media(max-width:520px){.multi-piece-grid{grid-template-columns:1fr}.multi-summary{grid-template-columns:1fr 1fr}.multi-summary div:last-child{grid-column:1/-1}}
+
+.multi-received-compact{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #dce5f0;background:#f7f9fc;border-radius:13px;padding:11px 12px;margin:12px 0}
+.multi-received-compact div{min-width:0}.multi-received-compact small{display:block;color:#657184;font-weight:700}.multi-received-compact strong{display:block;font-size:21px;margin:2px 0}.multi-received-compact span{display:block;font-size:12px;color:#6c7889}
+.multi-received-compact button{border:0;background:#1264d8;color:#fff;border-radius:10px;padding:11px 13px;font-weight:800;white-space:nowrap}
+.multi-received-modal{position:absolute;inset:0;background:rgba(10,20,35,.62);z-index:3;display:none;align-items:flex-end;justify-content:center;border-radius:20px 20px 0 0}
+.multi-received-modal.show{display:flex}.multi-received-card{background:#fff;width:100%;max-height:88vh;overflow:auto;border-radius:18px 18px 0 0;padding:16px;box-sizing:border-box}
+.multi-received-popup-total{background:#eef5ff;border-radius:12px;padding:11px;text-align:center;margin:12px 0}.multi-received-popup-total small{display:block;color:#657184;font-weight:800}.multi-received-popup-total strong{display:block;font-size:25px;color:#0d55b5;margin-top:3px}
+.multi-card{position:relative}
+@media(max-width:520px){.multi-received-compact{align-items:stretch}.multi-received-compact button{min-width:145px}}
 </style>
 
 </head>
@@ -11173,8 +11182,10 @@ setTimeout(()=>{
       <div><small>Total fees</small><strong id="multiFeeTotal">₱0.00</strong></div>
       <div><small>Customer must pay</small><strong id="multiRequired">₱0.00</strong></div>
     </div>
-    <div class="multi-step-title">Money Received</div>
-    <div id="multiReceivedPieces" class="multi-piece-grid"></div>
+    <div class="multi-received-compact">
+      <div><small>Cash Received</small><strong id="multiReceivedCompactTotal">₱0.00</strong><span id="multiReceivedCompactStatus">Not counted yet</span></div>
+      <button type="button" id="multiOpenReceivedCounter">Count Cash Received</button>
+    </div>
     <div class="multi-step-title">Count Change to Give</div>
     <div id="multiGivenPieces" class="multi-piece-grid"></div>
     <div class="multi-summary">
@@ -11188,6 +11199,15 @@ setTimeout(()=>{
     </div>
     <div id="multiBalanceState" class="multi-balance bad">Add at least two transactions and count the cash.</div>
     <button type="button" id="multiSave" class="multi-save" disabled>Record All Transactions</button>
+  </div>
+  <div id="multiReceivedCounterModal" class="multi-received-modal" aria-hidden="true">
+    <div class="multi-received-card">
+      <div class="multi-head"><h2>Count Cash Received</h2><button type="button" id="multiReceivedClose" class="multi-close">Done</button></div>
+      <div class="multi-note">Count the exact bills and coins the customer handed you. These denominations will be saved permanently in History.</div>
+      <div id="multiReceivedPieces" class="multi-piece-grid"></div>
+      <div class="multi-received-popup-total"><small>TOTAL CASH RECEIVED</small><strong id="multiReceivedPopupTotal">₱0.00</strong></div>
+      <button type="button" id="multiReceivedDone" class="multi-save">Use This Cash Count</button>
+    </div>
   </div>
 </div>
 
@@ -11280,6 +11300,10 @@ setTimeout(()=>{
     $m('multiRequired').textContent=moneyM(t.required);
     $m('multiReceivedTotal').textContent=moneyM(t.received);
     $m('multiGivenTotal').textContent=moneyM(t.given);
+    if($m('multiReceivedCompactTotal'))$m('multiReceivedCompactTotal').textContent=moneyM(t.received);
+    if($m('multiReceivedPopupTotal'))$m('multiReceivedPopupTotal').textContent=moneyM(t.received);
+    if($m('multiReceivedCompactStatus'))$m('multiReceivedCompactStatus').textContent=t.received>0?'Exact denominations counted':'Not counted yet';
+    if($m('multiOpenReceivedCounter'))$m('multiOpenReceivedCounter').textContent=t.received>0?'Edit Cash Count':'Count Cash Received';
     $m('multiNetCash').textContent=moneyM(t.net);
     const changeDue=Math.max(0,t.received-t.required);
     const remaining=changeDue-t.given;
@@ -11320,6 +11344,16 @@ setTimeout(()=>{
     }
   });
   $m('multiAddItem').addEventListener('click',()=>addItem());
+  const receivedModal=$m('multiReceivedCounterModal');
+  function openReceivedCounter(){
+    receivedModal.classList.add('show');receivedModal.setAttribute('aria-hidden','false');refresh();
+  }
+  function closeReceivedCounter(){
+    receivedModal.classList.remove('show');receivedModal.setAttribute('aria-hidden','true');refresh();
+  }
+  $m('multiOpenReceivedCounter').addEventListener('click',openReceivedCounter);
+  $m('multiReceivedClose').addEventListener('click',closeReceivedCounter);
+  $m('multiReceivedDone').addEventListener('click',closeReceivedCounter);
   $m('multiClose').addEventListener('click',()=>{if(!saving){modal.classList.remove('show');modal.setAttribute('aria-hidden','true');}});
   $m('openMultiTransaction').addEventListener('click',()=>{
     if(!navigator.onLine){alert('Multiple Transaction is online-only so the whole customer session can be saved atomically.');return;}
