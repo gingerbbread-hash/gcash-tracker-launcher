@@ -4891,6 +4891,11 @@ body > .hero{
 
   <section class="card" id="ccSummaryCard">
     <div id="summary" class="summary"></div>
+    <div id="sharedCounterMigration" style="display:none;margin:10px 0;padding:12px;border:1px solid #b7d5ff;border-radius:12px;background:#f4f9ff">
+      <strong>Use this device’s saved Cash Counter as the shared starting inventory?</strong>
+      <div id="sharedCounterMigrationNote" class="note" style="margin:6px 0 10px"></div>
+      <button type="button" id="publishThisDeviceCounter" class="btn btn-secondary">Make This the Shared Cash Counter</button>
+    </div>
   </section>
 
   <section class="card cc-counter-content-card">
@@ -9130,17 +9135,28 @@ document.addEventListener('DOMContentLoaded', function(){
   });
 
   window.loadCashCounterLatestStatus=function(){
-    if(window.gcashCashCounterUpdatePending){
-      paintUpdating();
-      return;
-    }
-    // Local-only check. Never wait for Apps Script / Google Sheets.
-    try{
-      if(typeof sendCashCounterStatusToTracker==='function'){
-        sendCashCounterStatusToTracker();
+    if(window.gcashCashCounterUpdatePending){ paintUpdating(); return; }
+    // ONLINE: Home always reads the single authoritative Cash Inventory row.
+    // Local storage is only an offline fallback and can never decide the online balance check.
+    if(navigator.onLine && window.google && google.script && google.script.run){
+      try{
+        google.script.run
+          .withSuccessHandler(function(x){
+            if(!x || !x.pieces) return;
+            var vals={'1000':1000,'500':500,'200':200,'100':100,'50':50,'20b':20,'20c':20,'10':10,'5':5,'1':1};
+            var physical=0;
+            Object.keys(vals).forEach(function(k){ physical += Number(x.pieces[k]||0)*vals[k]; });
+            window.gcashCashCounterUpdatePending=false;
+            paint({physicalCash:physical,trackerCashOnHand:homeCashValue()});
+          })
+          .withFailureHandler(function(){
+            try{ if(typeof sendCashCounterStatusToTracker==='function') sendCashCounterStatusToTracker(); }catch(e){}
+          })
+          .getCashCounter();
         return;
-      }
-    }catch(e){}
+      }catch(e){}
+    }
+    try{ if(typeof sendCashCounterStatusToTracker==='function'){ sendCashCounterStatusToTracker(); return; } }catch(e){}
     if(lastStatus) paint(lastStatus);
   };
 
@@ -9344,6 +9360,10 @@ const $=id=>document.getElementById(id);
 const money=v=>'₱'+Number(v||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
 const zero=()=>Object.fromEntries(D.map(d=>[d[0],0]));
 let current=null;
+// Preserve the pre-v6 device cache only for an explicit one-time migration.
+// It is NEVER allowed to win automatically while online.
+let startupDeviceCashCounter=null;
+try{ startupDeviceCashCounter=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null'); }catch(_e){}
 
 function sendCashCounterStatusToTracker(){
   try{
@@ -9994,96 +10014,43 @@ window.refreshSharedCashCounterFromServer=function(source){
 
 function load(){
   showMsg('');
-  try{
-    const cached=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null');
-    if(cached&&cached.pieces){
-      current=cached;
+  // Offline only: use this browser's last cache.
+  if(!navigator.onLine){
+    try{
+      const cached=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null');
+      if(cached&&cached.pieces){
+        current=cached; renderCashCounterInventory(current); renderSummary(current);
+        setTimeout(sendCashCounterStatusToTracker,0);
+        if(!$('countGrid').innerHTML.trim()) $('countGrid').innerHTML=grid('count',zero());
+        refreshCount();
+        showMsg('Offline. Last saved Cash Counter from this device is shown.','ok');
+        return;
+      }
+    }catch(_e){}
+  }
+
+  // Online: Google Sheets Cash Inventory is the ONLY source of truth.
+  google.script.run
+    .withSuccessHandler(x=>{
+      if(!x || !x.pieces){ showMsg('Shared Cash Counter is unavailable.','err'); return; }
+      current=x;
+      if(current._localPending) current._localPending=false;
+      try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(e){}
       renderCashCounterInventory(current);
       renderSummary(current);
       setTimeout(sendCashCounterStatusToTracker,0);
-    }
-  }catch(_e){}
-  google.script.run
-    .withSuccessHandler(x=>{
-      // A Cash Pieces record can be saved locally while its parent is still syncing.
-      // A delayed server response must not roll back that physical inventory.
-      let saved=null;
-      try{saved=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null');}catch(_e){}
-      const pendingPieces=(()=>{try{return JSON.parse(localStorage.getItem('gcash_tracker_pending_cash_pieces_v1')||'[]').length>0;}catch(_e){return false;}})();
-      // Cross-device rule: a stale _localPending flag must never permanently pin
-      // this browser to an old Cash Counter. Keep local inventory only while a
-      // REAL unsynced cash-changing action still exists on this device.
-      const pendingCashAction=(()=>{
-        try{
-          const q=JSON.parse(localStorage.getItem('gcashTrackerOfflineActionsV1')||'[]');
-          if(!Array.isArray(q)) return false;
-          const cashMethods=new Set([
-            'saveCashCount','saveManualCashCounterCorrection','saveCashCounterChangeMoney',
-            'addMayaTransferWithCashPiecesBySession','saveTransactionCashPieces'
-          ]);
-          return q.some(a=>a&&cashMethods.has(String(a.method||'')));
-        }catch(_e){return false;}
-      })();
-      const pendingTransactionWithPieces=(()=>{
-        try{
-          const q=JSON.parse(localStorage.getItem('gcash_tracker_pending_transactions_v1')||'[]');
-          return Array.isArray(q) && q.some(p=>p&&p.cashPieces);
-        }catch(_e){return false;}
-      })();
-      // Keep a locally BALANCED inventory long enough to publish it as the shared
-      // cross-device snapshot. Previously load() immediately replaced the good
-      // iPhone inventory with an older server counter before saveCashCount()
-      // finished, which left the Mac permanently SHORT/OVER.
-      const savedTotal=(saved&&saved.pieces)?cashCounterPiecesTotal(saved.pieces):NaN;
-      const serverTotal=(x&&x.pieces)?cashCounterPiecesTotal(x.pieces):NaN;
-      const liveTracker=trackerCashValue();
-      const localBalanced=Number.isFinite(savedTotal) && Math.abs(savedTotal-liveTracker)<=0.01;
-      const serverBalanced=Number.isFinite(serverTotal) && Math.abs(serverTotal-liveTracker)<=0.01;
-      const keepBalancedBridge=!!(saved&&saved.pieces&&localBalanced&&!serverBalanced);
-      const keepLocal=!!(saved&&saved.pieces&&(pendingPieces||pendingCashAction||pendingTransactionWithPieces||keepBalancedBridge));
-      // If this is the already-balanced device (for example the iPhone), publish
-      // its exact denomination inventory once so another device can load it.
-      // A device showing SHORT or OVER is never allowed to publish this bridge snapshot.
-      publishBalancedCashCounterSnapshotIfNeeded(x,saved);
-      current=keepLocal?saved:x;
-      if(!keepLocal && current && current._localPending) current._localPending=false;
-      try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(e){}
-      renderCashCounterInventory(current);
-      setTimeout(sendCashCounterStatusToTracker,80);
-
       if(!$('countGrid').innerHTML.trim()) $('countGrid').innerHTML=grid('count',zero());
       refreshCount();
-      renderSummary(current);
-      setTimeout(sendCashCounterStatusToTracker,50);
-
-      showMsg('Cash Counter inventory loaded. Count physical cash only if you want to verify it.');
+      showMsg('Shared Cash Counter loaded from Google Sheets.','ok');
+      setTimeout(()=>{ if(typeof window.loadCashCounterLatestStatus==='function') window.loadCashCounterLatestStatus(); },50);
     })
     .withFailureHandler(e=>{
-      let restored=false;
-      try{
-        const raw=localStorage.getItem('gcashCashCounterCurrentV1');
-        if(raw){
-          current=JSON.parse(raw);
-          renderCashCounterInventory(current); renderSummary(current);
-          $('countGrid').innerHTML=grid('count',zero()); refreshCount();
-          setCashCounterMode('cash'); restored=true;
-        }
-      }catch(_e){}
-      if(restored) showMsg('Offline. Saved Cash Counter loaded from this device.','ok');
-      else{
-        $('trackerCashAuto').textContent='Unable to read';
-        showMsg((e&&e.message)?e.message:'Could not load Cash Counter.','err');
-      }
+      showMsg((e&&e.message)?e.message:'Could not load the shared Cash Counter.','err');
     })
     .getCashCounter();
 }
 
-
-// Cross-device recovery path: getCashCounter() can lag behind the Cash Count
-// history sheet. Read the newest server COUNT snapshot whose exact denomination
-// total matches the live Cash on Hand, and use it only when this device has no
-// unsynced cash-changing work. This makes iPhone -> Mac and Mac -> iPhone converge
-// without creating a Reconcile entry or changing wallet balances.
+// v6 authoritative cross-device synchronization.
 function hasUnsyncedLocalCashWork(){
   try{
     const pp=JSON.parse(localStorage.getItem('gcash_tracker_pending_cash_pieces_v1')||'[]');
@@ -10101,57 +10068,33 @@ function hasUnsyncedLocalCashWork(){
   return false;
 }
 
-function loadSharedBalancedCashSnapshot(){
+window.refreshSharedCashCounterFromServer=function(source){
   if(!navigator.onLine || hasUnsyncedLocalCashWork()) return;
   try{
-    google.script.run.withSuccessHandler(rows=>{
-      if(hasUnsyncedLocalCashWork()) return;
-      rows=Array.isArray(rows)?rows:[];
-      const tracker=trackerCashValue();
-      // Newest first regardless of backend ordering.
-      rows=rows.slice().sort((a,b)=>new Date(b&&b.timestamp||0)-new Date(a&&a.timestamp||0));
-      let chosen=null;
-      for(const r of rows){
-        if(!r || r.action!=='COUNT') continue;
-        const d=r.details||{};
-        const looksLikePieces=['1000','500','200','100','50','20b','20c','10','5','1'].some(k=>Object.prototype.hasOwnProperty.call(d,k));
-        const pieces=(d.inventory&&typeof d.inventory==='object')?d.inventory:
-          ((d.pieces&&typeof d.pieces==='object')?d.pieces:(looksLikePieces?d:null));
-        if(!pieces) continue;
-        const total=cashCounterPiecesTotal(pieces);
-        if(Math.abs(total-tracker)<=0.01){ chosen={record:r,pieces:{...pieces},total}; break; }
-      }
-      if(!chosen) return;
-      const localTotal=current&&current.pieces?cashCounterPiecesTotal(current.pieces):NaN;
-      if(Number.isFinite(localTotal)&&Math.abs(localTotal-chosen.total)<=0.01) return;
-      current={
-        ...(current||{}),pieces:{...chosen.pieces},physicalCash:chosen.total,physicalTotal:chosen.total,
-        trackerCashOnHand:tracker,difference:chosen.total-tracker,status:'MATCHED',_localPending:false,
-        sharedSnapshotTimestamp:String(chosen.record.timestamp||'')
-      };
+    google.script.run.withSuccessHandler(x=>{
+      if(!x||!x.pieces||hasUnsyncedLocalCashWork()) return;
+      current=x;
       try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(_e){}
-      renderCashCounterInventory(current);
-      renderSummary(current);
-      setTimeout(sendCashCounterStatusToTracker,0);
-      showMsg('Shared Cash Counter loaded from your latest balanced server count.','ok');
-    }).withFailureHandler(()=>{}).getCashCountHistory();
+      renderCashCounterInventory(current); renderSummary(current); sendCashCounterStatusToTracker();
+      if(typeof window.loadCashCounterLatestStatus==='function') window.loadCashCounterLatestStatus();
+    }).withFailureHandler(()=>{}).getCashCounter();
   }catch(_e){}
-}
+};
 
-// Run after the normal counter load and whenever the device comes online/focuses.
-setTimeout(()=>{
-  try{
-    if(current&&current.pieces){
-      const localTotal=cashCounterPiecesTotal(current.pieces);
-      const tracker=trackerCashValue();
-      if(Math.abs(localTotal-tracker)<=0.01&&!hasUnsyncedLocalCashWork()) queueSharedCashCounterSnapshot('BALANCED_DEVICE');
-    }
-  }catch(_e){}
-  loadSharedBalancedCashSnapshot();
-  setTimeout(()=>window.refreshSharedCashCounterFromServer('post-publish'),1800);
-},900);
-window.addEventListener('online',()=>setTimeout(()=>{window.refreshSharedCashCounterFromServer('online');loadSharedBalancedCashSnapshot();},500));
-window.addEventListener('focus',()=>setTimeout(()=>{window.refreshSharedCashCounterFromServer('focus');loadSharedBalancedCashSnapshot();},500));
+// Verify that the browser is really talking to the v6 Apps Script deployment.
+window.gcashBackendV6Ready=false;
+try{
+  google.script.run.withSuccessHandler(d=>{
+    window.gcashBackendV6Ready=!!(d&&d.authoritativeCashCounter&&String(d.version||'').indexOf('v6-')===0);
+    if(!window.gcashBackendV6Ready) showMsg('Backend v6 is not active. Redeploy the Apps Script web app.','err');
+  }).withFailureHandler(()=>{
+    window.gcashBackendV6Ready=false;
+    showMsg('Backend v6 is not active. Redeploy the Apps Script web app before testing cross-device sync.','err');
+  }).getTrackerBackendVersion();
+}catch(_e){}
+
+window.addEventListener('online',()=>setTimeout(()=>window.refreshSharedCashCounterFromServer('online'),400));
+window.addEventListener('focus',()=>setTimeout(()=>window.refreshSharedCashCounterFromServer('focus'),400));
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible') setTimeout(()=>window.refreshSharedCashCounterFromServer('visible'),300);
 });
@@ -10653,6 +10596,39 @@ $('historyList').addEventListener('click',e=>{
 });
 
 $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
+
+// One-time migration helper. This is explicit so a stale Chrome/Safari cache can
+// never overwrite the correct shared inventory automatically.
+setTimeout(()=>{
+  try{
+    const box=$('sharedCounterMigration'), btn=$('publishThisDeviceCounter'), note=$('sharedCounterMigrationNote');
+    if(!box||!btn||!startupDeviceCashCounter||!startupDeviceCashCounter.pieces||!navigator.onLine) return;
+    const deviceTotal=cashCounterPiecesTotal(startupDeviceCashCounter.pieces);
+    const tracker=trackerCashValue();
+    const serverTotal=current&&current.pieces?cashCounterPiecesTotal(current.pieces):NaN;
+    if(Math.abs(deviceTotal-tracker)<=0.01 && (!Number.isFinite(serverTotal)||Math.abs(deviceTotal-serverTotal)>0.01)){
+      box.style.display='block';
+      note.textContent='This device has '+money(deviceTotal)+' and it matches Cash on Hand. The shared server currently has '+money(serverTotal)+'. Use this only on the device you know is correct.';
+      btn.onclick=()=>{
+        if(!window.gcashBackendV6Ready){ showMsg('Backend v6 is not active yet. Redeploy Apps Script first.','err'); return; }
+        if(!confirm('Set this device’s exact bill and coin quantities as the shared Cash Counter for every device?')) return;
+        btn.disabled=true; btn.textContent='Publishing…';
+        const id='V6_SHARED_SEED_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+        google.script.run.withSuccessHandler(data=>{
+          current=data;
+          try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(_e){}
+          renderCashCounterInventory(current); renderSummary(current); sendCashCounterStatusToTracker();
+          box.style.display='none'; btn.disabled=false; btn.textContent='Make This the Shared Cash Counter';
+          showMsg('Shared Cash Counter initialized. Other devices can now reload.','ok');
+          if(typeof window.loadCashCounterLatestStatus==='function') window.loadCashCounterLatestStatus();
+        }).withFailureHandler(e=>{
+          btn.disabled=false; btn.textContent='Make This the Shared Cash Counter';
+          showMsg((e&&e.message)||'Could not publish the shared Cash Counter.','err');
+        }).saveCashCount({...startupDeviceCashCounter.pieces},id);
+      };
+    }
+  }catch(_e){}
+},1400);
 
 
 
