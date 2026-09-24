@@ -7534,7 +7534,9 @@ body > .hero{
         cashPiecesSyncBusy = false;
         cashPiecesRetryDelay = 1200;
 
-        if(typeof window.loadCashCounterLatestStatus === 'function'){
+        if(typeof window.refreshSharedCashCounterFromServer === 'function'){
+          setTimeout(()=>window.refreshSharedCashCounterFromServer('transaction-sync'), 100);
+        }else if(typeof window.loadCashCounterLatestStatus === 'function'){
           setTimeout(window.loadCashCounterLatestStatus, 100);
         }
 
@@ -8417,11 +8419,9 @@ body > .hero{
       status.textContent='Recorded ✓ Syncing to Google Sheets…';status.className='status ok';
     }
     queueCashPieces(piecePayload);
-    // Cross-device source of truth: publish the FULL post-transaction denomination
-    // inventory through the backend's existing saveCashCount path. The separate
-    // transaction-pieces endpoint preserves the audit detail; this snapshot makes
-    // getCashCounter() on another device receive the same exact inventory.
-    queueSharedCashCounterSnapshot(tx.id);
+    // The transaction-pieces endpoint is the authoritative shared inventory write.
+    // Do not publish the optimistic local inventory with saveCashCount here: doing
+    // both can race and apply the same cash movement twice on the server.
     window.gcashCashCounterUpdatePending=false;
     try{sendCashCounterStatusToTracker();}catch(_e){}
 
@@ -9974,6 +9974,24 @@ function publishBalancedCashCounterSnapshotIfNeeded(serverCounter,savedCounter){
   }catch(_e){}
 }
 
+window.refreshSharedCashCounterFromServer=function(source){
+  if(!navigator.onLine || hasUnsyncedLocalCashWork()) return;
+  try{
+    google.script.run
+      .withSuccessHandler(x=>{
+        if(!x || !x.pieces || hasUnsyncedLocalCashWork()) return;
+        current=x;
+        if(current._localPending) current._localPending=false;
+        try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(_e){}
+        renderCashCounterInventory(current);
+        renderSummary(current);
+        setTimeout(sendCashCounterStatusToTracker,0);
+      })
+      .withFailureHandler(()=>{})
+      .getCashCounter();
+  }catch(_e){}
+};
+
 function load(){
   showMsg('');
   try{
@@ -10130,8 +10148,11 @@ setTimeout(()=>{
   }catch(_e){}
   loadSharedBalancedCashSnapshot();
 },900);
-window.addEventListener('online',()=>setTimeout(loadSharedBalancedCashSnapshot,500));
-window.addEventListener('focus',()=>setTimeout(loadSharedBalancedCashSnapshot,500));
+window.addEventListener('online',()=>setTimeout(()=>{window.refreshSharedCashCounterFromServer('online');loadSharedBalancedCashSnapshot();},500));
+window.addEventListener('focus',()=>setTimeout(()=>{window.refreshSharedCashCounterFromServer('focus');loadSharedBalancedCashSnapshot();},500));
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible') setTimeout(()=>window.refreshSharedCashCounterFromServer('visible'),300);
+});
 
 function renderDenominationComparison(){
   if(!current) return;
