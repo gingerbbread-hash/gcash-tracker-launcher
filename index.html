@@ -4848,14 +4848,17 @@ body > .hero{
 </style>
 </style>
 
-<style id="unifiedTransactionStyles">
-#multiTransactionModal.unified-transaction-card{position:static;display:block;background:#fff;z-index:auto;padding:0;inset:auto}
-#multiTransactionModal .unified-transaction-inner{width:100%;max-width:none;max-height:none;overflow:visible;border-radius:0;padding:16px;box-shadow:none;background:#fff}
-#multiTransactionModal>.unified-transaction-inner>.multi-head{margin-bottom:4px}
-#multiTransactionModal .multi-received-modal{position:fixed;inset:0;border-radius:0;z-index:100001}
-#multiTransactionModal .multi-change-modal{position:fixed;inset:0;border-radius:0;z-index:100001}
-</style>
-</head>
+<style id="multipleTransactionCalculatorStyles">
+.mtc-modal{position:fixed;inset:0;background:rgba(10,20,35,.58);z-index:100000;display:none;align-items:flex-end;justify-content:center}.mtc-modal.show{display:flex}
+.mtc-card{background:#fff;width:min(760px,100%);max-height:94vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px;box-shadow:0 -8px 30px rgba(0,0,0,.18)}
+.mtc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}.mtc-head h2{margin:0;font-size:20px}.mtc-head small{color:#6b7280}.mtc-head button{border:0;background:#eef2f7;border-radius:10px;padding:9px 12px;font-weight:800}
+.mtc-row{border:1px solid #dce5f0;border-radius:14px;padding:12px;margin-bottom:10px}.mtc-row-top{display:grid;grid-template-columns:1fr 1.25fr auto;gap:8px;align-items:end}.mtc-row label{font-size:12px;font-weight:800;color:#526174;display:block;margin-bottom:5px}
+.mtc-row select,.mtc-row input,.mtc-cash-row input{width:100%;box-sizing:border-box;border:1px solid #cfd9e6;border-radius:10px;padding:11px;font-size:16px;background:#fff}.mtc-row-bottom{display:flex;justify-content:space-between;margin-top:8px}.mtc-row-fee{font-size:13px;color:#c62828;font-weight:900}
+.mtc-remove{border:0;background:#fff0f0;color:#c62828;border-radius:8px;padding:7px 9px;font-weight:800}.mtc-add{width:100%;border:1.5px dashed #7aa7ef;background:#f7fbff;color:#1764d8;border-radius:11px;padding:11px;font-weight:900;margin-bottom:14px}
+.mtc-summary{display:grid;grid-template-columns:1fr 1fr 1.25fr;gap:8px;margin-bottom:14px}.mtc-summary>div{border:1px solid #dce5f0;border-radius:12px;padding:11px}.mtc-summary small,.mtc-change small{display:block;color:#526174;font-weight:800;margin-bottom:4px}.mtc-summary strong{font-size:18px}.mtc-summary>div:nth-child(2) strong{color:#c62828}.mtc-summary .mtc-pay{background:#fff8d7;border-color:#efd369}.mtc-pay strong{font-size:21px}
+.mtc-cash-row{display:grid;grid-template-columns:1.4fr 1fr;gap:10px}.mtc-cash-row label{font-size:13px;font-weight:900;color:#526174;display:block;margin-bottom:5px}.mtc-change{border:1px solid #cfe1f6;background:#f2f8ff;border-radius:12px;padding:11px}.mtc-change strong{font-size:23px;color:#1764d8}.mtc-short{min-height:22px;margin:8px 0;color:#c62828;font-size:13px;font-weight:800}.mtc-clear{width:100%;border:0;background:#f0eaff;color:#5b32b6;border-radius:11px;padding:12px;font-weight:900}
+@media(max-width:560px){.mtc-row-top{grid-template-columns:1fr 1.2fr}.mtc-row-top .mtc-remove{grid-column:2}.mtc-summary{grid-template-columns:1fr 1fr}.mtc-summary .mtc-pay{grid-column:1/-1}.mtc-cash-row{grid-template-columns:1fr}}
+</style></head>
 <body>
 <main class="app">
   <section class="hero">
@@ -5187,7 +5190,7 @@ body > .hero{
   </section>
 
 
-  <div class="legacy-transaction-ui" hidden><section class="card quick-entry-card">
+  <section class="card quick-entry-card">
     <div class="input-pair-row">
       <div class="input-pair-field">
         <label class="label" for="amount">Amount</label>
@@ -5205,7 +5208,6 @@ body > .hero{
     </div>
   </section>
 
-</div>
 <section class="card pin-card auth-card">
   <div id="signedOutAuth">
     <label class="label">Google Account</label>
@@ -5223,7 +5225,7 @@ body > .hero{
   </div>
 </section>
 
-  <div class="legacy-transaction-ui" hidden><section class="card results-card">
+  <section class="card results-card">
     <div class="results-grid">
       <div class="result-box result-fee"><small>Fee</small><strong id="fee">₱0.00</strong></div>
       <div class="result-box result-total"><small id="totalLabel">Total</small><strong id="total">₱0.00</strong></div>
@@ -5231,8 +5233,7 @@ body > .hero{
     </div>
   </section>
 
-  </div>
-<div class="legacy-transaction-ui" hidden><section class="card">
+  <section class="card">
     <form id="txForm">
       <select id="txType" class="hidden-select" aria-hidden="true" tabindex="-1"><option value=""></option><option>Cash In</option><option>Cash Out</option></select>
 
@@ -5249,52 +5250,9 @@ body > .hero{
         <button class="action-clear" id="clearInputsBtn" type="button">Clear</button>
       </div>
     </form>
-</section></div>
+    <button type="button" id="openMultiCalculator" class="multi-open-btn">Multiple Transaction Calculator</button>
 
-<section id="multiTransactionModal" class="card unified-transaction-card" aria-hidden="false">
-  <div class="multi-card unified-transaction-inner">
-    <div class="multi-head"><h2 id="multiTitle">Transaction</h2></div>
-    <div class="multi-note">Add another transaction only when the same customer has more than one Cash In.</div>
-    <div id="multiItems"></div>
-    <button type="button" id="multiAddItem" class="multi-add">+ Add Transaction</button>
-    <div class="multi-normal-summary">
-      <div class="multi-fee-box"><small>Fee</small><strong id="multiFeeTotal">₱0.00</strong></div>
-      <div class="multi-total-box"><small>Total</small><strong id="multiRequired">₱0.00</strong><span id="multiAmountTotal" hidden>₱0.00</span></div>
-      <div class="multi-change-box"><small>Change</small><strong id="multiTopChange">₱0.00</strong></div>
-    </div>
-    <div class="multi-settlement">
-      <label>Cash Received</label>
-      <div class="multi-settlement-row"><div id="multiCashReceivedDisplay" class="multi-cash-received-display">₱0.00</div><button type="button" id="multiOpenReceivedCounter">Count Cash Received</button></div>
-      <div class="multi-verify-line"><span id="multiReceivedCompactStatus">Not counted</span><strong id="multiReceivedCompactTotal">₱0.00</strong></div>
-    </div>
-    <div class="multi-change-compact"><div><small>Change</small><strong id="multiChangeDueText">₱0.00</strong><span id="multiChangeHint">Enter cash received first.</span></div><button type="button" id="multiOpenChangeCounter">Count Change</button></div>
-    <div class="multi-verify-line multi-change-verify"><span>Counted change</span><strong id="multiGivenTotal">₱0.00</strong></div>
-    <div style="display:none"><strong id="multiReceivedTotal">₱0.00</strong><strong id="multiNetCash">₱0.00</strong><div id="multiChangeDue"><strong>₱0.00</strong><span id="multiChangeRemaining"></span></div></div>
-    <div id="multiBalanceState" class="multi-balance bad">Add at least two transactions and count the cash.</div>
-    <div class="multi-actions multi-actions-two"><button type="button" id="multiSave" class="multi-save" disabled>Record All</button><button type="button" id="multiClearBtn" class="multi-action-secondary">Clear</button></div>
-  </div>
-  <div id="multiChangeCounterModal" class="multi-received-modal" aria-hidden="true"><div class="multi-received-card">
-      <div class="multi-head"><h2>Count Change</h2><button type="button" id="multiChangeClose" class="multi-close">Done</button></div>
-      <div class="multi-counter-target"><span>Change to Give</span><strong id="multiChangePopupDue">₱0.00</strong></div>
-      <div class="multi-counter-help">Tap each bill or coin you give. Each tap adds 1 piece.</div>
-      <div id="multiGivenQuickDenoms" class="multi-quick-denoms"></div>
-      <div id="multiGivenPieces" class="multi-compact-pieces"></div>
-      <div class="multi-counter-footer"><span>Counted <strong id="multiChangePopupCounted">₱0.00</strong></span><span>Remaining <strong id="multiChangePopupRemaining">₱0.00</strong></span></div>
-      <button type="button" id="multiChangeDone" class="multi-save">Done</button>
-    </div></div>
-  <div id="multiReceivedCounterModal" class="multi-received-modal" aria-hidden="true">
-    <div class="multi-received-card">
-      <div class="multi-head"><h2>Count Cash Received</h2><button type="button" id="multiReceivedClose" class="multi-close">Done</button></div>
-      <div class="multi-counter-target"><span>Amount to Collect</span><strong id="multiReceivedTarget">₱0.00</strong></div>
-      <div class="multi-counter-help">Tap each bill or coin received. Each tap adds 1 piece.</div>
-      <div id="multiReceivedQuickDenoms" class="multi-quick-denoms"></div>
-      <div id="multiReceivedPieces" class="multi-compact-pieces"></div>
-      <div class="multi-counter-footer"><span>Counted <strong id="multiReceivedPopupTotal">₱0.00</strong></span><span>Remaining <strong id="multiReceivedRemaining">₱0.00</strong></span></div>
-      <button type="button" id="multiReceivedDone" class="multi-save">Done</button>
-    </div>
-  </div>
 </section>
-
 
   
 
@@ -11251,272 +11209,37 @@ setTimeout(()=>{
 </script>
 
 
-<script id="multipleTransactionFeature">
-(function(){
-  const $m=id=>document.getElementById(id);
-  const denoms=[['1000','₱1,000',1000],['500','₱500',500],['200','₱200',200],['100','₱100',100],['50','₱50',50],['20b','₱20 bill',20],['20c','₱20 coin',20],['10','₱10',10],['5','₱5',5],['1','₱1',1]];
-  const modal=$m('multiTransactionModal'), itemsBox=$m('multiItems'), saveBtn=$m('multiSave');
-  if(!modal||!itemsBox||!saveBtn)return;
-  let saving=false;
 
-  const moneyM=n=>'₱'+Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const feeM=n=>Math.ceil(Number(n||0)/500)*5;
-  const zeroM=()=>Object.fromEntries(denoms.map(d=>[d[0],0]));
-  const pieceTotalM=p=>denoms.reduce((s,d)=>s+Number(p[d[0]]||0)*d[2],0);
 
-  function sharedInventoryM(){
-    try{
-      const c=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null');
-      return c&&c.pieces?c.pieces:{};
-    }catch(e){return {};}
-  }
-  function pieceGrid(prefix){ return ''; }
-  const selectedDenomsM={received:[],given:[]};
-  function renderQuickDenomsM(kind){
-    const host=$m(kind==='received'?'multiReceivedQuickDenoms':'multiGivenQuickDenoms');
-    if(!host)return;
-    const inv=sharedInventoryM();
-    host.innerHTML=denoms.map(d=>{
-      const available=Math.max(0,Math.floor(Number(inv[d[0]]||0)));
-      const note=kind==='given'?`<small>${available} available</small>`:(d[0]==='20b'?'<small>bill</small>':(d[0]==='20c'?'<small>coin</small>':''));
-      const label=(d[0]==='20b'||d[0]==='20c')?'₱20':d[1];
-      return `<button type="button" class="multi-quick-denom" data-quick-kind="${kind}" data-quick-key="${d[0]}">${label}${note}</button>`;
-    }).join('');
-  }
-  function compactPiecesM(kind){const box=$m(kind==='received'?'multiReceivedPieces':'multiGivenPieces');if(!box)return;box._qty=box._qty||{};box.innerHTML=selectedDenomsM[kind].map(key=>{const d=denoms.find(x=>x[0]===key),q=Number(box._qty[key]||0);return `<div class="multi-compact-row"><span class="dlabel">${d[1]}</span><button type="button" data-step="-1" data-kind="${kind}" data-key="${key}">−</button><span class="qty">${q}</span><button type="button" data-step="1" data-kind="${kind}" data-key="${key}">+</button><span class="sub">${moneyM(q*d[2])}</span><input type="hidden" value="${q}" data-multi-piece="${kind}" data-key="${key}"></div>`;}).join('');}
-  function addDenomPickerM(kind,btn){let p=btn.nextElementSibling;if(p&&p.classList.contains('multi-denom-picker')){p.remove();return;}p=document.createElement('div');p.className='multi-denom-picker';p.innerHTML=denoms.map(d=>`<button type="button" data-pick-kind="${kind}" data-pick-key="${d[0]}" ${selectedDenomsM[kind].includes(d[0])?'disabled':''}>${d[1]}</button>`).join('');btn.after(p);}
-  function addDenomM(kind,key){if(!selectedDenomsM[kind].includes(key))selectedDenomsM[kind].push(key);const box=$m(kind==='received'?'multiReceivedPieces':'multiGivenPieces');box._qty=box._qty||{};box._qty[key]=box._qty[key]||0;compactPiecesM(kind);refresh();}
-  function stepDenomM(kind,key,delta){
-    const box=$m(kind==='received'?'multiReceivedPieces':'multiGivenPieces');box._qty=box._qty||{};
-    let next=Math.max(0,Number(box._qty[key]||0)+delta);
-    if(kind==='given'){
-      const available=Math.max(0,Math.floor(Number(sharedInventoryM()[key]||0)));
-      if(next>available){alert('Only '+available+' of this denomination is available in the Cash Counter.');next=available;}
-    }
-    box._qty[key]=next;
-    if(next<=0)selectedDenomsM[kind]=selectedDenomsM[kind].filter(k=>k!==key);
-    else if(!selectedDenomsM[kind].includes(key))selectedDenomsM[kind].push(key);
-    compactPiecesM(kind);refresh();
-  }
-  function quickAddDenomM(kind,key){
-    const box=$m(kind==='received'?'multiReceivedPieces':'multiGivenPieces');box._qty=box._qty||{};
-    if(!selectedDenomsM[kind].includes(key))selectedDenomsM[kind].push(key);
-    stepDenomM(kind,key,1);
-  }
-  renderQuickDenomsM('received');renderQuickDenomsM('given');
-  compactPiecesM('received');compactPiecesM('given');
 
-  function addItem(data){
-    const div=document.createElement('div');
-    div.className='multi-item';
-    div.innerHTML=`<div class="multi-item-top">
-      <select class="multi-wallet" aria-label="Wallet"><option>GCash</option><option>Maya</option><option>MariBank</option></select>
-      <input class="multi-amount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="Enter amount">
+<div id="multiCalculatorModal" class="mtc-modal" aria-hidden="true">
+  <div class="mtc-card" role="dialog" aria-modal="true" aria-labelledby="mtcTitle">
+    <div class="mtc-head"><div><h2 id="mtcTitle">Multiple Transaction Calculator</h2><small>Calculator only. Nothing here is recorded.</small></div><button type="button" id="mtcClose">Close</button></div>
+    <div id="mtcRows"></div>
+    <button type="button" id="mtcAdd" class="mtc-add">+ Add Transaction</button>
+    <div class="mtc-summary">
+      <div><small>Total Amount</small><strong id="mtcAmount">₱0.00</strong></div>
+      <div><small>Total Fees</small><strong id="mtcFees">₱0.00</strong></div>
+      <div class="mtc-pay"><small>Customer Must Pay</small><strong id="mtcPay">₱0.00</strong></div>
     </div>
-    <div class="multi-item-bottom"><span class="multi-fee">Fee ₱0.00</span><button type="button" class="multi-remove">Remove</button></div>`;
-    if(data){
-      div.querySelector('.multi-wallet').value=data.wallet||'GCash';
-      div.querySelector('.multi-amount').value=data.amount||'';
-    }
-    div.addEventListener('input',refresh);
-    div.addEventListener('change',refresh);
-    div.querySelector('.multi-remove').addEventListener('click',()=>{div.remove();refresh();});
-    itemsBox.appendChild(div); refresh();
-  }
-
-  function readPiecesM(prefix){
-    const p=zeroM();
-    modal.querySelectorAll(`[data-multi-piece="${prefix}"]`).forEach(i=>{
-      p[i.dataset.key]=Math.max(0,Math.floor(Number(i.value||0)));
-    });
-    return p;
-  }
-  function readItemsM(){
-    return [...itemsBox.querySelectorAll('.multi-item')].map(div=>({
-      walletDestination:div.querySelector('.multi-wallet').value,
-      amount:Number(div.querySelector('.multi-amount').value||0),
-      chargeMode:'add'
-    }));
-  }
-  function totalsM(){
-    const items=readItemsM();
-    let amount=0,fees=0,required=0,valid=items.length>=1;
-    [...itemsBox.querySelectorAll('.multi-item')].forEach((div,i)=>{
-      const it=items[i], f=it.amount>0?feeM(it.amount):0;
-      div.querySelector('.multi-fee').textContent='Fee '+moneyM(f);
-      if(!(it.amount>0))valid=false;
-      amount+=Math.max(0,it.amount||0); fees+=f;
-      required += it.chargeMode==='deduct' ? Math.max(0,it.amount||0) : Math.max(0,it.amount||0)+f;
-    });
-    const received=pieceTotalM(readPiecesM('received'));
-    const cashInput=received;
-    const given=pieceTotalM(readPiecesM('given'));
-    return {items,amount,fees,required,received,cashInput,given,net:received-given,valid};
-  }
-  function refresh(){
-    const t=totalsM();
-    const changeDue=Math.max(0,t.cashInput-t.required);
-    const short=Math.max(0,t.required-t.cashInput);
-    $m('multiAmountTotal').textContent=moneyM(t.amount);
-    $m('multiFeeTotal').textContent=moneyM(t.fees);
-    $m('multiRequired').textContent=moneyM(t.required);
-    $m('multiReceivedTotal').textContent=moneyM(t.received);
-    $m('multiGivenTotal').textContent=moneyM(t.given);
-    if($m('multiCashReceivedDisplay'))$m('multiCashReceivedDisplay').textContent=moneyM(t.received);
-    if($m('multiReceivedCompactTotal'))$m('multiReceivedCompactTotal').textContent=moneyM(t.received);
-    if($m('multiReceivedPopupTotal'))$m('multiReceivedPopupTotal').textContent=moneyM(t.received);if($m('multiReceivedTarget'))$m('multiReceivedTarget').textContent=moneyM(t.required);
-    if($m('multiReceivedRemaining'))$m('multiReceivedRemaining').textContent=moneyM(Math.max(0,t.required-t.received));
-    if($m('multiChangeDueText'))$m('multiChangeDueText').textContent=moneyM(changeDue);
-    if($m('multiChangeHint'))$m('multiChangeHint').textContent=t.cashInput<=0?'Enter cash received first.':(short>0?'Customer still owes '+moneyM(short):(changeDue>0?'Count the change to give.':'No change needed.'));
-    if($m('multiChangePopupDue'))$m('multiChangePopupDue').textContent=moneyM(changeDue);
-    if($m('multiChangePopupCounted'))$m('multiChangePopupCounted').textContent=moneyM(t.given);
-    if($m('multiChangePopupRemaining'))$m('multiChangePopupRemaining').textContent=moneyM(Math.max(0,changeDue-t.given));
-    if($m('multiReceivedCompactStatus'))$m('multiReceivedCompactStatus').textContent=t.received>0?'Cash counted':'Not counted';
-    if($m('multiOpenReceivedCounter'))$m('multiOpenReceivedCounter').textContent=t.received>0?'Edit Cash Count':'Count Cash Received';
-    if($m('multiTopChange'))$m('multiTopChange').textContent=moneyM(Math.max(0,t.cashInput-t.required));
-    $m('multiNetCash').textContent=moneyM(t.net);
-    const remaining=changeDue-t.given;
-    const dueBox=$m('multiChangeDue'), remainEl=$m('multiChangeRemaining');
-    if(dueBox){
-      dueBox.querySelector('strong').textContent=moneyM(changeDue);
-      dueBox.className='multi-change-due'+(t.received>0&&Math.abs(remaining)<0.005?' ok':(remaining<0?' over':''));
-    }
-    if(remainEl){
-      if(!(t.received>0)) remainEl.textContent='Count the customer\'s cash first.';
-      else if(t.received<t.required) remainEl.textContent='Customer still needs to give '+moneyM(t.required-t.received)+'.';
-      else if(remaining>0.004) remainEl.textContent='REMAINING TO GIVE: '+moneyM(remaining);
-      else if(remaining<-0.004) remainEl.textContent='TOO MUCH CHANGE BY '+moneyM(Math.abs(remaining))+'. Remove some change.';
-      else remainEl.textContent='CHANGE COUNT COMPLETE';
-    }
-    const balanced=t.valid && t.received>=t.required && Math.abs(remaining)<0.005 && Math.abs(t.net-t.required)<0.005;
-    const state=$m('multiBalanceState');
-    state.className='multi-balance '+(balanced?'ok':'bad');
-    state.textContent=balanced
-      ? `BALANCED: ${moneyM(t.received)} received − ${moneyM(t.given)} change = ${moneyM(t.required)}`
-      : (t.items.length<2?'Add at least two transactions.':
-        (t.received<t.required
-          ? `NOT READY: collect ${moneyM(t.required)}. Count the cash received.`
-          : `NOT BALANCED: count exactly ${moneyM(changeDue)} change. Remaining ${moneyM(Math.max(0,remaining))}.`));
-    saveBtn.disabled=!balanced||saving;
-    return {t,balanced};
-  }
-  modal.addEventListener('input',e=>{
-    if(e.target.matches('[data-multi-piece]')){
-      if(e.target.dataset.multiPiece==='given'){
-        const max=Number(e.target.max);
-        if(Number.isFinite(max)&&Number(e.target.value||0)>max){
-          e.target.value=String(max);
-          alert('Only '+max+' of this denomination is available in the Cash Counter.');
-        }
-      }
-      refresh();
-    }
-  });
-  $m('multiAddItem').addEventListener('click',()=>addItem());
-  document.addEventListener('click',e=>{
-    const quick=e.target.closest('[data-quick-kind]');
-    if(quick && (quick.closest('#multiReceivedCounterModal')||quick.closest('#multiChangeCounterModal'))){
-      quickAddDenomM(quick.dataset.quickKind,quick.dataset.quickKey);return;
-    }
-    const step=e.target.closest('[data-step]');
-    if(step && (step.closest('#multiReceivedCounterModal')||step.closest('#multiChangeCounterModal'))){
-      stepDenomM(step.dataset.kind,step.dataset.key,Number(step.dataset.step));return;
-    }
-  });
-  const changeModal=$m('multiChangeCounterModal');function openChangeCounter(){renderQuickDenomsM('given');compactPiecesM('given');refresh();changeModal.classList.add('show');changeModal.setAttribute('aria-hidden','false');}function closeChangeCounter(){changeModal.classList.remove('show');changeModal.setAttribute('aria-hidden','true');refresh();}
-  $m('multiOpenChangeCounter').addEventListener('click',openChangeCounter);$m('multiChangeClose').addEventListener('click',closeChangeCounter);$m('multiChangeDone').addEventListener('click',closeChangeCounter);
-  const receivedModal=$m('multiReceivedCounterModal');
-  function openReceivedCounter(){
-    renderQuickDenomsM('received');
-    receivedModal.classList.add('show');receivedModal.setAttribute('aria-hidden','false');refresh();
-  }
-  function closeReceivedCounter(){
-    receivedModal.classList.remove('show');receivedModal.setAttribute('aria-hidden','true');refresh();
-  }
-  $m('multiOpenReceivedCounter').addEventListener('click',openReceivedCounter);
-  $m('multiReceivedClose').addEventListener('click',closeReceivedCounter);
-  $m('multiReceivedDone').addEventListener('click',closeReceivedCounter);
-  $m('multiClearBtn').addEventListener('click',()=>{
-    if(saving)return;
-    itemsBox.innerHTML='';
-    selectedDenomsM.received=[];selectedDenomsM.given=[];$m('multiReceivedPieces')._qty={};$m('multiGivenPieces')._qty={};compactPiecesM('received');compactPiecesM('given');
-    addItem({wallet:'GCash'});
-    refresh();
-  });
-  // Unified Home transaction screen starts with one transaction.
-  itemsBox.innerHTML='';
-  selectedDenomsM.received=[];selectedDenomsM.given=[];
-  $m('multiReceivedPieces')._qty={};$m('multiGivenPieces')._qty={};
-  compactPiecesM('received');compactPiecesM('given');
-  addItem({wallet:'GCash'});
-  refresh();
-
-  saveBtn.addEventListener('click',()=>{
-    if(saving)return;
-    const r=refresh();
-    if(!r.balanced){alert('Nothing recorded. The customer payment and change must balance exactly.');return;}
-    if(!navigator.onLine){alert('Nothing recorded. Connect to the internet and try again.');return;}
-    const sessionId='MS_'+Date.now()+'_'+Math.random().toString(36).slice(2,9);
-    const payload={
-      sessionId,
-      items:r.t.items,
-      cashPieces:{received:readPiecesM('received'),given:readPiecesM('given')}
-    };
-    saving=true;saveBtn.disabled=true;saveBtn.textContent='Recording whole session…';
-    google.script.run.withSuccessHandler(data=>{
-      saving=false;saveBtn.textContent='Record All Transactions';
-      if(!data||!data.ok){alert('Nothing recorded. The server did not confirm the whole session.');refresh();return;}
-      modal.setAttribute('aria-hidden','false');
-      try{
-        if(Array.isArray(data.transactions)){
-          data.transactions.forEach(tx=>{
-            tx.multipleSessionId=data.sessionId;
-            tx.cashPieces={
-              received:{...(payload.cashPieces.received||{})},
-              given:{...(payload.cashPieces.given||{})},
-              sessionId:data.sessionId,
-              transactionIds:(data.transactionIds||[]),
-              sharedSession:true
-            };
-          });
-        }
-      }catch(e){}
-      if(typeof loadAllWithSession==='function'){
-        try{loadAllWithSession();}catch(e){location.reload();}
-      }else location.reload();
-      setTimeout(()=>{try{if(typeof window.refreshSharedCashCounterFromServer==='function')window.refreshSharedCashCounterFromServer('multi-session');}catch(e){}},600);
-      alert('Multiple transaction recorded. The whole customer session and cash count were saved together.');
-    }).withFailureHandler(err=>{
-      saving=false;saveBtn.textContent='Record All Transactions';refresh();
-      alert((err&&err.message)||'Nothing recorded. The whole session failed.');
-    }).recordMultipleTransactionSessionBySession(getSessionToken(),payload);
-  });
-
-  // Prevent an individual child of a multiple session from being undone by itself.
-  // Undo the complete customer session instead.
-  document.addEventListener('click',function(e){
-    const btn=e.target.closest&&e.target.closest('[data-id],[data-cal-remove]');
-    if(!btn)return;
-    const id=String(btn.dataset.id||btn.dataset.calRemove||'');
-    const m=id.match(/^(MS_\d+_[A-Za-z0-9]+)_T\d+$/);
-    if(!m)return;
-    e.preventDefault();e.stopImmediatePropagation();
-    const sessionId=m[1];
-    if(!confirm('Undo the ENTIRE multiple transaction session? All child transactions, fees, wallet movements, and the shared Cash Count will be reversed together.'))return;
-    if(!navigator.onLine){alert('Connect to the internet to undo a multiple transaction session safely.');return;}
-    google.script.run.withSuccessHandler(()=>{
-      try{if(typeof loadAllWithSession==='function')loadAllWithSession();else location.reload();}catch(e){location.reload();}
-      setTimeout(()=>{try{if(typeof window.refreshSharedCashCounterFromServer==='function')window.refreshSharedCashCounterFromServer('multi-undo');}catch(e){}},600);
-    }).withFailureHandler(err=>alert((err&&err.message)||'Nothing was undone.')).undoMultipleTransactionSessionBySession(getSessionToken(),{sessionId});
-  },true);
-
-  window.__multiTransactionSessionInfo=function(tx){
-    const id=String(tx&&tx.id||'');
-    const m=id.match(/^(MS_\d+_[A-Za-z0-9]+)_T(\d+)$/);
-    return m?{sessionId:m[1],index:Number(m[2])}:null;
-  };
+    <div class="mtc-cash-row">
+      <div><label for="mtcCash">Cash Received</label><input id="mtcCash" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Enter cash received"></div>
+      <div class="mtc-change"><small>Change to Customer</small><strong id="mtcChange">₱0.00</strong></div>
+    </div>
+    <div id="mtcShort" class="mtc-short"></div>
+    <button type="button" id="mtcClear" class="mtc-clear">Clear Calculator</button>
+  </div>
+</div>
+<script id="multipleTransactionCalculatorFeature">
+(function(){
+const $=id=>document.getElementById(id),modal=$('multiCalculatorModal'),rows=$('mtcRows');if(!modal||!rows)return;
+const money=n=>'₱'+Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fee=n=>{n=Number(n||0);return n>0?Math.ceil(n/500)*5:0;};
+function addRow(wallet='GCash'){const d=document.createElement('div');d.className='mtc-row';d.innerHTML=`<div class="mtc-row-top"><div><label>Wallet</label><select class="mtc-wallet"><option>GCash</option><option>Maya</option><option>MariBank</option></select></div><div><label>Amount</label><input class="mtc-amount" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Enter amount"></div><button type="button" class="mtc-remove">Remove</button></div><div class="mtc-row-bottom"><span class="mtc-row-fee">Fee ₱0.00</span></div>`;d.querySelector('.mtc-wallet').value=wallet;rows.appendChild(d);refresh();}
+function refresh(){let amount=0,fees=0;[...rows.querySelectorAll('.mtc-row')].forEach(r=>{const a=Math.max(0,Number(r.querySelector('.mtc-amount').value||0)),f=fee(a);amount+=a;fees+=f;r.querySelector('.mtc-row-fee').textContent='Fee '+money(f);});const pay=amount+fees,cash=Math.max(0,Number($('mtcCash').value||0));$('mtcAmount').textContent=money(amount);$('mtcFees').textContent=money(fees);$('mtcPay').textContent=money(pay);$('mtcChange').textContent=money(Math.max(0,cash-pay));$('mtcShort').textContent=cash>0&&cash<pay?'Short '+money(pay-cash):'';}
+function clearCalc(){rows.innerHTML='';$('mtcCash').value='';addRow();addRow();refresh();}
+$('openMultiCalculator').addEventListener('click',()=>{modal.classList.add('show');modal.setAttribute('aria-hidden','false');if(!rows.children.length){addRow();addRow();}refresh();});
+$('mtcClose').addEventListener('click',()=>{modal.classList.remove('show');modal.setAttribute('aria-hidden','true');});$('mtcAdd').addEventListener('click',()=>addRow());$('mtcClear').addEventListener('click',clearCalc);$('mtcCash').addEventListener('input',refresh);rows.addEventListener('input',refresh);rows.addEventListener('change',refresh);rows.addEventListener('click',e=>{const b=e.target.closest('.mtc-remove');if(!b)return;const all=rows.querySelectorAll('.mtc-row');if(all.length<=1){b.closest('.mtc-row').querySelector('.mtc-amount').value='';refresh();return;}b.closest('.mtc-row').remove();refresh();});
 })();
-</script>
-
-</body>
+</script></body>
 </html>
