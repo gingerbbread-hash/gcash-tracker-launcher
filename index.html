@@ -4787,117 +4787,7 @@ body > .hero{
 #cashCounterNative #editInventoryGrid .edit-piece-middle small{font-size:10px!important;font-weight:800!important;color:#0b5ed7!important;line-height:1.1!important}
 #cashCounterNative #editInventoryGrid .cc-piece-amount{display:block!important;text-align:right!important;font-size:13px!important;overflow-wrap:anywhere}
 </style>
-<style id="cash-in-count-update">.cash-in-four-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.cash-in-four-fields>div{padding:9px;border:1px solid #e4e7ec;border-radius:9px;display:flex;flex-direction:column;gap:4px}.cash-in-four-fields span{font-size:11px;color:#667085}.cash-in-four-fields strong{font-size:14px}</style>
-<style id="multiTransactionStyles">
-.multi-open-btn{width:100%;margin-top:10px;border:1px solid #c8d8ef;background:#eef5ff;color:#0d55b5;border-radius:12px;padding:12px;font-weight:800;font-size:15px}
-.multi-modal{position:fixed;inset:0;background:rgba(10,20,35,.58);z-index:99999;display:none;align-items:flex-end;justify-content:center}
-.multi-modal.show{display:flex}
-.multi-card{background:#fff;width:min(760px,100%);max-height:94vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px;box-shadow:0 -8px 30px rgba(0,0,0,.18)}
-.multi-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
-.multi-head h2{margin:0;font-size:21px}.multi-close{border:0;background:#edf1f6;border-radius:10px;padding:9px 12px;font-weight:700}
-.multi-note{font-size:13px;color:#657184;margin-bottom:14px}
-.multi-item{border:1px solid #dce5f0;border-radius:14px;padding:12px;margin-bottom:10px}
-.multi-item-top{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.multi-item select,.multi-item input{width:100%;box-sizing:border-box;min-height:42px;border:1px solid #cbd6e3;border-radius:10px;padding:8px;font-size:16px;background:#fff}
-.multi-item-bottom{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:13px}
-.multi-remove{border:0;background:#fff0f0;color:#b3261e;border-radius:8px;padding:7px 9px;font-weight:700}
-.multi-add{width:100%;border:1px dashed #8fb4e8;background:#f6faff;border-radius:11px;padding:10px;font-weight:800;color:#135db5;margin-bottom:12px}
-.multi-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:12px 0}
-.multi-summary div{background:#f4f7fb;border-radius:11px;padding:10px;text-align:center}.multi-summary small{display:block;color:#667386}.multi-summary strong{display:block;margin-top:3px}
-.multi-step-title{font-weight:900;margin:14px 0 7px}.multi-piece-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-.multi-piece-row{display:grid;grid-template-columns:1fr 78px;align-items:center;gap:7px;border:1px solid #e0e6ef;border-radius:9px;padding:7px}
-.multi-piece-row input{width:100%;box-sizing:border-box;min-height:36px;border:1px solid #cbd6e3;border-radius:8px;padding:5px;font-size:16px;text-align:center}
-.multi-balance{border-radius:12px;padding:11px;margin:12px 0;font-weight:800;text-align:center}.multi-change-due{border:2px solid #1264d8;background:#eef5ff;border-radius:14px;padding:13px;margin:12px 0;text-align:center}.multi-change-due small{display:block;color:#52657e;font-weight:800}.multi-change-due strong{display:block;font-size:28px;color:#0d55b5;margin:3px 0}.multi-change-due span{display:block;font-size:14px;font-weight:800}.multi-change-due.ok{border-color:#1a8f4a;background:#e9f7ee}.multi-change-due.ok strong{color:#137333}.multi-change-due.over{border-color:#c72b25;background:#fff0f0}.multi-change-due.over strong{color:#b3261e}.multi-balance.ok{background:#e9f7ee;color:#137333}.multi-balance.bad{background:#fff0f0;color:#b3261e}
-.multi-save{width:100%;border:0;background:#1264d8;color:#fff;border-radius:12px;padding:14px;font-size:16px;font-weight:900}.multi-save:disabled{opacity:.45}
-.multi-session-undo{margin-top:8px;border:1px solid #e0b0b0;background:#fff6f6;color:#a61b1b;border-radius:9px;padding:8px 10px;font-weight:800}
-@media(max-width:520px){.multi-piece-grid{grid-template-columns:1fr}.multi-summary{grid-template-columns:1fr 1fr}.multi-summary div:last-child{grid-column:1/-1}}
-
-.multi-received-compact{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #dce5f0;background:#f7f9fc;border-radius:13px;padding:11px 12px;margin:12px 0}
-.multi-received-compact div{min-width:0}.multi-received-compact small{display:block;color:#657184;font-weight:700}.multi-received-compact strong{display:block;font-size:21px;margin:2px 0}.multi-received-compact span{display:block;font-size:12px;color:#6c7889}
-.multi-received-compact button{border:0;background:#1264d8;color:#fff;border-radius:10px;padding:11px 13px;font-weight:800;white-space:nowrap}
-.multi-received-modal{position:absolute;inset:0;background:rgba(10,20,35,.62);z-index:3;display:none;align-items:flex-end;justify-content:center;border-radius:20px 20px 0 0}
-.multi-received-modal.show{display:flex}.multi-received-card{background:#fff;width:100%;max-height:88vh;overflow:auto;border-radius:18px 18px 0 0;padding:16px;box-sizing:border-box}
-.multi-received-popup-total{background:#eef5ff;border-radius:12px;padding:11px;text-align:center;margin:12px 0}.multi-received-popup-total small{display:block;color:#657184;font-weight:800}.multi-received-popup-total strong{display:block;font-size:25px;color:#0d55b5;margin-top:3px}
-.multi-card{position:relative}
-@media(max-width:520px){.multi-received-compact{align-items:stretch}.multi-received-compact button{min-width:145px}}
-
-.multi-normal-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
-.multi-normal-summary>div{border-radius:13px;padding:12px 10px;min-height:68px;display:flex;flex-direction:column;justify-content:center}
-.multi-normal-summary small{font-weight:800;margin-bottom:5px}.multi-normal-summary strong{font-size:22px}
-.multi-fee-box{background:#fff0f0;border:1px solid #ffc4c4;color:#b3261e}
-.multi-total-box{background:#fff8cf;border:1px solid #efc849;color:#5e4a00}
-.multi-change-box{background:#f0f2f5;border:1px solid #cfd5df;color:#687386}
-.multi-actions{display:grid;grid-template-columns:1fr 1.35fr 1fr;gap:8px;margin-top:12px}
-.multi-actions .multi-save{height:54px;padding:10px}.multi-action-secondary{border:1px solid #cbd6e3;background:#f4f6f9;color:#4c596d;border-radius:12px;font-weight:900;font-size:15px}
-.multi-item{background:#fff}.multi-item-bottom{margin-top:7px}.multi-item .multi-fee{color:#b3261e;font-weight:800}
-@media(max-width:520px){.multi-normal-summary{grid-template-columns:repeat(3,1fr)}.multi-normal-summary strong{font-size:18px}.multi-actions{grid-template-columns:1fr 1.25fr 1fr}.multi-action-secondary{font-size:13px;padding:7px}}
-.multi-settlement,.multi-change-compact{border:1px solid #dce5f0;background:#fff;border-radius:12px;padding:9px 10px;margin:9px 0}.multi-settlement label{display:block;font-size:12px;font-weight:800;color:#657184;margin-bottom:5px}.multi-settlement-row{display:grid;grid-template-columns:1fr auto;gap:7px}.multi-settlement-row input{min-width:0;height:42px;border:1px solid #cbd6e3;border-radius:9px;padding:7px 10px;font-size:17px;font-weight:800}.multi-settlement-row button,.multi-change-compact button{border:0;background:#1264d8;color:#fff;border-radius:9px;padding:8px 11px;font-weight:800}.multi-verify-line{display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:12px;color:#6c7889}.multi-change-compact{display:flex;align-items:center;justify-content:space-between;gap:10px}.multi-change-compact small{display:block;color:#657184;font-weight:700}.multi-change-compact strong{display:block;font-size:21px}.multi-change-compact span{font-size:11px;color:#6c7889}.multi-change-verify{padding:0 3px;margin-top:-4px;margin-bottom:8px}.multi-counter-target,.multi-counter-footer{display:flex;justify-content:space-between;gap:10px}.multi-counter-target{padding:7px 2px 9px;font-weight:800}.multi-counter-target strong{font-size:21px}.multi-compact-pieces{display:flex;flex-direction:column;gap:5px;max-height:270px;overflow:auto}.multi-compact-row{display:grid;grid-template-columns:68px 34px 38px 34px 1fr;align-items:center;gap:4px;min-height:36px;border:1px solid #e0e6ef;border-radius:9px;padding:3px 5px}.multi-compact-row .dlabel{font-weight:800;font-size:13px}.multi-compact-row .qty{text-align:center;font-weight:900}.multi-compact-row .sub{text-align:right;font-weight:800;font-size:12px;color:#596678}.multi-compact-row button{height:29px;border:0;border-radius:7px;background:#edf2f8;font-size:19px;font-weight:900}.multi-add-denom{width:100%;margin:7px 0;border:1px dashed #9fb2ca;background:#f7f9fc;color:#31547c;border-radius:9px;padding:8px;font-weight:800}.multi-counter-footer{font-size:12px;padding:6px 2px 9px;color:#596678}.multi-denom-picker{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0}.multi-denom-picker button{border:1px solid #cbd6e3;background:#fff;border-radius:8px;padding:6px 8px;font-weight:800;font-size:12px}.multi-denom-picker button:disabled{opacity:.35}.multi-actions.multi-actions-two{grid-template-columns:1.5fr 1fr}
-
-<style id="multiCashCountOnlyStyles">
-.multi-cash-received-display{flex:1;border:1px solid #cbd8e8;background:#f7f9fc;border-radius:10px;padding:12px 14px;font-size:20px;font-weight:900;color:#172033;min-height:48px;display:flex;align-items:center}
-</style>
-<style id="multiQuickCashCountStyles">
-.multi-quick-denoms{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:10px 0}
-.multi-quick-denom{border:1px solid #b9cbe1;background:#f7faff;color:#17345d;border-radius:10px;padding:10px 4px;font-size:13px;font-weight:900;min-height:42px}
-.multi-quick-denom:active{transform:scale(.97);background:#e8f2ff}
-.multi-quick-denom small{display:block;font-size:9px;font-weight:700;color:#667085;margin-top:2px}
-.multi-compact-pieces:empty{display:none}
-.multi-compact-pieces:not(:empty){margin-top:8px;padding-top:8px;border-top:1px solid #e4eaf2}
-.multi-counter-help{font-size:11px;color:#667085;margin-top:2px}
-@media(max-width:380px){.multi-quick-denoms{gap:5px}.multi-quick-denom{padding:8px 2px;font-size:12px}}
-</style>
-</style>
-
-<style id="multipleTransactionCalculatorStyles">
-.mtc-modal{position:fixed;inset:0;background:rgba(10,20,35,.58);z-index:100000;display:none;align-items:flex-end;justify-content:center}.mtc-modal.show{display:flex}
-.mtc-card{background:#fff;width:min(760px,100%);max-height:94vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px;box-shadow:0 -8px 30px rgba(0,0,0,.18)}
-.mtc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}.mtc-head h2{margin:0;font-size:20px}.mtc-head small{color:#6b7280}.mtc-head button{border:0;background:#eef2f7;border-radius:10px;padding:9px 12px;font-weight:800}
-.mtc-row{border:1px solid #dce5f0;border-radius:14px;padding:12px;margin-bottom:10px}.mtc-row-top{display:grid;grid-template-columns:1fr 1.25fr auto;gap:8px;align-items:end}.mtc-row label{font-size:12px;font-weight:800;color:#526174;display:block;margin-bottom:5px}
-.mtc-row select,.mtc-row input,.mtc-cash-row input{width:100%;box-sizing:border-box;border:1px solid #cfd9e6;border-radius:10px;padding:11px;font-size:16px;background:#fff}.mtc-row-bottom{display:flex;justify-content:space-between;margin-top:8px}.mtc-row-fee{font-size:13px;color:#c62828;font-weight:900}
-.mtc-remove{border:0;background:#fff0f0;color:#c62828;border-radius:8px;padding:7px 9px;font-weight:800}.mtc-add{width:100%;border:1.5px dashed #7aa7ef;background:#f7fbff;color:#1764d8;border-radius:11px;padding:11px;font-weight:900;margin-bottom:14px}
-.mtc-summary{display:grid;grid-template-columns:1fr 1fr 1.25fr;gap:8px;margin-bottom:14px}.mtc-summary>div{border:1px solid #dce5f0;border-radius:12px;padding:11px}.mtc-summary small,.mtc-change small{display:block;color:#526174;font-weight:800;margin-bottom:4px}.mtc-summary strong{font-size:18px}.mtc-summary>div:nth-child(2) strong{color:#c62828}.mtc-summary .mtc-pay{background:#fff8d7;border-color:#efd369}.mtc-pay strong{font-size:21px}
-.mtc-cash-row{display:grid;grid-template-columns:1.4fr 1fr;gap:10px}.mtc-cash-row label{font-size:13px;font-weight:900;color:#526174;display:block;margin-bottom:5px}.mtc-change{border:1px solid #cfe1f6;background:#f2f8ff;border-radius:12px;padding:11px}.mtc-change strong{font-size:23px;color:#1764d8}.mtc-short{min-height:22px;margin:8px 0;color:#c62828;font-size:13px;font-weight:800}.mtc-clear{width:100%;border:0;background:#f0eaff;color:#5b32b6;border-radius:11px;padding:12px;font-weight:900}
-@media(max-width:560px){.mtc-row-top{grid-template-columns:1fr 1.2fr}.mtc-row-top .mtc-remove{grid-column:2}.mtc-summary{grid-template-columns:1fr 1fr}.mtc-summary .mtc-pay{grid-column:1/-1}.mtc-cash-row{grid-template-columns:1fr}}
-</style>
-<style id="multipleTransactionCalculatorCompactMobile">
-/* Compact calculator-only layout */
-.mtc-card{padding:14px;max-height:96vh}
-.mtc-head{margin-bottom:9px;gap:8px}
-.mtc-head h2{font-size:18px;line-height:1.15}
-.mtc-head small{font-size:11px}
-.mtc-head button{padding:7px 10px;font-size:13px}
-.mtc-row{padding:8px 9px;margin-bottom:7px;border-radius:11px}
-.mtc-row-top{grid-template-columns:1fr 1.15fr 34px;gap:6px;align-items:end}
-.mtc-row label{font-size:10px;margin-bottom:3px}
-.mtc-row select,.mtc-row input{padding:8px 9px;font-size:14px;border-radius:8px;height:38px}
-.mtc-remove{width:34px;height:38px;padding:0;font-size:0;border-radius:8px;position:relative}
-.mtc-remove:after{content:"×";font-size:20px;line-height:1;font-weight:900}
-.mtc-row-bottom{margin-top:4px;justify-content:flex-end}
-.mtc-row-fee{font-size:11px}
-.mtc-add{padding:8px;margin-bottom:9px;border-radius:9px;font-size:13px}
-.mtc-summary{grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
-.mtc-summary>div{padding:8px 9px;border-radius:9px}
-.mtc-summary small,.mtc-change small{font-size:10px;margin-bottom:2px}
-.mtc-summary strong{font-size:15px}
-.mtc-summary .mtc-pay{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between}
-.mtc-pay strong{font-size:21px}
-.mtc-cash-row{grid-template-columns:1.2fr 1fr;gap:6px;align-items:stretch}
-.mtc-cash-row label{font-size:11px;margin-bottom:3px}
-.mtc-cash-row input{padding:9px;font-size:16px;height:42px;border-radius:9px}
-.mtc-change{padding:7px 9px;border-radius:9px;display:flex;flex-direction:column;justify-content:center}
-.mtc-change strong{font-size:20px}
-.mtc-short{min-height:16px;margin:3px 0;font-size:11px}
-.mtc-clear{padding:8px;border-radius:9px;font-size:13px}
-@media(max-width:560px){
- .mtc-card{padding:12px}
- .mtc-row-top{grid-template-columns:1fr 1.15fr 32px}
- .mtc-row-top .mtc-remove{grid-column:auto}
- .mtc-summary{grid-template-columns:1fr 1fr}
- .mtc-summary .mtc-pay{grid-column:1/-1}
- .mtc-cash-row{grid-template-columns:1.15fr .85fr}
-}
-</style>
-</head>
+<style id="cash-in-count-update">.cash-in-four-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.cash-in-four-fields>div{padding:9px;border:1px solid #e4e7ec;border-radius:9px;display:flex;flex-direction:column;gap:4px}.cash-in-four-fields span{font-size:11px;color:#667085}.cash-in-four-fields strong{font-size:14px}</style></head>
 <body>
 <main class="app">
   <section class="hero">
@@ -5001,11 +4891,6 @@ body > .hero{
 
   <section class="card" id="ccSummaryCard">
     <div id="summary" class="summary"></div>
-    <div id="sharedCounterMigration" style="display:none;margin:10px 0;padding:12px;border:1px solid #b7d5ff;border-radius:12px;background:#f4f9ff">
-      <strong>Use this device’s saved Cash Counter as the shared starting inventory?</strong>
-      <div id="sharedCounterMigrationNote" class="note" style="margin:6px 0 10px"></div>
-      <button type="button" id="publishThisDeviceCounter" class="btn btn-secondary">Make This the Shared Cash Counter</button>
-    </div>
   </section>
 
   <section class="card cc-counter-content-card">
@@ -5289,15 +5174,11 @@ body > .hero{
         <button class="action-clear" id="clearInputsBtn" type="button">Clear</button>
       </div>
     </form>
-    <button type="button" id="openMultiCalculator" class="multi-open-btn">Multiple Transaction Calculator</button>
-
-</section>
+  </section>
 
   
 
 
-
-  
 
   <div class="history-bottom-wrap">
     <button id="historyToggle" class="btn btn-secondary history-bottom-btn" type="button" aria-expanded="false" aria-controls="historySection">
@@ -6042,12 +5923,7 @@ body > .hero{
         localPending:!!tx._pendingSync
       }};
     }
-    return ccHistoryRecords.find(r=>{
-      if(!r||!r.details)return false;
-      if(String(r.details.transactionId||'')===String(tx.id||'')&&['TRANSACTION_PIECES','CASH_IN_PIECES','CASH_OUT_PIECES'].includes(r.action))return true;
-      if(r.action==='MULTI_SESSION_PIECES'&&Array.isArray(r.details.transactionIds)&&r.details.transactionIds.map(String).includes(String(tx.id||'')))return true;
-      return false;
-    });
+    return ccHistoryRecords.find(r=>r&&r.details&&String(r.details.transactionId||'')===String(tx.id||'')&&['TRANSACTION_PIECES','CASH_IN_PIECES','CASH_OUT_PIECES'].includes(r.action));
   }
   function ccTransactionCountHtml(tx){
     const record=ccLinkedRecord(tx);
@@ -6062,8 +5938,7 @@ body > .hero{
       return sum+(Number(d.received&&d.received[key]||0)-Number((d.given||d.change)&& (d.given||d.change)[key]||0))*value;
     },0);
     const pending=!!d.localPending;
-    const sharedSession=!!d.sessionId&&Array.isArray(d.transactionIds);
-    return `<div class="cc-hist-pieces"><div class="cc-hist-side"><strong>${sharedSession?'Shared Customer Cash Count':'Cash Count'} · ${pending?'Saved on device':'Recorded'}</strong>
+    return `<div class="cc-hist-pieces"><div class="cc-hist-side"><strong>Cash Count · ${pending?'Saved on device':'Recorded'}</strong>
       ${received?`<div class="cc-hist-side cc-hist-in"><strong>Money received</strong><div>${received}</div></div>`:''}
       ${given?`<div class="cc-hist-side cc-hist-out"><strong>Money given</strong><div>${given}</div></div>`:''}
       ${!received&&!given?'<div>No denominations saved in this record.</div>':''}
@@ -6902,10 +6777,7 @@ body > .hero{
 
   function queueOfflineAction(action){
     const q=loadOfflineActionQueue();
-    const normalized={...action,queuedAt:Date.now()};
-    const existing=q.findIndex(x=>String(x&&x.id||'')===String(normalized.id||''));
-    if(existing>=0) q[existing]=normalized;
-    else q.push(normalized);
+    q.push({...action,queuedAt:Date.now()});
     saveOfflineActionQueue(q);
     setTimeout(processOfflineActionQueue,0);
   }
@@ -6995,19 +6867,13 @@ body > .hero{
   }
 
   function processOfflineActionQueue(){
-    // Process queued actions again. Every action carries a stable client ID so retries are idempotent.
-    // This is required for Move Money: a local wallet move must not be lost after a server refresh.
+    // Legacy pending records are preserved for manual reconciliation; never replay automatically.
+    return;
+
     if(offlineActionBusy||!navigator.onLine) { renderPendingSyncPanel(); return; }
     const q=loadOfflineActionQueue();
     if(!q.length){offlineActionRetry=1400;renderPendingSyncPanel();return;}
     const a=q[0];
-    // Recovery safety: pending Move Money actions can be held so the user can
-    // cancel an accidental duplicate before anything is sent to Google Sheets.
-    if((a.method==='addMayaTransferBySession'||a.method==='addMayaTransferWithCashPiecesBySession') &&
-       localStorage.getItem('gcashMoveMoneyRecoveryHoldV1')==='1'){
-      renderPendingSyncPanel();
-      return;
-    }
     offlineActionBusy=true;
 
     let runner=google.script.run
@@ -7180,21 +7046,7 @@ body > .hero{
 
     google.script.run
       .withSuccessHandler(data=>{
-        // CASH COUNT PERMANENCE: never let a server refresh erase denomination
-        // snapshots that are already saved inside this device's transaction record.
-        // Older Apps Script rows may not echo cashPieces, so merge by transaction ID.
-        const localHistoryById=new Map((Array.isArray(history)?history:[]).map(tx=>[String(tx&&tx.id||''),tx]));
-        history=((data && data.transactions)||[]).map(serverTx=>{
-          const localTx=localHistoryById.get(String(serverTx&&serverTx.id||''));
-          if(localTx && localTx.cashPieces && (!serverTx.cashPieces ||
-             (!serverTx.cashPieces.received && !serverTx.cashPieces.given && !serverTx.cashPieces.change))){
-            return {...serverTx,cashPieces:{
-              received:{...(localTx.cashPieces.received||{})},
-              given:{...(localTx.cashPieces.given||localTx.cashPieces.change||{})}
-            }};
-          }
-          return serverTx;
-        });
+        history=(data && data.transactions)||[];
         window.__gcashTransactions = history;
         expenses=(data && data.expenses)||[];
         transfers=(data && data.transfers)||[];
@@ -7209,10 +7061,6 @@ body > .hero{
         setLockedView(false);
         showSync('Synced.',true);
         setTimeout(restorePendingTransactions, 0);
-        // After account wallets are loaded, refresh Cash Counter from the shared
-        // server snapshot too. This makes a newly signed-in Mac/iPhone use the
-        // same denomination inventory unless THIS device has a real pending cash action.
-        setTimeout(()=>{ try{ if(typeof load==='function') load(); }catch(_e){} },120);
       })
       .withFailureHandler(err=>{
         unlocked=true;
@@ -7624,13 +7472,12 @@ body > .hero{
   }
 
   function processPendingCashPiecesQueue(transactionId){
-    // Cross-device Cash Counter sync. Only replay denomination records created by
-    // the current atomic transaction flow. Older legacy queue entries remain
-    // untouched so an old device record can never be applied accidentally.
+    // Legacy pending records are preserved for manual reconciliation; never replay automatically.
+    return;
+
     if(cashPiecesSyncBusy || !unlocked) return;
 
-    const queuedAll = loadPendingCashPiecesQueue();
-    const all = queuedAll.filter(x=>x && x.atomicCashCountV2===true);
+    const all = loadPendingCashPiecesQueue();
     if(!all.length) return;
 
     let idx = 0;
@@ -7652,16 +7499,13 @@ body > .hero{
     google.script.run
       .withSuccessHandler(result=>{
         const latest = loadPendingCashPiecesQueue().filter(
-          x => !(x && x.atomicCashCountV2===true &&
-            String(x.transactionId || '') === String(payload.transactionId || ''))
+          x => String(x.transactionId || '') !== String(payload.transactionId || '')
         );
         savePendingCashPiecesQueue(latest);
         cashPiecesSyncBusy = false;
         cashPiecesRetryDelay = 1200;
 
-        if(typeof window.refreshSharedCashCounterFromServer === 'function'){
-          setTimeout(()=>window.refreshSharedCashCounterFromServer('transaction-sync'), 100);
-        }else if(typeof window.loadCashCounterLatestStatus === 'function'){
+        if(typeof window.loadCashCounterLatestStatus === 'function'){
           setTimeout(window.loadCashCounterLatestStatus, 100);
         }
 
@@ -7831,12 +7675,8 @@ body > .hero{
         // Preserve locally recorded Cash Count even when an older Apps Script
         // response does not echo the cashPieces field back to the browser.
         const localTx = idx >= 0 ? history[idx] : null;
-        if(localTx && localTx.cashPieces && (!serverTx.cashPieces ||
-           (!serverTx.cashPieces.received && !serverTx.cashPieces.given && !serverTx.cashPieces.change))){
-          serverTx.cashPieces={
-            received:{...(localTx.cashPieces.received||{})},
-            given:{...(localTx.cashPieces.given||localTx.cashPieces.change||{})}
-          };
+        if(localTx && localTx.cashPieces && !serverTx.cashPieces){
+          serverTx.cashPieces=localTx.cashPieces;
         }
         if(idx >= 0) history[idx] = serverTx;
         else history.unshift(serverTx);
@@ -8363,8 +8203,7 @@ body > .hero{
       transactionType:String(tx.type||''),
       amount:Number(tx.amount||tx.total||0),fee:Number(tx.fee||0),
       received:{...cashPiecesReceived},
-      given:{...cashPiecesGiven},
-      atomicCashCountV2:true
+      given:{...cashPiecesGiven}
     };
 
     if(Math.abs(pieceTotal(cashPiecesReceived)-pieceTotal(cashPiecesGiven)-expectedCashMovement(tx))>0.01){
@@ -8463,31 +8302,18 @@ body > .hero{
         received:{...cashPiecesReceived}, given:{...cashPiecesGiven}, clientActionId:id
       };
 
-      // MOVE MONEY IS ATOMIC LOCALLY: wallet balances and exact cash pieces must both succeed.
-      // If the denomination update fails, restore the wallet snapshot immediately.
-      const beforeCapital=capitalData?{...capitalData}:null;
-      const beforeTransfers=Array.isArray(mayaTransfers)?mayaTransfers.slice():[];
-      try{
-        applyLocalMoveMoney(payload,id);
-        const piecesDetail={
-          transactionId:id, transactionType:'Move Money', amount:Number(tx.amount||0),
-          received:{...cashPiecesReceived}, given:{...cashPiecesGiven},
-          expectedCashMovement:(tx.toWallet==='Cash on Hand'?Number(tx.amount||0):-Number(tx.amount||0))
-        };
-        if(typeof applyLocalCashPiecesNow!=='function' || !applyLocalCashPiecesNow(piecesDetail)){
-          throw new Error('Cash Counter did not update.');
-        }
-      }catch(e){
-        if(beforeCapital) renderCapital(beforeCapital);
-        mayaTransfers=beforeTransfers;
-        renderMayaTransfers(); renderCapitalActivity(); saveLocalTrackerCache();
+      try{applyLocalMoveMoney(payload,id);}catch(e){
         save.disabled=false; save.textContent='Save Cash Pieces';
-        if(stat){stat.textContent='Nothing recorded. '+((e&&e.message)||'Could not save transfer.');stat.className='err';}
+        if(stat){stat.textContent=(e&&e.message)||'Could not save transfer.';stat.className='err';}
         return;
       }
 
-      // One queued transfer carries the same ID and denomination payload. The server sync
-      // completes the wallet move without changing the already-applied local Cash Counter twice.
+      try{
+        window.dispatchEvent(new CustomEvent('gcash-local-cash-pieces',{
+          detail:{transactionId:id,received:{...cashPiecesReceived},given:{...cashPiecesGiven},expectedCashMovement:(tx.toWallet==='Cash on Hand'?Number(tx.amount||0):-Number(tx.amount||0))}
+        }));
+      }catch(e){}
+
       queueOfflineAction({id:id,method:'addMayaTransferWithCashPiecesBySession',payload:payload});
       save.disabled=false; save.textContent='Saved';
       if(stat){stat.textContent=navigator.onLine?'Saved. Syncing transfer and Cash Counter…':'Saved offline. Waiting to sync.';stat.className='ok';}
@@ -8544,9 +8370,6 @@ body > .hero{
       status.textContent='Recorded ✓ Syncing to Google Sheets…';status.className='status ok';
     }
     queueCashPieces(piecePayload);
-    // The transaction-pieces endpoint is the authoritative shared inventory write.
-    // Do not publish the optimistic local inventory with saveCashCount here: doing
-    // both can race and apply the same cash movement twice on the server.
     window.gcashCashCounterUpdatePending=false;
     try{sendCashCounterStatusToTracker();}catch(_e){}
 
@@ -9255,28 +9078,17 @@ document.addEventListener('DOMContentLoaded', function(){
   });
 
   window.loadCashCounterLatestStatus=function(){
-    if(window.gcashCashCounterUpdatePending){ paintUpdating(); return; }
-    // ONLINE: Home always reads the single authoritative Cash Inventory row.
-    // Local storage is only an offline fallback and can never decide the online balance check.
-    if(navigator.onLine && window.google && google.script && google.script.run){
-      try{
-        google.script.run
-          .withSuccessHandler(function(x){
-            if(!x || !x.pieces) return;
-            var vals={'1000':1000,'500':500,'200':200,'100':100,'50':50,'20b':20,'20c':20,'10':10,'5':5,'1':1};
-            var physical=0;
-            Object.keys(vals).forEach(function(k){ physical += Number(x.pieces[k]||0)*vals[k]; });
-            window.gcashCashCounterUpdatePending=false;
-            paint({physicalCash:physical,trackerCashOnHand:homeCashValue()});
-          })
-          .withFailureHandler(function(){
-            try{ if(typeof sendCashCounterStatusToTracker==='function') sendCashCounterStatusToTracker(); }catch(e){}
-          })
-          .getCashCounter();
-        return;
-      }catch(e){}
+    if(window.gcashCashCounterUpdatePending){
+      paintUpdating();
+      return;
     }
-    try{ if(typeof sendCashCounterStatusToTracker==='function'){ sendCashCounterStatusToTracker(); return; } }catch(e){}
+    // Local-only check. Never wait for Apps Script / Google Sheets.
+    try{
+      if(typeof sendCashCounterStatusToTracker==='function'){
+        sendCashCounterStatusToTracker();
+        return;
+      }
+    }catch(e){}
     if(lastStatus) paint(lastStatus);
   };
 
@@ -9480,10 +9292,6 @@ const $=id=>document.getElementById(id);
 const money=v=>'₱'+Number(v||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
 const zero=()=>Object.fromEntries(D.map(d=>[d[0],0]));
 let current=null;
-// Preserve the pre-v6 device cache only for an explicit one-time migration.
-// It is NEVER allowed to win automatically while online.
-let startupDeviceCashCounter=null;
-try{ startupDeviceCashCounter=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null'); }catch(_e){}
 
 function sendCashCounterStatusToTracker(){
   try{
@@ -9500,20 +9308,6 @@ function sendCashCounterStatusToTracker(){
       }
     }));
   }catch(e){}
-}
-
-function queueSharedCashCounterSnapshot(sourceId){
-  try{
-    if(!current||!current.pieces) return;
-    const pieces={...current.pieces};
-    const sig=JSON.stringify(pieces);
-    let h=2166136261;
-    for(let i=0;i<sig.length;i++){ h^=sig.charCodeAt(i); h=Math.imul(h,16777619); }
-    const id='AUTO_COUNTER_'+String(sourceId||'STATE').replace(/[^A-Za-z0-9_-]/g,'_')+'_'+(h>>>0).toString(36)+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
-    window.dispatchEvent(new CustomEvent('gcash-queue-offline-action',{detail:{
-      id:id,method:'saveCashCount',payload:{pieces:pieces,automaticSharedSnapshot:true}
-    }}));
-  }catch(_e){}
 }
 
 function grid(prefix,pieces){
@@ -10078,146 +9872,59 @@ window.reverseLocalCashPiecesForTransaction=function(transactionId){
   return true;
 };
 
-function publishBalancedCashCounterSnapshotIfNeeded(serverCounter,savedCounter){
-  // One-time bridge for devices that already have the correct physical inventory
-  // from before cross-device denomination sync was enabled. A device may publish
-  // its local inventory only when it exactly matches the live Cash on Hand and
-  // there is no unsynced cash-changing work. A SHORT/OVER device can never win.
-  try{
-    if(!navigator.onLine || !savedCounter || !savedCounter.pieces || !serverCounter) return;
-    const localTotal=cashCounterPiecesTotal(savedCounter.pieces);
-    const serverTotal=cashCounterPiecesTotal((serverCounter&&serverCounter.pieces)||{});
-    const tracker=trackerCashValue();
-    if(Math.abs(localTotal-tracker)>0.01 || Math.abs(localTotal-serverTotal)<=0.01) return;
-    const pendingPieces=JSON.parse(localStorage.getItem('gcash_tracker_pending_cash_pieces_v1')||'[]');
-    const pendingTx=JSON.parse(localStorage.getItem('gcash_tracker_pending_transactions_v1')||'[]');
-    const pendingActions=JSON.parse(localStorage.getItem('gcashTrackerOfflineActionsV1')||'[]');
-    if((Array.isArray(pendingPieces)&&pendingPieces.some(x=>x&&x.atomicCashCountV2===true)) ||
-       (Array.isArray(pendingTx)&&pendingTx.length) ||
-       (Array.isArray(pendingActions)&&pendingActions.length)) return;
-    const sig=JSON.stringify(savedCounter.pieces);
-    // Use a stable id for this exact inventory. Repeating the publish is safe and
-    // lets a device recover even when an earlier request reported success but the
-    // shared current counter was not yet visible to another device.
-    let h=2166136261;
-    for(let i=0;i<sig.length;i++){ h^=sig.charCodeAt(i); h=Math.imul(h,16777619); }
-    const id='DEVICE_SNAPSHOT_'+(h>>>0).toString(36)+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
-    google.script.run.withSuccessHandler((data)=>{
-      localStorage.setItem('gcashSharedCashSnapshotPublishedV1',sig);
-      // Prefer the server-confirmed copy when it contains denominations.
-      if(data&&data.pieces){
-        current=data;
-        try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(_e){}
-        renderCashCounterInventory(current);renderSummary(current);sendCashCounterStatusToTracker();
-      }
-    }).withFailureHandler(()=>{}).saveCashCount({...savedCounter.pieces},id);
-  }catch(_e){}
-}
-
-window.refreshSharedCashCounterFromServer=function(source){
-  if(!navigator.onLine || hasUnsyncedLocalCashWork()) return;
-  try{
-    google.script.run
-      .withSuccessHandler(x=>{
-        if(!x || !x.pieces || hasUnsyncedLocalCashWork()) return;
-        current=x;
-        if(current._localPending) current._localPending=false;
-        try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(_e){}
-        renderCashCounterInventory(current);
-        renderSummary(current);
-        setTimeout(sendCashCounterStatusToTracker,0);
-      })
-      .withFailureHandler(()=>{})
-      .getCashCounter();
-  }catch(_e){}
-};
-
 function load(){
   showMsg('');
-  // Offline only: use this browser's last cache.
-  if(!navigator.onLine){
-    try{
-      const cached=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null');
-      if(cached&&cached.pieces){
-        current=cached; renderCashCounterInventory(current); renderSummary(current);
-        setTimeout(sendCashCounterStatusToTracker,0);
-        if(!$('countGrid').innerHTML.trim()) $('countGrid').innerHTML=grid('count',zero());
-        refreshCount();
-        showMsg('Offline. Last saved Cash Counter from this device is shown.','ok');
-        return;
-      }
-    }catch(_e){}
-  }
-
-  // Online: Google Sheets Cash Inventory is the ONLY source of truth.
-  google.script.run
-    .withSuccessHandler(x=>{
-      if(!x || !x.pieces){ showMsg('Shared Cash Counter is unavailable.','err'); return; }
-      current=x;
-      if(current._localPending) current._localPending=false;
-      try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(e){}
+  try{
+    const cached=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null');
+    if(cached&&cached.pieces){
+      current=cached;
       renderCashCounterInventory(current);
       renderSummary(current);
       setTimeout(sendCashCounterStatusToTracker,0);
+    }
+  }catch(_e){}
+  google.script.run
+    .withSuccessHandler(x=>{
+      // A Cash Pieces record can be saved locally while its parent is still syncing.
+      // A delayed server response must not roll back that physical inventory.
+      let saved=null;
+      try{saved=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null');}catch(_e){}
+      const pendingPieces=(()=>{try{return JSON.parse(localStorage.getItem('gcash_tracker_pending_cash_pieces_v1')||'[]').length>0;}catch(_e){return false;}})();
+      const localTotal=saved&&saved.pieces?cashCounterPiecesTotal(saved.pieces):null;
+      const remoteTotal=x&&x.pieces?cashCounterPiecesTotal(x.pieces):null;
+      const keepLocal=!!(saved&&saved.pieces&&(pendingPieces || (saved._localPending && localTotal!==remoteTotal)));
+      current=keepLocal?saved:x;
+      if(!keepLocal && current && current._localPending) current._localPending=false;
+      try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(e){}
+      renderCashCounterInventory(current);
+      setTimeout(sendCashCounterStatusToTracker,80);
+
       if(!$('countGrid').innerHTML.trim()) $('countGrid').innerHTML=grid('count',zero());
       refreshCount();
-      showMsg('Shared Cash Counter loaded from Google Sheets.','ok');
-      setTimeout(()=>{ if(typeof window.loadCashCounterLatestStatus==='function') window.loadCashCounterLatestStatus(); },50);
+      renderSummary(current);
+      setTimeout(sendCashCounterStatusToTracker,50);
+
+      showMsg('Cash Counter inventory loaded. Count physical cash only if you want to verify it.');
     })
     .withFailureHandler(e=>{
-      showMsg((e&&e.message)?e.message:'Could not load the shared Cash Counter.','err');
+      let restored=false;
+      try{
+        const raw=localStorage.getItem('gcashCashCounterCurrentV1');
+        if(raw){
+          current=JSON.parse(raw);
+          renderCashCounterInventory(current); renderSummary(current);
+          $('countGrid').innerHTML=grid('count',zero()); refreshCount();
+          setCashCounterMode('cash'); restored=true;
+        }
+      }catch(_e){}
+      if(restored) showMsg('Offline. Saved Cash Counter loaded from this device.','ok');
+      else{
+        $('trackerCashAuto').textContent='Unable to read';
+        showMsg((e&&e.message)?e.message:'Could not load Cash Counter.','err');
+      }
     })
     .getCashCounter();
 }
-
-// v6 authoritative cross-device synchronization.
-function hasUnsyncedLocalCashWork(){
-  try{
-    const pp=JSON.parse(localStorage.getItem('gcash_tracker_pending_cash_pieces_v1')||'[]');
-    if(Array.isArray(pp)&&pp.some(x=>x&&x.atomicCashCountV2===true)) return true;
-  }catch(_e){}
-  try{
-    const pt=JSON.parse(localStorage.getItem('gcash_tracker_pending_transactions_v1')||'[]');
-    if(Array.isArray(pt)&&pt.some(x=>x&&x.cashPieces)) return true;
-  }catch(_e){}
-  try{
-    const qa=JSON.parse(localStorage.getItem('gcashTrackerOfflineActionsV1')||'[]');
-    const methods=new Set(['saveCashCount','saveManualCashCounterCorrection','saveCashCounterChangeMoney','addMayaTransferWithCashPiecesBySession','saveTransactionCashPieces']);
-    if(Array.isArray(qa)&&qa.some(a=>a&&methods.has(String(a.method||'')))) return true;
-  }catch(_e){}
-  return false;
-}
-
-window.refreshSharedCashCounterFromServer=function(source){
-  if(!navigator.onLine || hasUnsyncedLocalCashWork()) return;
-  try{
-    google.script.run.withSuccessHandler(x=>{
-      if(!x||!x.pieces||hasUnsyncedLocalCashWork()) return;
-      current=x;
-      try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(_e){}
-      renderCashCounterInventory(current); renderSummary(current); sendCashCounterStatusToTracker();
-      if(typeof window.loadCashCounterLatestStatus==='function') window.loadCashCounterLatestStatus();
-    }).withFailureHandler(()=>{}).getCashCounter();
-  }catch(_e){}
-};
-
-// Verify that the browser is really talking to the v6 Apps Script deployment.
-window.gcashBackendV6Ready=false;
-try{
-  google.script.run.withSuccessHandler(d=>{
-    window.gcashBackendV6Ready=!!(d&&d.authoritativeCashCounter&&String(d.version||'').indexOf('v6-')===0);
-    if(!window.gcashBackendV6Ready) showMsg('Backend v6 is not active. Redeploy the Apps Script web app.','err');
-  }).withFailureHandler(()=>{
-    window.gcashBackendV6Ready=false;
-    showMsg('Backend v6 is not active. Redeploy the Apps Script web app before testing cross-device sync.','err');
-  }).getTrackerBackendVersion();
-}catch(_e){}
-
-window.addEventListener('online',()=>setTimeout(()=>window.refreshSharedCashCounterFromServer('online'),400));
-window.addEventListener('focus',()=>setTimeout(()=>window.refreshSharedCashCounterFromServer('focus'),400));
-document.addEventListener('visibilitychange',()=>{
-  if(document.visibilityState==='visible') setTimeout(()=>window.refreshSharedCashCounterFromServer('visible'),300);
-});
 
 function renderDenominationComparison(){
   if(!current) return;
@@ -10646,7 +10353,7 @@ function loadHistory(){
       rows=(rows||[]).filter(r=>[
         'COUNT','MANUAL_CORRECTION','TRANSACTION_PIECES',
         'CASH_IN_PIECES','CASH_OUT_PIECES','WALLET_TRANSFER_PIECES'
-      ].includes(r.action)).filter(r=>!(r&&r.action==='COUNT'&&String(r.id||'').startsWith('AUTO_COUNTER_')));
+      ].includes(r.action));
 
       if(!rows.length){
         $('historyList').innerHTML='No Cash Counter history yet.';
@@ -10716,39 +10423,6 @@ $('historyList').addEventListener('click',e=>{
 });
 
 $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
-
-// One-time migration helper. This is explicit so a stale Chrome/Safari cache can
-// never overwrite the correct shared inventory automatically.
-setTimeout(()=>{
-  try{
-    const box=$('sharedCounterMigration'), btn=$('publishThisDeviceCounter'), note=$('sharedCounterMigrationNote');
-    if(!box||!btn||!startupDeviceCashCounter||!startupDeviceCashCounter.pieces||!navigator.onLine) return;
-    const deviceTotal=cashCounterPiecesTotal(startupDeviceCashCounter.pieces);
-    const tracker=trackerCashValue();
-    const serverTotal=current&&current.pieces?cashCounterPiecesTotal(current.pieces):NaN;
-    if(Math.abs(deviceTotal-tracker)<=0.01 && (!Number.isFinite(serverTotal)||Math.abs(deviceTotal-serverTotal)>0.01)){
-      box.style.display='block';
-      note.textContent='This device has '+money(deviceTotal)+' and it matches Cash on Hand. The shared server currently has '+money(serverTotal)+'. Use this only on the device you know is correct.';
-      btn.onclick=()=>{
-        if(!window.gcashBackendV6Ready){ showMsg('Backend v6 is not active yet. Redeploy Apps Script first.','err'); return; }
-        if(!confirm('Set this device’s exact bill and coin quantities as the shared Cash Counter for every device?')) return;
-        btn.disabled=true; btn.textContent='Publishing…';
-        const id='V6_SHARED_SEED_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
-        google.script.run.withSuccessHandler(data=>{
-          current=data;
-          try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(_e){}
-          renderCashCounterInventory(current); renderSummary(current); sendCashCounterStatusToTracker();
-          box.style.display='none'; btn.disabled=false; btn.textContent='Make This the Shared Cash Counter';
-          showMsg('Shared Cash Counter initialized. Other devices can now reload.','ok');
-          if(typeof window.loadCashCounterLatestStatus==='function') window.loadCashCounterLatestStatus();
-        }).withFailureHandler(e=>{
-          btn.disabled=false; btn.textContent='Make This the Shared Cash Counter';
-          showMsg((e&&e.message)||'Could not publish the shared Cash Counter.','err');
-        }).saveCashCount({...startupDeviceCashCounter.pieces},id);
-      };
-    }
-  }catch(_e){}
-},1400);
 
 
 
@@ -11165,120 +10839,5 @@ setTimeout(()=>{
 })();
 </script>
 
-<script id="move-money-clean-atomic-v3">
-(function(){
-  'use strict';
-  const QUEUE_KEY='gcashTrackerOfflineActionsV1';
-  const QUARANTINE_KEY='gcashOldMoveMoneyQuarantineV2';
-  const MIGRATION_KEY='gcashMoveMoneyCleanAtomicV3Migrated';
-
-  function isMoveAction(a){
-    return !!(a && (a.method==='addMayaTransferBySession' || a.method==='addMayaTransferWithCashPiecesBySession'));
-  }
-  function quarantineLegacyMoveActionsOnce(){
-    if(localStorage.getItem(MIGRATION_KEY)==='1') return;
-    try{
-      let q=JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]');
-      if(!Array.isArray(q)) q=[];
-      const oldMoves=q.filter(isMoveAction);
-      if(oldMoves.length){
-        let old=[];
-        try{old=JSON.parse(localStorage.getItem(QUARANTINE_KEY)||'[]');if(!Array.isArray(old))old=[];}catch(e){old=[];}
-        const ids=new Set(old.map(x=>String(x&&x.id||'')));
-        oldMoves.forEach(a=>{if(!ids.has(String(a.id||''))) old.push({...a,_quarantinedAt:new Date().toISOString(),_reason:'legacy pre-clean-atomic recovery record'});});
-        localStorage.setItem(QUARANTINE_KEY,JSON.stringify(old));
-        localStorage.setItem(QUEUE_KEY,JSON.stringify(q.filter(a=>!isMoveAction(a))));
-      }
-      // Retire every temporary recovery control. They must never replay old moves.
-      localStorage.removeItem('gcashMoveMoneyRecoveryHoldV1');
-      localStorage.setItem(MIGRATION_KEY,'1');
-    }catch(e){}
-  }
-  function counterState(){
-    let cur=null;
-    try{cur=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null')}catch(e){}
-    let counted=NaN;
-    try{
-      if(cur&&cur.pieces&&typeof cashCounterPiecesTotal==='function') counted=Number(cashCounterPiecesTotal(cur.pieces));
-      else if(cur) counted=Number(cur.physicalTotal!=null?cur.physicalTotal:cur.physicalCash);
-    }catch(e){}
-    let cash=NaN;
-    try{cash=Number(capitalData&&capitalData.cashOnHand)}catch(e){}
-    if(!Number.isFinite(cash)){
-      const el=document.getElementById('homeCashBalance')||document.getElementById('cashOutAvailable');
-      if(el) cash=Number(String(el.textContent||'').replace(/[^0-9.-]/g,''));
-    }
-    return {counted,cash,diff:(Number.isFinite(counted)&&Number.isFinite(cash))?counted-cash:NaN};
-  }
-  function updateMoveGuard(){
-    const btn=document.getElementById('mayaTransferBtn');
-    if(!btn) return;
-    const d=counterState();
-    const bad=!Number.isFinite(d.diff)||Math.abs(d.diff)>0.01;
-    btn.disabled=bad;
-    btn.style.opacity=bad?'.55':'';
-    btn.style.cursor=bad?'not-allowed':'';
-    btn.title=bad?'Move Money is locked because Cash Counter and Cash on Hand do not match. Fix the physical cash difference first.':'';
-  }
-  function removeOldRecoveryUI(){
-    document.getElementById('moveMoneyRecoveryNotice')?.remove();
-    document.getElementById('safeRecoveryRecountNotice')?.remove();
-  }
-  function init(){
-    quarantineLegacyMoveActionsOnce();
-    removeOldRecoveryUI();
-    updateMoveGuard();
-    try{if(typeof renderPendingSyncPanel==='function')renderPendingSyncPanel();}catch(e){}
-    // Guard is recalculated after any wallet/counter mutation. This does not alter balances.
-    ['gcash-local-transaction-recorded','offline-wallet-action-synced','offline-cashcounter-action-synced','tracker-cash-balance-updated']
-      .forEach(name=>window.addEventListener(name,()=>setTimeout(updateMoveGuard,0)));
-    document.addEventListener('click',function(e){
-      const b=e.target.closest('#mayaTransferBtn');
-      if(!b) return;
-      const d=counterState();
-      if(!Number.isFinite(d.diff)||Math.abs(d.diff)>0.01){
-        e.preventDefault();e.stopImmediatePropagation();
-        alert('Move Money is locked because Cash Counter and Cash on Hand do not match. Fix the physical cash difference first. No transfer was recorded.');
-      }
-    },true);
-    setInterval(function(){removeOldRecoveryUI();updateMoveGuard();},1500);
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true}); else init();
-})();
-</script>
-
-
-
-
-
-<div id="multiCalculatorModal" class="mtc-modal" aria-hidden="true">
-  <div class="mtc-card" role="dialog" aria-modal="true" aria-labelledby="mtcTitle">
-    <div class="mtc-head"><div><h2 id="mtcTitle">Multiple Transaction Calculator</h2><small>Calculator only. Nothing here is recorded.</small></div><button type="button" id="mtcClose">Close</button></div>
-    <div id="mtcRows"></div>
-    <button type="button" id="mtcAdd" class="mtc-add">+ Add Transaction</button>
-    <div class="mtc-summary">
-      <div><small>Total Amount</small><strong id="mtcAmount">₱0.00</strong></div>
-      <div><small>Total Fees</small><strong id="mtcFees">₱0.00</strong></div>
-      <div class="mtc-pay"><small>Customer Must Pay</small><strong id="mtcPay">₱0.00</strong></div>
-    </div>
-    <div class="mtc-cash-row">
-      <div><label for="mtcCash">Cash Received</label><input id="mtcCash" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Enter cash received"></div>
-      <div class="mtc-change"><small>Change to Customer</small><strong id="mtcChange">₱0.00</strong></div>
-    </div>
-    <div id="mtcShort" class="mtc-short"></div>
-    <button type="button" id="mtcClear" class="mtc-clear">Clear Calculator</button>
-  </div>
-</div>
-<script id="multipleTransactionCalculatorFeature">
-(function(){
-const $=id=>document.getElementById(id),modal=$('multiCalculatorModal'),rows=$('mtcRows');if(!modal||!rows)return;
-const money=n=>'₱'+Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
-const fee=n=>{n=Number(n||0);return n>0?Math.ceil(n/500)*5:0;};
-function addRow(wallet='GCash'){const d=document.createElement('div');d.className='mtc-row';d.innerHTML=`<div class="mtc-row-top"><div><label>Wallet</label><select class="mtc-wallet"><option>GCash</option><option>Maya</option><option>MariBank</option></select></div><div><label>Amount</label><input class="mtc-amount" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Enter amount"></div><button type="button" class="mtc-remove">Remove</button></div><div class="mtc-row-bottom"><span class="mtc-row-fee">Fee ₱0.00</span></div>`;d.querySelector('.mtc-wallet').value=wallet;rows.appendChild(d);refresh();}
-function refresh(){let amount=0,fees=0;[...rows.querySelectorAll('.mtc-row')].forEach(r=>{const a=Math.max(0,Number(r.querySelector('.mtc-amount').value||0)),f=fee(a);amount+=a;fees+=f;r.querySelector('.mtc-row-fee').textContent='Fee '+money(f);});const pay=amount+fees,cash=Math.max(0,Number($('mtcCash').value||0));$('mtcAmount').textContent=money(amount);$('mtcFees').textContent=money(fees);$('mtcPay').textContent=money(pay);$('mtcChange').textContent=money(Math.max(0,cash-pay));$('mtcShort').textContent=cash>0&&cash<pay?'Short '+money(pay-cash):'';}
-function clearCalc(){rows.innerHTML='';$('mtcCash').value='';addRow();addRow();refresh();}
-$('openMultiCalculator').addEventListener('click',()=>{modal.classList.add('show');modal.setAttribute('aria-hidden','false');if(!rows.children.length){addRow();addRow();}refresh();});
-$('mtcClose').addEventListener('click',()=>{modal.classList.remove('show');modal.setAttribute('aria-hidden','true');});$('mtcAdd').addEventListener('click',()=>addRow());$('mtcClear').addEventListener('click',clearCalc);$('mtcCash').addEventListener('input',refresh);rows.addEventListener('input',refresh);rows.addEventListener('change',refresh);rows.addEventListener('click',e=>{const b=e.target.closest('.mtc-remove');if(!b)return;const all=rows.querySelectorAll('.mtc-row');if(all.length<=1){b.closest('.mtc-row').querySelector('.mtc-amount').value='';refresh();return;}b.closest('.mtc-row').remove();refresh();});
-})();
-</script></body>
+</body>
 </html>
