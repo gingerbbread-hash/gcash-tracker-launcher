@@ -6777,7 +6777,10 @@ body > .hero{
 
   function queueOfflineAction(action){
     const q=loadOfflineActionQueue();
-    q.push({...action,queuedAt:Date.now()});
+    const normalized={...action,queuedAt:Date.now()};
+    const existing=q.findIndex(x=>String(x&&x.id||'')===String(normalized.id||''));
+    if(existing>=0) q[existing]=normalized;
+    else q.push(normalized);
     saveOfflineActionQueue(q);
     setTimeout(processOfflineActionQueue,0);
   }
@@ -8414,6 +8417,11 @@ body > .hero{
       status.textContent='Recorded ✓ Syncing to Google Sheets…';status.className='status ok';
     }
     queueCashPieces(piecePayload);
+    // Cross-device source of truth: publish the FULL post-transaction denomination
+    // inventory through the backend's existing saveCashCount path. The separate
+    // transaction-pieces endpoint preserves the audit detail; this snapshot makes
+    // getCashCounter() on another device receive the same exact inventory.
+    queueSharedCashCounterSnapshot(tx.id);
     window.gcashCashCounterUpdatePending=false;
     try{sendCashCounterStatusToTracker();}catch(_e){}
 
@@ -9354,6 +9362,20 @@ function sendCashCounterStatusToTracker(){
   }catch(e){}
 }
 
+function queueSharedCashCounterSnapshot(sourceId){
+  try{
+    if(!current||!current.pieces) return;
+    const pieces={...current.pieces};
+    const sig=JSON.stringify(pieces);
+    let h=2166136261;
+    for(let i=0;i<sig.length;i++){ h^=sig.charCodeAt(i); h=Math.imul(h,16777619); }
+    const id='AUTO_COUNTER_'+String(sourceId||'STATE').replace(/[^A-Za-z0-9_-]/g,'_')+'_'+(h>>>0).toString(36);
+    window.dispatchEvent(new CustomEvent('gcash-queue-offline-action',{detail:{
+      id:id,method:'saveCashCount',payload:{pieces:pieces,automaticSharedSnapshot:true}
+    }}));
+  }catch(_e){}
+}
+
 function grid(prefix,pieces){
   pieces=pieces||zero();
   const selected=D.filter(d=>Number(pieces[d[0]]||0)>0);
@@ -9934,11 +9956,20 @@ function publishBalancedCashCounterSnapshotIfNeeded(serverCounter,savedCounter){
        (Array.isArray(pendingTx)&&pendingTx.length) ||
        (Array.isArray(pendingActions)&&pendingActions.length)) return;
     const sig=JSON.stringify(savedCounter.pieces);
-    if(localStorage.getItem('gcashSharedCashSnapshotPublishedV1')===sig) return;
-    const id='DEVICE_SNAPSHOT_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
-    google.script.run.withSuccessHandler(()=>{
+    // Use a stable id for this exact inventory. Repeating the publish is safe and
+    // lets a device recover even when an earlier request reported success but the
+    // shared current counter was not yet visible to another device.
+    let h=2166136261;
+    for(let i=0;i<sig.length;i++){ h^=sig.charCodeAt(i); h=Math.imul(h,16777619); }
+    const id='DEVICE_SNAPSHOT_'+(h>>>0).toString(36);
+    google.script.run.withSuccessHandler((data)=>{
       localStorage.setItem('gcashSharedCashSnapshotPublishedV1',sig);
-      if(typeof window.loadCashCounterLatestStatus==='function') setTimeout(window.loadCashCounterLatestStatus,150);
+      // Prefer the server-confirmed copy when it contains denominations.
+      if(data&&data.pieces){
+        current=data;
+        try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(_e){}
+        renderCashCounterInventory(current);renderSummary(current);sendCashCounterStatusToTracker();
+      }
     }).withFailureHandler(()=>{}).saveCashCount({...savedCounter.pieces},id);
   }catch(_e){}
 }
@@ -10089,7 +10120,16 @@ function loadSharedBalancedCashSnapshot(){
 }
 
 // Run after the normal counter load and whenever the device comes online/focuses.
-setTimeout(loadSharedBalancedCashSnapshot,900);
+setTimeout(()=>{
+  try{
+    if(current&&current.pieces){
+      const localTotal=cashCounterPiecesTotal(current.pieces);
+      const tracker=trackerCashValue();
+      if(Math.abs(localTotal-tracker)<=0.01&&!hasUnsyncedLocalCashWork()) queueSharedCashCounterSnapshot('BALANCED_DEVICE');
+    }
+  }catch(_e){}
+  loadSharedBalancedCashSnapshot();
+},900);
 window.addEventListener('online',()=>setTimeout(loadSharedBalancedCashSnapshot,500));
 window.addEventListener('focus',()=>setTimeout(loadSharedBalancedCashSnapshot,500));
 
@@ -10520,7 +10560,7 @@ function loadHistory(){
       rows=(rows||[]).filter(r=>[
         'COUNT','MANUAL_CORRECTION','TRANSACTION_PIECES',
         'CASH_IN_PIECES','CASH_OUT_PIECES','WALLET_TRANSFER_PIECES'
-      ].includes(r.action));
+      ].includes(r.action)).filter(r=>!(r&&r.action==='COUNT'&&String(r.id||'').startsWith('AUTO_COUNTER_')));
 
       if(!rows.length){
         $('historyList').innerHTML='No Cash Counter history yet.';
