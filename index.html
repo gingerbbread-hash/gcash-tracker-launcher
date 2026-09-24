@@ -4787,7 +4787,33 @@ body > .hero{
 #cashCounterNative #editInventoryGrid .edit-piece-middle small{font-size:10px!important;font-weight:800!important;color:#0b5ed7!important;line-height:1.1!important}
 #cashCounterNative #editInventoryGrid .cc-piece-amount{display:block!important;text-align:right!important;font-size:13px!important;overflow-wrap:anywhere}
 </style>
-<style id="cash-in-count-update">.cash-in-four-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.cash-in-four-fields>div{padding:9px;border:1px solid #e4e7ec;border-radius:9px;display:flex;flex-direction:column;gap:4px}.cash-in-four-fields span{font-size:11px;color:#667085}.cash-in-four-fields strong{font-size:14px}</style></head>
+<style id="cash-in-count-update">.cash-in-four-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.cash-in-four-fields>div{padding:9px;border:1px solid #e4e7ec;border-radius:9px;display:flex;flex-direction:column;gap:4px}.cash-in-four-fields span{font-size:11px;color:#667085}.cash-in-four-fields strong{font-size:14px}</style>
+<style id="multiTransactionStyles">
+.multi-open-btn{width:100%;margin-top:10px;border:1px solid #c8d8ef;background:#eef5ff;color:#0d55b5;border-radius:12px;padding:12px;font-weight:800;font-size:15px}
+.multi-modal{position:fixed;inset:0;background:rgba(10,20,35,.58);z-index:99999;display:none;align-items:flex-end;justify-content:center}
+.multi-modal.show{display:flex}
+.multi-card{background:#fff;width:min(760px,100%);max-height:94vh;overflow:auto;border-radius:20px 20px 0 0;padding:18px;box-shadow:0 -8px 30px rgba(0,0,0,.18)}
+.multi-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.multi-head h2{margin:0;font-size:21px}.multi-close{border:0;background:#edf1f6;border-radius:10px;padding:9px 12px;font-weight:700}
+.multi-note{font-size:13px;color:#657184;margin-bottom:14px}
+.multi-item{border:1px solid #dce5f0;border-radius:14px;padding:12px;margin-bottom:10px}
+.multi-item-top{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.multi-item select,.multi-item input{width:100%;box-sizing:border-box;min-height:42px;border:1px solid #cbd6e3;border-radius:10px;padding:8px;font-size:16px;background:#fff}
+.multi-item-bottom{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:13px}
+.multi-remove{border:0;background:#fff0f0;color:#b3261e;border-radius:8px;padding:7px 9px;font-weight:700}
+.multi-add{width:100%;border:1px dashed #8fb4e8;background:#f6faff;border-radius:11px;padding:10px;font-weight:800;color:#135db5;margin-bottom:12px}
+.multi-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:12px 0}
+.multi-summary div{background:#f4f7fb;border-radius:11px;padding:10px;text-align:center}.multi-summary small{display:block;color:#667386}.multi-summary strong{display:block;margin-top:3px}
+.multi-step-title{font-weight:900;margin:14px 0 7px}.multi-piece-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.multi-piece-row{display:grid;grid-template-columns:1fr 78px;align-items:center;gap:7px;border:1px solid #e0e6ef;border-radius:9px;padding:7px}
+.multi-piece-row input{width:100%;box-sizing:border-box;min-height:36px;border:1px solid #cbd6e3;border-radius:8px;padding:5px;font-size:16px;text-align:center}
+.multi-balance{border-radius:12px;padding:11px;margin:12px 0;font-weight:800;text-align:center}.multi-balance.ok{background:#e9f7ee;color:#137333}.multi-balance.bad{background:#fff0f0;color:#b3261e}
+.multi-save{width:100%;border:0;background:#1264d8;color:#fff;border-radius:12px;padding:14px;font-size:16px;font-weight:900}.multi-save:disabled{opacity:.45}
+.multi-session-undo{margin-top:8px;border:1px solid #e0b0b0;background:#fff6f6;color:#a61b1b;border-radius:9px;padding:8px 10px;font-weight:800}
+@media(max-width:520px){.multi-piece-grid{grid-template-columns:1fr}.multi-summary{grid-template-columns:1fr 1fr}.multi-summary div:last-child{grid-column:1/-1}}
+</style>
+
+</head>
 <body>
 <main class="app">
   <section class="hero">
@@ -5184,6 +5210,8 @@ body > .hero{
   
 
 
+
+  <button type="button" id="openMultiTransaction" class="multi-open-btn">Multiple Transaction</button>
 
   <div class="history-bottom-wrap">
     <button id="historyToggle" class="btn btn-secondary history-bottom-btn" type="button" aria-expanded="false" aria-controls="historySection">
@@ -5928,7 +5956,12 @@ body > .hero{
         localPending:!!tx._pendingSync
       }};
     }
-    return ccHistoryRecords.find(r=>r&&r.details&&String(r.details.transactionId||'')===String(tx.id||'')&&['TRANSACTION_PIECES','CASH_IN_PIECES','CASH_OUT_PIECES'].includes(r.action));
+    return ccHistoryRecords.find(r=>{
+      if(!r||!r.details)return false;
+      if(String(r.details.transactionId||'')===String(tx.id||'')&&['TRANSACTION_PIECES','CASH_IN_PIECES','CASH_OUT_PIECES'].includes(r.action))return true;
+      if(r.action==='MULTI_SESSION_PIECES'&&Array.isArray(r.details.transactionIds)&&r.details.transactionIds.map(String).includes(String(tx.id||'')))return true;
+      return false;
+    });
   }
   function ccTransactionCountHtml(tx){
     const record=ccLinkedRecord(tx);
@@ -5943,7 +5976,8 @@ body > .hero{
       return sum+(Number(d.received&&d.received[key]||0)-Number((d.given||d.change)&& (d.given||d.change)[key]||0))*value;
     },0);
     const pending=!!d.localPending;
-    return `<div class="cc-hist-pieces"><div class="cc-hist-side"><strong>Cash Count · ${pending?'Saved on device':'Recorded'}</strong>
+    const sharedSession=!!d.sessionId&&Array.isArray(d.transactionIds);
+    return `<div class="cc-hist-pieces"><div class="cc-hist-side"><strong>${sharedSession?'Shared Customer Cash Count':'Cash Count'} · ${pending?'Saved on device':'Recorded'}</strong>
       ${received?`<div class="cc-hist-side cc-hist-in"><strong>Money received</strong><div>${received}</div></div>`:''}
       ${given?`<div class="cc-hist-side cc-hist-out"><strong>Money given</strong><div>${given}</div></div>`:''}
       ${!received&&!given?'<div>No denominations saved in this record.</div>':''}
@@ -11124,6 +11158,198 @@ setTimeout(()=>{
     setInterval(function(){removeOldRecoveryUI();updateMoveGuard();},1500);
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true}); else init();
+})();
+</script>
+
+
+<div id="multiTransactionModal" class="multi-modal" aria-hidden="true">
+  <div class="multi-card" role="dialog" aria-modal="true" aria-labelledby="multiTitle">
+    <div class="multi-head"><h2 id="multiTitle">Multiple Transaction</h2><button type="button" id="multiClose" class="multi-close">Close</button></div>
+    <div class="multi-note">One customer, several Cash In transactions, one cash payment and one change count. Nothing is recorded unless the whole session balances exactly.</div>
+    <div id="multiItems"></div>
+    <button type="button" id="multiAddItem" class="multi-add">+ Add another Cash In</button>
+    <div class="multi-summary">
+      <div><small>Transaction total</small><strong id="multiAmountTotal">₱0.00</strong></div>
+      <div><small>Total fees</small><strong id="multiFeeTotal">₱0.00</strong></div>
+      <div><small>Customer must pay</small><strong id="multiRequired">₱0.00</strong></div>
+    </div>
+    <div class="multi-step-title">Money Received</div>
+    <div id="multiReceivedPieces" class="multi-piece-grid"></div>
+    <div class="multi-step-title">Change Given</div>
+    <div id="multiGivenPieces" class="multi-piece-grid"></div>
+    <div class="multi-summary">
+      <div><small>Cash received</small><strong id="multiReceivedTotal">₱0.00</strong></div>
+      <div><small>Change</small><strong id="multiGivenTotal">₱0.00</strong></div>
+      <div><small>Net cash</small><strong id="multiNetCash">₱0.00</strong></div>
+    </div>
+    <div id="multiBalanceState" class="multi-balance bad">Add at least two transactions and count the cash.</div>
+    <button type="button" id="multiSave" class="multi-save" disabled>Record All Transactions</button>
+  </div>
+</div>
+
+
+<script id="multipleTransactionFeature">
+(function(){
+  const $m=id=>document.getElementById(id);
+  const denoms=[['1000','₱1,000',1000],['500','₱500',500],['200','₱200',200],['100','₱100',100],['50','₱50',50],['20b','₱20 bill',20],['20c','₱20 coin',20],['10','₱10',10],['5','₱5',5],['1','₱1',1]];
+  const modal=$m('multiTransactionModal'), itemsBox=$m('multiItems'), saveBtn=$m('multiSave');
+  if(!modal||!itemsBox||!saveBtn)return;
+  let saving=false;
+
+  const moneyM=n=>'₱'+Number(n||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const feeM=n=>Math.ceil(Number(n||0)/500)*5;
+  const zeroM=()=>Object.fromEntries(denoms.map(d=>[d[0],0]));
+  const pieceTotalM=p=>denoms.reduce((s,d)=>s+Number(p[d[0]]||0)*d[2],0);
+
+  function pieceGrid(prefix){
+    return denoms.map(d=>`<label class="multi-piece-row"><span>${d[1]}</span><input type="number" min="0" step="1" inputmode="numeric" data-multi-piece="${prefix}" data-key="${d[0]}" value="0"></label>`).join('');
+  }
+  $m('multiReceivedPieces').innerHTML=pieceGrid('received');
+  $m('multiGivenPieces').innerHTML=pieceGrid('given');
+
+  function addItem(data){
+    const div=document.createElement('div');
+    div.className='multi-item';
+    div.innerHTML=`<div class="multi-item-top">
+      <select class="multi-wallet" aria-label="Wallet"><option>GCash</option><option>Maya</option><option>MariBank</option></select>
+      <input class="multi-amount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="Cash In amount">
+    </div>
+    <div class="multi-item-top" style="margin-top:8px">
+      <select class="multi-charge"><option value="add">Add fee on top</option><option value="deduct">Deduct fee</option></select>
+      <div class="multi-item-bottom"><span class="multi-fee">Fee ₱0.00</span><button type="button" class="multi-remove">Remove</button></div>
+    </div>`;
+    if(data){
+      div.querySelector('.multi-wallet').value=data.wallet||'GCash';
+      div.querySelector('.multi-amount').value=data.amount||'';
+      div.querySelector('.multi-charge').value=data.chargeMode||'add';
+    }
+    div.addEventListener('input',refresh);
+    div.addEventListener('change',refresh);
+    div.querySelector('.multi-remove').addEventListener('click',()=>{div.remove();refresh();});
+    itemsBox.appendChild(div); refresh();
+  }
+
+  function readPiecesM(prefix){
+    const p=zeroM();
+    modal.querySelectorAll(`[data-multi-piece="${prefix}"]`).forEach(i=>{
+      p[i.dataset.key]=Math.max(0,Math.floor(Number(i.value||0)));
+    });
+    return p;
+  }
+  function readItemsM(){
+    return [...itemsBox.querySelectorAll('.multi-item')].map(div=>({
+      walletDestination:div.querySelector('.multi-wallet').value,
+      amount:Number(div.querySelector('.multi-amount').value||0),
+      chargeMode:div.querySelector('.multi-charge').value
+    }));
+  }
+  function totalsM(){
+    const items=readItemsM();
+    let amount=0,fees=0,required=0,valid=items.length>=2;
+    [...itemsBox.querySelectorAll('.multi-item')].forEach((div,i)=>{
+      const it=items[i], f=it.amount>0?feeM(it.amount):0;
+      div.querySelector('.multi-fee').textContent='Fee '+moneyM(f);
+      if(!(it.amount>0))valid=false;
+      amount+=Math.max(0,it.amount||0); fees+=f;
+      required += it.chargeMode==='deduct' ? Math.max(0,it.amount||0) : Math.max(0,it.amount||0)+f;
+    });
+    const received=pieceTotalM(readPiecesM('received'));
+    const given=pieceTotalM(readPiecesM('given'));
+    return {items,amount,fees,required,received,given,net:received-given,valid};
+  }
+  function refresh(){
+    const t=totalsM();
+    $m('multiAmountTotal').textContent=moneyM(t.amount);
+    $m('multiFeeTotal').textContent=moneyM(t.fees);
+    $m('multiRequired').textContent=moneyM(t.required);
+    $m('multiReceivedTotal').textContent=moneyM(t.received);
+    $m('multiGivenTotal').textContent=moneyM(t.given);
+    $m('multiNetCash').textContent=moneyM(t.net);
+    const balanced=t.valid && t.received>0 && Math.abs(t.net-t.required)<0.005;
+    const state=$m('multiBalanceState');
+    state.className='multi-balance '+(balanced?'ok':'bad');
+    state.textContent=balanced
+      ? `BALANCED: ${moneyM(t.received)} received − ${moneyM(t.given)} change = ${moneyM(t.required)}`
+      : (t.items.length<2?'Add at least two transactions.':
+        `NOT BALANCED: must receive net ${moneyM(t.required)}. Current net cash is ${moneyM(t.net)}.`);
+    saveBtn.disabled=!balanced||saving;
+    return {t,balanced};
+  }
+  modal.addEventListener('input',e=>{if(e.target.matches('[data-multi-piece]'))refresh();});
+  $m('multiAddItem').addEventListener('click',()=>addItem());
+  $m('multiClose').addEventListener('click',()=>{if(!saving){modal.classList.remove('show');modal.setAttribute('aria-hidden','true');}});
+  $m('openMultiTransaction').addEventListener('click',()=>{
+    if(!navigator.onLine){alert('Multiple Transaction is online-only so the whole customer session can be saved atomically.');return;}
+    itemsBox.innerHTML='';
+    modal.querySelectorAll('[data-multi-piece]').forEach(i=>i.value='0');
+    addItem({wallet:'GCash'});addItem({wallet:'GCash'});
+    modal.classList.add('show');modal.setAttribute('aria-hidden','false');refresh();
+  });
+
+  saveBtn.addEventListener('click',()=>{
+    if(saving)return;
+    const r=refresh();
+    if(!r.balanced){alert('Nothing recorded. The customer payment and change must balance exactly.');return;}
+    if(!navigator.onLine){alert('Nothing recorded. Connect to the internet and try again.');return;}
+    const sessionId='MS_'+Date.now()+'_'+Math.random().toString(36).slice(2,9);
+    const payload={
+      sessionId,
+      items:r.t.items,
+      cashPieces:{received:readPiecesM('received'),given:readPiecesM('given')}
+    };
+    saving=true;saveBtn.disabled=true;saveBtn.textContent='Recording whole session…';
+    google.script.run.withSuccessHandler(data=>{
+      saving=false;saveBtn.textContent='Record All Transactions';
+      if(!data||!data.ok){alert('Nothing recorded. The server did not confirm the whole session.');refresh();return;}
+      modal.classList.remove('show');modal.setAttribute('aria-hidden','true');
+      try{
+        if(Array.isArray(data.transactions)){
+          data.transactions.forEach(tx=>{
+            tx.multipleSessionId=data.sessionId;
+            tx.cashPieces={
+              received:{...(payload.cashPieces.received||{})},
+              given:{...(payload.cashPieces.given||{})},
+              sessionId:data.sessionId,
+              transactionIds:(data.transactionIds||[]),
+              sharedSession:true
+            };
+          });
+        }
+      }catch(e){}
+      if(typeof loadAllWithSession==='function'){
+        try{loadAllWithSession();}catch(e){location.reload();}
+      }else location.reload();
+      setTimeout(()=>{try{if(typeof window.refreshSharedCashCounterFromServer==='function')window.refreshSharedCashCounterFromServer('multi-session');}catch(e){}},600);
+      alert('Multiple transaction recorded. The whole customer session and cash count were saved together.');
+    }).withFailureHandler(err=>{
+      saving=false;saveBtn.textContent='Record All Transactions';refresh();
+      alert((err&&err.message)||'Nothing recorded. The whole session failed.');
+    }).recordMultipleTransactionSessionBySession(getSessionToken(),payload);
+  });
+
+  // Prevent an individual child of a multiple session from being undone by itself.
+  // Undo the complete customer session instead.
+  document.addEventListener('click',function(e){
+    const btn=e.target.closest&&e.target.closest('[data-id],[data-cal-remove]');
+    if(!btn)return;
+    const id=String(btn.dataset.id||btn.dataset.calRemove||'');
+    const m=id.match(/^(MS_\d+_[A-Za-z0-9]+)_T\d+$/);
+    if(!m)return;
+    e.preventDefault();e.stopImmediatePropagation();
+    const sessionId=m[1];
+    if(!confirm('Undo the ENTIRE multiple transaction session? All child transactions, fees, wallet movements, and the shared Cash Count will be reversed together.'))return;
+    if(!navigator.onLine){alert('Connect to the internet to undo a multiple transaction session safely.');return;}
+    google.script.run.withSuccessHandler(()=>{
+      try{if(typeof loadAllWithSession==='function')loadAllWithSession();else location.reload();}catch(e){location.reload();}
+      setTimeout(()=>{try{if(typeof window.refreshSharedCashCounterFromServer==='function')window.refreshSharedCashCounterFromServer('multi-undo');}catch(e){}},600);
+    }).withFailureHandler(err=>alert((err&&err.message)||'Nothing was undone.')).undoMultipleTransactionSessionBySession(getSessionToken(),{sessionId});
+  },true);
+
+  window.__multiTransactionSessionInfo=function(tx){
+    const id=String(tx&&tx.id||'');
+    const m=id.match(/^(MS_\d+_[A-Za-z0-9]+)_T(\d+)$/);
+    return m?{sessionId:m[1],index:Number(m[2])}:null;
+  };
 })();
 </script>
 
