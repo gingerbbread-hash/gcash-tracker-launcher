@@ -4848,6 +4848,13 @@ body > .hero{
 </style>
 </style>
 
+<style id="unifiedTransactionStyles">
+#multiTransactionModal.unified-transaction-card{position:static;display:block;background:#fff;z-index:auto;padding:0;inset:auto}
+#multiTransactionModal .unified-transaction-inner{width:100%;max-width:none;max-height:none;overflow:visible;border-radius:0;padding:16px;box-shadow:none;background:#fff}
+#multiTransactionModal>.unified-transaction-inner>.multi-head{margin-bottom:4px}
+#multiTransactionModal .multi-received-modal{position:fixed;inset:0;border-radius:0;z-index:100001}
+#multiTransactionModal .multi-change-modal{position:fixed;inset:0;border-radius:0;z-index:100001}
+</style>
 </head>
 <body>
 <main class="app">
@@ -5180,7 +5187,7 @@ body > .hero{
   </section>
 
 
-  <section class="card quick-entry-card">
+  <div class="legacy-transaction-ui" hidden><section class="card quick-entry-card">
     <div class="input-pair-row">
       <div class="input-pair-field">
         <label class="label" for="amount">Amount</label>
@@ -5198,6 +5205,7 @@ body > .hero{
     </div>
   </section>
 
+</div>
 <section class="card pin-card auth-card">
   <div id="signedOutAuth">
     <label class="label">Google Account</label>
@@ -5215,7 +5223,7 @@ body > .hero{
   </div>
 </section>
 
-  <section class="card results-card">
+  <div class="legacy-transaction-ui" hidden><section class="card results-card">
     <div class="results-grid">
       <div class="result-box result-fee"><small>Fee</small><strong id="fee">₱0.00</strong></div>
       <div class="result-box result-total"><small id="totalLabel">Total</small><strong id="total">₱0.00</strong></div>
@@ -5223,7 +5231,8 @@ body > .hero{
     </div>
   </section>
 
-  <section class="card">
+  </div>
+<div class="legacy-transaction-ui" hidden><section class="card">
     <form id="txForm">
       <select id="txType" class="hidden-select" aria-hidden="true" tabindex="-1"><option value=""></option><option>Cash In</option><option>Cash Out</option></select>
 
@@ -5240,8 +5249,52 @@ body > .hero{
         <button class="action-clear" id="clearInputsBtn" type="button">Clear</button>
       </div>
     </form>
-    <button type="button" id="openMultiTransaction" class="multi-open-btn" aria-disabled="false">Multiple Transaction</button>
-  </section>
+</section></div>
+
+<section id="multiTransactionModal" class="card unified-transaction-card" aria-hidden="false">
+  <div class="multi-card unified-transaction-inner">
+    <div class="multi-head"><h2 id="multiTitle">Transaction</h2></div>
+    <div class="multi-note">Add another transaction only when the same customer has more than one Cash In.</div>
+    <div id="multiItems"></div>
+    <button type="button" id="multiAddItem" class="multi-add">+ Add Transaction</button>
+    <div class="multi-normal-summary">
+      <div class="multi-fee-box"><small>Fee</small><strong id="multiFeeTotal">₱0.00</strong></div>
+      <div class="multi-total-box"><small>Total</small><strong id="multiRequired">₱0.00</strong><span id="multiAmountTotal" hidden>₱0.00</span></div>
+      <div class="multi-change-box"><small>Change</small><strong id="multiTopChange">₱0.00</strong></div>
+    </div>
+    <div class="multi-settlement">
+      <label>Cash Received</label>
+      <div class="multi-settlement-row"><div id="multiCashReceivedDisplay" class="multi-cash-received-display">₱0.00</div><button type="button" id="multiOpenReceivedCounter">Count Cash Received</button></div>
+      <div class="multi-verify-line"><span id="multiReceivedCompactStatus">Not counted</span><strong id="multiReceivedCompactTotal">₱0.00</strong></div>
+    </div>
+    <div class="multi-change-compact"><div><small>Change</small><strong id="multiChangeDueText">₱0.00</strong><span id="multiChangeHint">Enter cash received first.</span></div><button type="button" id="multiOpenChangeCounter">Count Change</button></div>
+    <div class="multi-verify-line multi-change-verify"><span>Counted change</span><strong id="multiGivenTotal">₱0.00</strong></div>
+    <div style="display:none"><strong id="multiReceivedTotal">₱0.00</strong><strong id="multiNetCash">₱0.00</strong><div id="multiChangeDue"><strong>₱0.00</strong><span id="multiChangeRemaining"></span></div></div>
+    <div id="multiBalanceState" class="multi-balance bad">Add at least two transactions and count the cash.</div>
+    <div class="multi-actions multi-actions-two"><button type="button" id="multiSave" class="multi-save" disabled>Record All</button><button type="button" id="multiClearBtn" class="multi-action-secondary">Clear</button></div>
+  </div>
+  <div id="multiChangeCounterModal" class="multi-received-modal" aria-hidden="true"><div class="multi-received-card">
+      <div class="multi-head"><h2>Count Change</h2><button type="button" id="multiChangeClose" class="multi-close">Done</button></div>
+      <div class="multi-counter-target"><span>Change to Give</span><strong id="multiChangePopupDue">₱0.00</strong></div>
+      <div class="multi-counter-help">Tap each bill or coin you give. Each tap adds 1 piece.</div>
+      <div id="multiGivenQuickDenoms" class="multi-quick-denoms"></div>
+      <div id="multiGivenPieces" class="multi-compact-pieces"></div>
+      <div class="multi-counter-footer"><span>Counted <strong id="multiChangePopupCounted">₱0.00</strong></span><span>Remaining <strong id="multiChangePopupRemaining">₱0.00</strong></span></div>
+      <button type="button" id="multiChangeDone" class="multi-save">Done</button>
+    </div></div>
+  <div id="multiReceivedCounterModal" class="multi-received-modal" aria-hidden="true">
+    <div class="multi-received-card">
+      <div class="multi-head"><h2>Count Cash Received</h2><button type="button" id="multiReceivedClose" class="multi-close">Done</button></div>
+      <div class="multi-counter-target"><span>Amount to Collect</span><strong id="multiReceivedTarget">₱0.00</strong></div>
+      <div class="multi-counter-help">Tap each bill or coin received. Each tap adds 1 piece.</div>
+      <div id="multiReceivedQuickDenoms" class="multi-quick-denoms"></div>
+      <div id="multiReceivedPieces" class="multi-compact-pieces"></div>
+      <div class="multi-counter-footer"><span>Counted <strong id="multiReceivedPopupTotal">₱0.00</strong></span><span>Remaining <strong id="multiReceivedRemaining">₱0.00</strong></span></div>
+      <button type="button" id="multiReceivedDone" class="multi-save">Done</button>
+    </div>
+  </div>
+</section>
+
 
   
 
@@ -11198,51 +11251,6 @@ setTimeout(()=>{
 </script>
 
 
-<div id="multiTransactionModal" class="multi-modal" aria-hidden="true">
-  <div class="multi-card" role="dialog" aria-modal="true" aria-labelledby="multiTitle">
-    <div class="multi-head"><h2 id="multiTitle">Multiple Transaction</h2><button type="button" id="multiClose" class="multi-close">Close</button></div>
-    <div class="multi-note">Add each Cash In below. Count the customer's money once. Change is calculated automatically.</div>
-    <div id="multiItems"></div>
-    <button type="button" id="multiAddItem" class="multi-add">+ Add Transaction</button>
-    <div class="multi-normal-summary">
-      <div class="multi-fee-box"><small>Fee</small><strong id="multiFeeTotal">₱0.00</strong></div>
-      <div class="multi-total-box"><small>Total</small><strong id="multiRequired">₱0.00</strong><span id="multiAmountTotal" hidden>₱0.00</span></div>
-      <div class="multi-change-box"><small>Change</small><strong id="multiTopChange">₱0.00</strong></div>
-    </div>
-    <div class="multi-settlement">
-      <label>Cash Received</label>
-      <div class="multi-settlement-row"><div id="multiCashReceivedDisplay" class="multi-cash-received-display">₱0.00</div><button type="button" id="multiOpenReceivedCounter">Count Cash Received</button></div>
-      <div class="multi-verify-line"><span id="multiReceivedCompactStatus">Not counted</span><strong id="multiReceivedCompactTotal">₱0.00</strong></div>
-    </div>
-    <div class="multi-change-compact"><div><small>Change</small><strong id="multiChangeDueText">₱0.00</strong><span id="multiChangeHint">Enter cash received first.</span></div><button type="button" id="multiOpenChangeCounter">Count Change</button></div>
-    <div class="multi-verify-line multi-change-verify"><span>Counted change</span><strong id="multiGivenTotal">₱0.00</strong></div>
-    <div style="display:none"><strong id="multiReceivedTotal">₱0.00</strong><strong id="multiNetCash">₱0.00</strong><div id="multiChangeDue"><strong>₱0.00</strong><span id="multiChangeRemaining"></span></div></div>
-    <div id="multiBalanceState" class="multi-balance bad">Add at least two transactions and count the cash.</div>
-    <div class="multi-actions multi-actions-two"><button type="button" id="multiSave" class="multi-save" disabled>Record All</button><button type="button" id="multiClearBtn" class="multi-action-secondary">Clear</button></div>
-  </div>
-  <div id="multiChangeCounterModal" class="multi-received-modal" aria-hidden="true"><div class="multi-received-card">
-      <div class="multi-head"><h2>Count Change</h2><button type="button" id="multiChangeClose" class="multi-close">Done</button></div>
-      <div class="multi-counter-target"><span>Change to Give</span><strong id="multiChangePopupDue">₱0.00</strong></div>
-      <div class="multi-counter-help">Tap each bill or coin you give. Each tap adds 1 piece.</div>
-      <div id="multiGivenQuickDenoms" class="multi-quick-denoms"></div>
-      <div id="multiGivenPieces" class="multi-compact-pieces"></div>
-      <div class="multi-counter-footer"><span>Counted <strong id="multiChangePopupCounted">₱0.00</strong></span><span>Remaining <strong id="multiChangePopupRemaining">₱0.00</strong></span></div>
-      <button type="button" id="multiChangeDone" class="multi-save">Done</button>
-    </div></div>
-  <div id="multiReceivedCounterModal" class="multi-received-modal" aria-hidden="true">
-    <div class="multi-received-card">
-      <div class="multi-head"><h2>Count Cash Received</h2><button type="button" id="multiReceivedClose" class="multi-close">Done</button></div>
-      <div class="multi-counter-target"><span>Amount to Collect</span><strong id="multiReceivedTarget">₱0.00</strong></div>
-      <div class="multi-counter-help">Tap each bill or coin received. Each tap adds 1 piece.</div>
-      <div id="multiReceivedQuickDenoms" class="multi-quick-denoms"></div>
-      <div id="multiReceivedPieces" class="multi-compact-pieces"></div>
-      <div class="multi-counter-footer"><span>Counted <strong id="multiReceivedPopupTotal">₱0.00</strong></span><span>Remaining <strong id="multiReceivedRemaining">₱0.00</strong></span></div>
-      <button type="button" id="multiReceivedDone" class="multi-save">Done</button>
-    </div>
-  </div>
-</div>
-
-
 <script id="multipleTransactionFeature">
 (function(){
   const $m=id=>document.getElementById(id);
@@ -11332,7 +11340,7 @@ setTimeout(()=>{
   }
   function totalsM(){
     const items=readItemsM();
-    let amount=0,fees=0,required=0,valid=items.length>=2;
+    let amount=0,fees=0,required=0,valid=items.length>=1;
     [...itemsBox.querySelectorAll('.multi-item')].forEach((div,i)=>{
       const it=items[i], f=it.amount>0?feeM(it.amount):0;
       div.querySelector('.multi-fee').textContent='Fee '+moneyM(f);
@@ -11432,19 +11440,16 @@ setTimeout(()=>{
     if(saving)return;
     itemsBox.innerHTML='';
     selectedDenomsM.received=[];selectedDenomsM.given=[];$m('multiReceivedPieces')._qty={};$m('multiGivenPieces')._qty={};compactPiecesM('received');compactPiecesM('given');
-    addItem({wallet:'GCash'});addItem({wallet:'GCash'});
+    addItem({wallet:'GCash'});
     refresh();
   });
-  $m('multiClose').addEventListener('click',()=>{if(!saving){modal.classList.remove('show');modal.setAttribute('aria-hidden','true');}});
-  const multiOpenBtn=$m('openMultiTransaction');
-  if(multiOpenBtn){multiOpenBtn.disabled=false;multiOpenBtn.removeAttribute('disabled');multiOpenBtn.setAttribute('aria-disabled','false');}
-  multiOpenBtn.addEventListener('click',()=>{
-    modal.classList.add('show');modal.setAttribute('aria-hidden','false');
-    itemsBox.innerHTML='';
-    selectedDenomsM.received=[];selectedDenomsM.given=[];$m('multiReceivedPieces')._qty={};$m('multiGivenPieces')._qty={};compactPiecesM('received');compactPiecesM('given');
-    addItem({wallet:'GCash'});addItem({wallet:'GCash'});
-    refresh();
-  });
+  // Unified Home transaction screen starts with one transaction.
+  itemsBox.innerHTML='';
+  selectedDenomsM.received=[];selectedDenomsM.given=[];
+  $m('multiReceivedPieces')._qty={};$m('multiGivenPieces')._qty={};
+  compactPiecesM('received');compactPiecesM('given');
+  addItem({wallet:'GCash'});
+  refresh();
 
   saveBtn.addEventListener('click',()=>{
     if(saving)return;
@@ -11461,7 +11466,7 @@ setTimeout(()=>{
     google.script.run.withSuccessHandler(data=>{
       saving=false;saveBtn.textContent='Record All Transactions';
       if(!data||!data.ok){alert('Nothing recorded. The server did not confirm the whole session.');refresh();return;}
-      modal.classList.remove('show');modal.setAttribute('aria-hidden','true');
+      modal.setAttribute('aria-hidden','false');
       try{
         if(Array.isArray(data.transactions)){
           data.transactions.forEach(tx=>{
