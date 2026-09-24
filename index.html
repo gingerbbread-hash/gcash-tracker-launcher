@@ -4858,7 +4858,46 @@ body > .hero{
 .mtc-summary{display:grid;grid-template-columns:1fr 1fr 1.25fr;gap:8px;margin-bottom:14px}.mtc-summary>div{border:1px solid #dce5f0;border-radius:12px;padding:11px}.mtc-summary small,.mtc-change small{display:block;color:#526174;font-weight:800;margin-bottom:4px}.mtc-summary strong{font-size:18px}.mtc-summary>div:nth-child(2) strong{color:#c62828}.mtc-summary .mtc-pay{background:#fff8d7;border-color:#efd369}.mtc-pay strong{font-size:21px}
 .mtc-cash-row{display:grid;grid-template-columns:1.4fr 1fr;gap:10px}.mtc-cash-row label{font-size:13px;font-weight:900;color:#526174;display:block;margin-bottom:5px}.mtc-change{border:1px solid #cfe1f6;background:#f2f8ff;border-radius:12px;padding:11px}.mtc-change strong{font-size:23px;color:#1764d8}.mtc-short{min-height:22px;margin:8px 0;color:#c62828;font-size:13px;font-weight:800}.mtc-clear{width:100%;border:0;background:#f0eaff;color:#5b32b6;border-radius:11px;padding:12px;font-weight:900}
 @media(max-width:560px){.mtc-row-top{grid-template-columns:1fr 1.2fr}.mtc-row-top .mtc-remove{grid-column:2}.mtc-summary{grid-template-columns:1fr 1fr}.mtc-summary .mtc-pay{grid-column:1/-1}.mtc-cash-row{grid-template-columns:1fr}}
-</style></head>
+</style>
+<style id="multipleTransactionCalculatorCompactMobile">
+/* Compact calculator-only layout */
+.mtc-card{padding:14px;max-height:96vh}
+.mtc-head{margin-bottom:9px;gap:8px}
+.mtc-head h2{font-size:18px;line-height:1.15}
+.mtc-head small{font-size:11px}
+.mtc-head button{padding:7px 10px;font-size:13px}
+.mtc-row{padding:8px 9px;margin-bottom:7px;border-radius:11px}
+.mtc-row-top{grid-template-columns:1fr 1.15fr 34px;gap:6px;align-items:end}
+.mtc-row label{font-size:10px;margin-bottom:3px}
+.mtc-row select,.mtc-row input{padding:8px 9px;font-size:14px;border-radius:8px;height:38px}
+.mtc-remove{width:34px;height:38px;padding:0;font-size:0;border-radius:8px;position:relative}
+.mtc-remove:after{content:"×";font-size:20px;line-height:1;font-weight:900}
+.mtc-row-bottom{margin-top:4px;justify-content:flex-end}
+.mtc-row-fee{font-size:11px}
+.mtc-add{padding:8px;margin-bottom:9px;border-radius:9px;font-size:13px}
+.mtc-summary{grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.mtc-summary>div{padding:8px 9px;border-radius:9px}
+.mtc-summary small,.mtc-change small{font-size:10px;margin-bottom:2px}
+.mtc-summary strong{font-size:15px}
+.mtc-summary .mtc-pay{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between}
+.mtc-pay strong{font-size:21px}
+.mtc-cash-row{grid-template-columns:1.2fr 1fr;gap:6px;align-items:stretch}
+.mtc-cash-row label{font-size:11px;margin-bottom:3px}
+.mtc-cash-row input{padding:9px;font-size:16px;height:42px;border-radius:9px}
+.mtc-change{padding:7px 9px;border-radius:9px;display:flex;flex-direction:column;justify-content:center}
+.mtc-change strong{font-size:20px}
+.mtc-short{min-height:16px;margin:3px 0;font-size:11px}
+.mtc-clear{padding:8px;border-radius:9px;font-size:13px}
+@media(max-width:560px){
+ .mtc-card{padding:12px}
+ .mtc-row-top{grid-template-columns:1fr 1.15fr 32px}
+ .mtc-row-top .mtc-remove{grid-column:auto}
+ .mtc-summary{grid-template-columns:1fr 1fr}
+ .mtc-summary .mtc-pay{grid-column:1/-1}
+ .mtc-cash-row{grid-template-columns:1.15fr .85fr}
+}
+</style>
+</head>
 <body>
 <main class="app">
   <section class="hero">
