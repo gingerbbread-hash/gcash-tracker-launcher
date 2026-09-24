@@ -5226,13 +5226,14 @@ body > .hero{
         <button class="action-clear" id="clearInputsBtn" type="button">Clear</button>
       </div>
     </form>
+    <button type="button" id="openMultiTransaction" class="multi-open-btn" aria-disabled="false">Multiple Transaction</button>
   </section>
 
   
 
 
 
-  <button type="button" id="openMultiTransaction" class="multi-open-btn">Multiple Transaction</button>
+  
 
   <div class="history-bottom-wrap">
     <button id="historyToggle" class="btn btn-secondary history-bottom-btn" type="button" aria-expanded="false" aria-controls="historySection">
@@ -11380,8 +11381,9 @@ setTimeout(()=>{
     refresh();
   });
   $m('multiClose').addEventListener('click',()=>{if(!saving){modal.classList.remove('show');modal.setAttribute('aria-hidden','true');}});
-  $m('openMultiTransaction').addEventListener('click',()=>{
-    if(!navigator.onLine){alert('Multiple Transaction is online-only so the whole customer session can be saved atomically.');return;}
+  const multiOpenBtn=$m('openMultiTransaction');
+  if(multiOpenBtn){multiOpenBtn.disabled=false;multiOpenBtn.removeAttribute('disabled');multiOpenBtn.setAttribute('aria-disabled','false');}
+  multiOpenBtn.addEventListener('click',()=>{
     itemsBox.innerHTML='';
     selectedDenomsM.received=[];selectedDenomsM.given=[];$m('multiReceivedPieces')._qty={};$m('multiGivenPieces')._qty={};compactPiecesM('received');compactPiecesM('given');if($m('multiCashReceivedInput'))$m('multiCashReceivedInput').value='';
     addItem({wallet:'GCash'});addItem({wallet:'GCash'});
