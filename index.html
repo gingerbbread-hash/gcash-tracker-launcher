@@ -7081,6 +7081,10 @@ body > .hero{
         setLockedView(false);
         showSync('Synced.',true);
         setTimeout(restorePendingTransactions, 0);
+        // After account wallets are loaded, refresh Cash Counter from the shared
+        // server snapshot too. This makes a newly signed-in Mac/iPhone use the
+        // same denomination inventory unless THIS device has a real pending cash action.
+        setTimeout(()=>{ try{ if(typeof load==='function') load(); }catch(_e){} },120);
       })
       .withFailureHandler(err=>{
         unlocked=true;
@@ -9927,9 +9931,27 @@ function load(){
       let saved=null;
       try{saved=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null');}catch(_e){}
       const pendingPieces=(()=>{try{return JSON.parse(localStorage.getItem('gcash_tracker_pending_cash_pieces_v1')||'[]').length>0;}catch(_e){return false;}})();
-      const localTotal=saved&&saved.pieces?cashCounterPiecesTotal(saved.pieces):null;
-      const remoteTotal=x&&x.pieces?cashCounterPiecesTotal(x.pieces):null;
-      const keepLocal=!!(saved&&saved.pieces&&(pendingPieces || (saved._localPending && localTotal!==remoteTotal)));
+      // Cross-device rule: a stale _localPending flag must never permanently pin
+      // this browser to an old Cash Counter. Keep local inventory only while a
+      // REAL unsynced cash-changing action still exists on this device.
+      const pendingCashAction=(()=>{
+        try{
+          const q=JSON.parse(localStorage.getItem('gcashTrackerOfflineActionsV1')||'[]');
+          if(!Array.isArray(q)) return false;
+          const cashMethods=new Set([
+            'saveCashCount','saveManualCashCounterCorrection','saveCashCounterChangeMoney',
+            'addMayaTransferWithCashPiecesBySession','saveTransactionCashPieces'
+          ]);
+          return q.some(a=>a&&cashMethods.has(String(a.method||'')));
+        }catch(_e){return false;}
+      })();
+      const pendingTransactionWithPieces=(()=>{
+        try{
+          const q=JSON.parse(localStorage.getItem('gcash_tracker_pending_transactions_v1')||'[]');
+          return Array.isArray(q) && q.some(p=>p&&p.cashPieces);
+        }catch(_e){return false;}
+      })();
+      const keepLocal=!!(saved&&saved.pieces&&(pendingPieces||pendingCashAction||pendingTransactionWithPieces));
       current=keepLocal?saved:x;
       if(!keepLocal && current && current._localPending) current._localPending=false;
       try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(e){}
