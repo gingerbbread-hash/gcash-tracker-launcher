@@ -11059,9 +11059,14 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
       setTimeout(close,500);
     }).withFailureHandler(err=>{
       save.disabled=false;status.textContent=(err&&err.message)||'Could not start fresh record.';status.className='status err';
-    }).startFreshRecordBySession((typeof getSessionToken==='function'?getSessionToken():''),{
-      cashOnHand:cash,gcashBalance:gcash,mayaBalance:maya,maribankBalance:maribank
-    });
+    }).setCapitalBySession(
+      (typeof getSessionToken==='function'?getSessionToken():''),
+      cash,
+      gcash,
+      0,
+      maya,
+      maribank
+    );
   });
 })();
 </script>
