@@ -5940,7 +5940,7 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
   function ccTransactionCountHtml(tx){
     const record=ccLinkedRecord(tx);
     if(!record){
-      return `<div class="cc-hist-pieces"><div class="cc-hist-side"><strong>Cash Count · Needs attention</strong><div>This older transaction has no saved bill-and-coin details. New transactions save the Cash Count inside the transaction automatically.</div></div></div>`;
+      return `<div class="cc-hist-pieces"><div class="cc-hist-side"><strong>Money Count · Not available for this older record</strong><div>This older transaction did not save bill-and-coin details. New records keep Money Count permanently inside the transaction.</div></div></div>`;
     }
     const d=record.details||{};
     const received=ccPieceLines(d.received);
@@ -5950,12 +5950,12 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
       return sum+(Number(d.received&&d.received[key]||0)-Number((d.given||d.change)&& (d.given||d.change)[key]||0))*value;
     },0);
     const pending=!!d.localPending;
-    return `<div class="cc-hist-pieces"><div class="cc-hist-side"><strong>Cash Count · ${pending?'Saved on device':'Recorded'}</strong>
+    return `<div class="cc-hist-pieces"><div class="cc-hist-side"><strong>Money Count · ${pending?'Saved locally':'Recorded'}</strong>
       ${received?`<div class="cc-hist-side cc-hist-in"><strong>Money received</strong><div>${received}</div></div>`:''}
       ${given?`<div class="cc-hist-side cc-hist-out"><strong>Money given</strong><div>${given}</div></div>`:''}
       ${!received&&!given?'<div>No denominations saved in this record.</div>':''}
       <div class="cc-hist-zero">Net Cash Counter movement: ${values>=0?'+':'−'}${money(Math.abs(values))}</div>
-      ${pending?'<div class="cc-count-pending">Cash Count sync confirmation pending.</div>':''}
+      ${pending?'<div class="cc-count-pending">Money Count is saved with this transaction and is waiting for Sync.</div>':''}
     </div></div>`;
   }
   function ccExchangeCard(r){
@@ -7072,7 +7072,11 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
       previousMaribank:Number((capitalData&&capitalData.maribankBalance)||0),
       newMaribank:Number(c.maribankBalance||0),
       previousCash:Number((capitalData&&capitalData.cashOnHand)||0),
-      newCash:Number(c.cashOnHand||0)
+      newCash:Number(c.cashOnHand||0),
+      cashPieces:{
+        received:{...(payload.received||{})},
+        given:{...(payload.given||{})}
+      }
     };
     mayaTransfers.unshift(t);
     renderCapital(c); renderMayaTransfers(); renderCapitalActivity(); saveLocalTrackerCache();
@@ -7134,6 +7138,20 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
     }
   }
 
+
+  function mergePermanentCashCount(localRows,serverRows){
+    const localMap=new Map();
+    (Array.isArray(localRows)?localRows:[]).forEach(x=>{
+      if(x&&x.id&&x.cashPieces) localMap.set(String(x.id),x.cashPieces);
+    });
+    return (Array.isArray(serverRows)?serverRows:[]).map(x=>{
+      if(!x||!x.id) return x;
+      const saved=localMap.get(String(x.id));
+      if(saved && !x.cashPieces) return {...x,cashPieces:saved};
+      return x;
+    });
+  }
+
   function loadAllWithSession(token){
     unlocked=true;
     setLockedView(false);
@@ -7141,7 +7159,7 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
 
     google.script.run
       .withSuccessHandler(data=>{
-        history=(data && data.transactions)||[];
+        history=mergePermanentCashCount(history,(data && data.transactions)||[]);
         window.__gcashTransactions = history;
         expenses=(data && data.expenses)||[];
         transfers=(data && data.transfers)||[];
@@ -7316,7 +7334,7 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
     google.script.run
       .withSuccessHandler(data=>{
         claimLegacyBtn.disabled=false;
-        history=(data && data.transactions)||[];
+        history=mergePermanentCashCount(history,(data && data.transactions)||[]);
         window.__gcashTransactions = history;
         expenses=(data && data.expenses)||[];
         capitalMovements=(data && data.capitalMovements)||[];
@@ -7711,6 +7729,10 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
       previousMaya: beforeMaya, newMaya: afterMaya,
       previousMaribank: beforeMaribank, newMaribank: afterMaribank,
       previousSaripay: beforeSaripay, newSaripay: afterSaripay,
+      cashPieces: payload.cashPieces ? {
+        received:{...(payload.cashPieces.received||{})},
+        given:{...(payload.cashPieces.given||payload.cashPieces.change||{})}
+      } : null,
       _pendingSync: true
     };
   }
@@ -7764,6 +7786,14 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
 
     txSyncBusy = true;
     const payload = q[0];
+    const localForSync=history.find(x=>String(x.id||'')===String(payload.clientTransactionId||''));
+    if(localForSync&&localForSync.cashPieces&&!payload.cashPieces){
+      payload.cashPieces={
+        received:{...(localForSync.cashPieces.received||{})},
+        given:{...(localForSync.cashPieces.given||localForSync.cashPieces.change||{})}
+      };
+      q[0]=payload; savePendingTxQueue(q);
+    }
     showSync(`Syncing ${q.length} transaction${q.length===1?'':'s'}…`);
 
     google.script.run
@@ -8411,7 +8441,7 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
 
       queueOfflineAction({id:id,method:'addMayaTransferWithCashPiecesBySession',payload:payload});
       save.disabled=false; save.textContent='Saved';
-      if(stat){stat.textContent=navigator.onLine?'Saved. Syncing transfer and Cash Counter…':'Saved offline. Waiting for manual sync.';stat.className='ok';}
+      if(stat){stat.textContent=navigator.onLine?'Saved locally with Money Count.':'Saved offline. Waiting for manual sync.';stat.className='ok';}
       setTimeout(closeCashPiecesRecorder,100);
       return;
     }
@@ -8462,7 +8492,7 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
       amount.value='';cashReceived.value='';txType.value='';
       pendingPayload=null;selectedTransactionWallet='';resetChargeMode();
       setTransactionSaving(false);
-      status.textContent='Recorded ✓ Syncing to Google Sheets…';status.className='status ok';
+      status.textContent='Recorded ✓ Saved locally.';status.className='status ok';
     }
     queueCashPieces(piecePayload);
     window.gcashCashCounterUpdatePending=false;
@@ -8471,7 +8501,7 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
     if(isTransactionStillPending(tx.id) || tx._pendingSync){
       save.textContent='Saved';
       if(stat){
-        stat.textContent='Transaction and Cash Pieces saved on this phone. Syncing automatically…';
+        stat.textContent='Transaction and Money Count saved on this phone.';
         stat.className='ok';
       }
 
@@ -8496,7 +8526,7 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
     // Close quickly. The queued record remains safe if the connection is slow.
     setTimeout(()=>{
       if(stat){
-        stat.textContent='Cash pieces saved. Syncing automatically…';
+        stat.textContent='Money Count saved locally.';
         stat.className='ok';
       }
       save.textContent='Saved';
