@@ -4787,7 +4787,7 @@ body > .hero{
 #cashCounterNative #editInventoryGrid .edit-piece-middle small{font-size:10px!important;font-weight:800!important;color:#0b5ed7!important;line-height:1.1!important}
 #cashCounterNative #editInventoryGrid .cc-piece-amount{display:block!important;text-align:right!important;font-size:13px!important;overflow-wrap:anywhere}
 </style>
-<style id="cash-in-count-update">.cash-in-four-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.cash-in-four-fields>div{padding:9px;border:1px solid #e4e7ec;border-radius:9px;display:flex;flex-direction:column;gap:4px}.cash-in-four-fields span{font-size:11px;color:#667085}.cash-in-four-fields strong{font-size:14px}</style><!-- ONE RECORD SYNC V3: addTransactionBySession is the single atomic server save for transaction + Cash Counter. -->
+<style id="cash-in-count-update">.cash-in-four-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.cash-in-four-fields>div{padding:9px;border:1px solid #e4e7ec;border-radius:9px;display:flex;flex-direction:column;gap:4px}.cash-in-four-fields span{font-size:11px;color:#667085}.cash-in-four-fields strong{font-size:14px}</style><!-- ONE RECORD SYNC V4: exposes the real server sync error on each pending transaction. -->
 </head>
 <body>
 <main class="app">
@@ -5997,7 +5997,7 @@ body > .hero{
           <div class="history-tx-kind">
             <span class="badge ${tx.type==='Cash In'?'badge-cashin':'badge-cashout'}">${escapeHtml(tx.type)}</span>
             <span class="history-wallet-pill">${escapeHtml(transactionWalletLabel(tx))}</span>
-            ${tx._pendingSync ? '<span class="history-sync-pill">SYNCING…</span>' : ''}
+            ${tx._pendingSync ? '<span class="history-sync-pill">'+(tx._syncError ? 'SYNC ERROR' : 'SYNCING…')+'</span>' : ''}
           </div>
           ${tx.type==='Cash In'?'':`<div class="history-tx-fee">Fee earned ${money(tx.fee)}</div>`}
         </div>
@@ -7794,6 +7794,11 @@ body > .hero{
       .withFailureHandler(err=>{
         txSyncBusy = false;
         const msg=(err && err.message) || 'Google Sheets sync delayed.';
+        // Make the real failure visible on the transaction itself.
+        const failedId=String(payload.clientTransactionId||'');
+        const failedTx=history.find(x=>String(x.id||'')===failedId);
+        if(failedTx){ failedTx._syncError=msg; failedTx._pendingSync=true; }
+        render(); saveLocalTrackerCache();
 
         if(msg.toLowerCase().includes('cancelled before sync')){
           const remaining = loadPendingTxQueue().filter(
