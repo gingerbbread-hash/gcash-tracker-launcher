@@ -5096,6 +5096,7 @@ body > .hero{
       <button type="button" id="withdrawCapitalActionBtn" class="capital-action-btn withdraw-capital">Withdraw Capital</button>
       <button type="button" id="withdrawEarningsActionBtn" class="capital-action-btn withdraw-earnings">Withdraw Earnings</button>
     </div>
+    <button type="button" id="startFreshRecordBtn" class="btn btn-secondary" style="width:100%;margin-top:10px;font-weight:900">Start Fresh Record</button>
 
     <button type="button" id="capitalActivityToggle" class="expense-history-toggle">Wallet History</button>
     <div id="capitalActivitySection" class="expense-history-section" style="display:none">
@@ -10992,6 +10993,75 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
         {cashOnHand:v.cash,gcashBalance:v.gcash,mayaBalance:v.maya,maribankBalance:v.maribank,
          clientActionId:'BALSET_'+Date.now()+'_'+Math.random().toString(36).slice(2,8)}
       );
+  });
+})();
+</script>
+
+
+<style id="fresh-record-style">
+#freshRecordModal .fresh-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+#freshRecordModal .fresh-field{border:1px solid #d0d5dd;border-radius:14px;padding:10px}
+#freshRecordModal .fresh-field label{display:block;font-weight:800;font-size:13px;margin-bottom:6px}
+#freshRecordModal .fresh-field input{width:100%;box-sizing:border-box;font-size:18px;padding:9px;border:1px solid #d0d5dd;border-radius:10px}
+#freshRecordModal .fresh-total{padding:12px;border-radius:12px;background:#f2f4f7;margin:10px 0}
+#freshRecordModal .fresh-total span{display:block;color:#667085;font-size:12px}
+#freshRecordModal .fresh-total strong{font-size:22px}
+#freshRecordModal .fresh-warning{font-size:12px;line-height:1.45;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:12px;padding:10px;margin:10px 0}
+</style>
+<div id="freshRecordModal" class="capital-modal" aria-hidden="true" style="display:none">
+  <div class="capital-modal-card">
+    <div class="capital-modal-title">Start Fresh Record</div>
+    <div class="capital-modal-help">Enter the money you actually have now. This becomes your new starting point.</div>
+    <div class="fresh-grid">
+      <div class="fresh-field"><label>Cash on Hand</label><input id="freshCash" type="number" min="0" step="0.01" inputmode="decimal" value="0"></div>
+      <div class="fresh-field"><label>GCash</label><input id="freshGcash" type="number" min="0" step="0.01" inputmode="decimal" value="0"></div>
+      <div class="fresh-field"><label>Maya</label><input id="freshMaya" type="number" min="0" step="0.01" inputmode="decimal" value="0"></div>
+      <div class="fresh-field"><label>MariBank</label><input id="freshMaribank" type="number" min="0" step="0.01" inputmode="decimal" value="0"></div>
+    </div>
+    <div class="fresh-total"><span>New Starting Capital</span><strong id="freshTotal">₱0.00</strong></div>
+    <div class="fresh-warning">Your old records will remain in Google Sheets as an archive, but they will no longer affect the new record. Available Earnings, Withdrawn Earnings, fees, expenses, and transaction totals will start from zero. Cash Counter is not changed automatically.</div>
+    <div id="freshStatus" class="status"></div>
+    <div class="capital-modal-actions">
+      <button type="button" id="freshCancel" class="btn">Cancel</button>
+      <button type="button" id="freshSave" class="btn primary">Start Fresh</button>
+    </div>
+  </div>
+</div>
+<script id="fresh-record-script">
+(function(){
+  const $f=id=>document.getElementById(id), modal=$f('freshRecordModal'), btn=$f('startFreshRecordBtn'),
+        save=$f('freshSave'), cancel=$f('freshCancel'), status=$f('freshStatus');
+  const inputs=['freshCash','freshGcash','freshMaya','freshMaribank'];
+  function num(id){const n=Number($f(id).value);return isFinite(n)&&n>=0?n:NaN}
+  function fmt(n){try{return money(n)}catch(e){return '₱'+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}}
+  function calc(){
+    const vals=inputs.map(num), valid=vals.every(Number.isFinite), total=valid?vals.reduce((a,b)=>a+b,0):0;
+    $f('freshTotal').textContent=valid?fmt(total):'Invalid';
+    save.disabled=!valid;
+    return {valid,total,vals};
+  }
+  btn.addEventListener('click',()=>{status.textContent='';inputs.forEach(id=>$f(id).value='0');calc();modal.style.display='flex';modal.classList.add('show');modal.setAttribute('aria-hidden','false');});
+  inputs.forEach(id=>$f(id).addEventListener('input',calc));
+  function close(){modal.style.display='none';modal.classList.remove('show');modal.setAttribute('aria-hidden','true');status.textContent=''}
+  cancel.addEventListener('click',close);
+  modal.addEventListener('click',e=>{if(e.target===modal)close()});
+  save.addEventListener('click',()=>{
+    const s=calc(); if(!s.valid)return;
+    const [cash,gcash,maya,maribank]=s.vals;
+    if(!confirm('START A FRESH RECORD?\\n\\nCash on Hand: '+fmt(cash)+'\\nGCash: '+fmt(gcash)+'\\nMaya: '+fmt(maya)+'\\nMariBank: '+fmt(maribank)+'\\n\\nNew Starting Capital: '+fmt(s.total)+'\\n\\nOld records will stay archived. New earnings and activity will start from zero.')) return;
+    save.disabled=true; status.textContent='Starting fresh record…'; status.className='status';
+    google.script.run.withSuccessHandler(data=>{
+      save.disabled=false;
+      if(data&&data.capital&&typeof renderCapital==='function')renderCapital(data.capital);
+      if(typeof loadData==='function')loadData();
+      else location.reload();
+      status.textContent='Fresh record started.';status.className='status ok';
+      setTimeout(close,500);
+    }).withFailureHandler(err=>{
+      save.disabled=false;status.textContent=(err&&err.message)||'Could not start fresh record.';status.className='status err';
+    }).startFreshRecordBySession((typeof getSessionToken==='function'?getSessionToken():''),{
+      cashOnHand:cash,gcashBalance:gcash,mayaBalance:maya,maribankBalance:maribank
+    });
   });
 })();
 </script>
