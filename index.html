@@ -4792,7 +4792,7 @@ body > .hero{
 <main class="app">
   <section class="hero" style="position:relative">
     <h1 class="cash-app-title"><span class="tracker-title-line">GCash Tracker</span><button id="manualSyncNowBtn" type="button" aria-label="Sync to Google Sheets"
-style="position:absolute;right:14px;top:14px;border:1px solid rgba(255,255,255,.75);border-radius:10px;background:rgba(255,255,255,.16);color:#fff;padding:9px 14px;font-size:14px;font-weight:900;line-height:1;z-index:10">Sync</button></h1>
+style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.8);border-radius:9px;background:rgba(255,255,255,.16);color:#fff;padding:7px 11px;font-size:12px;font-weight:900;line-height:1;z-index:10;min-width:58px">Sync</button></h1>
     <p>Synced across your phones and computers</p>
     <div class="history-mini">
 
@@ -6484,7 +6484,64 @@ style="position:absolute;right:14px;top:14px;border:1px solid rgba(255,255,255,.
     mayaTransferStatus.className='status ok';
     cancelMayaTransferBtn.click();
   });
-  mayaTransferHistoryList.addEventListener('click',e=>{const b=e.target.closest('[data-remove-maya-transfer]');if(!b)return;const id=b.getAttribute('data-remove-maya-transfer');if(!confirm('Reverse this wallet transfer? Linked Cash Counter pieces will also be reversed.'))return;google.script.run.withSuccessHandler(d=>{mayaTransfers=(d&&d.transfers)||mayaTransfers.filter(x=>String(x.id)!==String(id));if(d&&d.capital)renderCapital(d.capital);renderMayaTransfers();renderCapitalActivity();saveLocalTrackerCache();if(typeof window.loadCashCounterLatestStatus==='function')setTimeout(window.loadCashCounterLatestStatus,100);}).withFailureHandler(e=>alert((e&&e.message)||'Could not reverse transfer.')).deleteMayaTransferBySession(getSessionToken(),id);});
+  mayaTransferHistoryList.addEventListener('click',e=>{
+    const b=e.target.closest('[data-remove-maya-transfer]');
+    if(!b)return;
+    const id=String(b.getAttribute('data-remove-maya-transfer')||'');
+    const t=mayaTransfers.find(x=>String(x.id||'')===id);
+    if(!t)return;
+    if(!confirm('Reverse this wallet transfer? Linked Cash Counter pieces will also be reversed.'))return;
+
+    // Reverse Cash Counter denominations immediately on this device.
+    if(t.fromWallet==='Cash on Hand'||t.toWallet==='Cash on Hand'){
+      const ok=(typeof window.reverseLocalCashPiecesForTransaction==='function')
+        ? window.reverseLocalCashPiecesForTransaction(id) : false;
+      if(!ok){
+        alert('Cash Counter could not safely reverse the exact bills/coins. Nothing was reversed.');
+        return;
+      }
+    }
+
+    // Reverse the wallet movement against CURRENT balances so later records are preserved.
+    const amount=Number(t.amount||0);
+    const key=w=>w==='GCash'?'gcashBalance':w==='Maya'?'mayaBalance':w==='MariBank'?'maribankBalance':'cashOnHand';
+    const c={...(capitalData||{})};
+    c[key(t.fromWallet)]=Number(c[key(t.fromWallet)]||0)+amount;
+    c[key(t.toWallet)]=Number(c[key(t.toWallet)]||0)-amount;
+    c.cashOutAvailable=Math.max(Number(c.cashOnHand||0),0);
+    capitalData=c;
+    renderCapital(c);
+
+    mayaTransfers=mayaTransfers.filter(x=>String(x.id||'')!==id);
+    renderMayaTransfers();
+    renderCapitalActivity();
+    saveLocalTrackerCache();
+
+    // If the transfer has never been synced, cancel its queued ADD completely.
+    let q=loadOfflineActionQueue();
+    const wasPending=q.some(a=>
+      String(a.id||'')===id &&
+      (a.method==='addMayaTransferBySession'||a.method==='addMayaTransferWithCashPiecesBySession')
+    );
+    if(wasPending){
+      q=q.filter(a=>String(a.id||'')!==id);
+      saveOfflineActionQueue(q);
+    }else{
+      // Already in Google Sheets: queue the server reversal for the next manual Sync.
+      queueOfflineAction({
+        id:'DELMOVE_'+id,
+        method:'deleteMayaTransferBySession',
+        payload:{id:id}
+      });
+    }
+
+    try{removeQueuedCashPieces(id);}catch(_e){}
+    try{if(typeof window.gcashRefreshManualSync==='function')window.gcashRefreshManualSync();}catch(_e){}
+    mayaTransferStatus.textContent=wasPending
+      ? 'Transfer reversed locally.'
+      : 'Transfer reversed locally. Google Sheets reversal is waiting for Sync.';
+    mayaTransferStatus.className='status ok';
+  });
 
   function updateSaripayTransferPreview(){
     const amount = Number(saripayTransferAmount.value || 0);
@@ -6859,6 +6916,10 @@ style="position:absolute;right:14px;top:14px;border:1px solid rgba(255,255,255,.
       if(data&&data.movement) replacePendingById(capitalMovements,a.id,data.movement);
       if(data&&data.capital) renderCapital(data.capital);
       renderCapitalActivity(); saveLocalTrackerCache();
+    }else if(a.method==='deleteMayaTransferBySession'){
+      // Local wallet and Cash Counter were already reversed immediately.
+      // Server success only confirms Google Sheets caught up.
+      saveLocalTrackerCache();
     }else if(a.method==='setCashOnHandToCountedCashBySession'){
       if(data&&data.movement) replacePendingById(capitalMovements,a.id,data.movement);
       if(data&&data.capital) renderCapital(data.capital);
@@ -6881,7 +6942,7 @@ style="position:absolute;right:14px;top:14px;border:1px solid rgba(255,255,255,.
   }
 
   function processOfflineActionQueue(){
-    if(!MANUAL_SYNC_REQUESTED){ renderPendingSyncPanel(); return; }
+    if(MANUAL_SYNC_REQUESTED!==true){ renderPendingSyncPanel(); return; }
     if(offlineActionBusy||!navigator.onLine) { renderPendingSyncPanel(); return; }
     const q=loadOfflineActionQueue();
     if(!q.length){offlineActionRetry=1400;renderPendingSyncPanel();return;}
@@ -6897,7 +6958,7 @@ style="position:absolute;right:14px;top:14px;border:1px solid rgba(255,255,255,.
         offlineActionBusy=false;
         offlineActionRetry=1400;
         handleOfflineActionSuccess(a,data);
-        setTimeout(processOfflineActionQueue,0);
+        if(MANUAL_SYNC_REQUESTED) setTimeout(processOfflineActionQueue,0);
       })
       .withFailureHandler(err=>{
         offlineActionBusy=false;
@@ -6920,13 +6981,15 @@ style="position:absolute;right:14px;top:14px;border:1px solid rgba(255,255,255,.
         runner.saveCashCounterChangeMoney(a.payload.pieces,a.id,a.payload.exchange||null);
       }else if(a.method==='deleteTransactionBySession'){
         runner.deleteTransactionBySession(getSessionToken(),a.payload.id);
+      }else if(a.method==='deleteMayaTransferBySession'){
+        runner.deleteMayaTransferBySession(getSessionToken(),a.payload.id);
       }else if(a.method==='setCashOnHandToCountedCashBySession'){
         runner.setCashOnHandToCountedCashBySession(getSessionToken(),a.payload);
       }else{
         const latest=loadOfflineActionQueue();
         latest.shift(); saveOfflineActionQueue(latest);
         offlineActionBusy=false;
-        setTimeout(processOfflineActionQueue,0);
+        if(MANUAL_SYNC_REQUESTED) setTimeout(processOfflineActionQueue,0);
       }
     }catch(e){
       offlineActionBusy=false;
@@ -7486,7 +7549,7 @@ style="position:absolute;right:14px;top:14px;border:1px solid rgba(255,255,255,.
   }
 
   function processPendingCashPiecesQueue(transactionId){
-    if(!MANUAL_SYNC_REQUESTED) { try{refreshFastSyncStatus();}catch(e){} return; }
+    if(MANUAL_SYNC_REQUESTED!==true) { try{refreshFastSyncStatus();}catch(e){} return; }
     // Legacy pending records are preserved for manual reconciliation; never replay automatically.
     return;
 
@@ -7665,7 +7728,7 @@ style="position:absolute;right:14px;top:14px;border:1px solid rgba(255,255,255,.
   }
 
   function processPendingTxQueue(){
-    if(!MANUAL_SYNC_REQUESTED) { refreshFastSyncStatus(); return; }
+    if(MANUAL_SYNC_REQUESTED!==true) { refreshFastSyncStatus(); return; }
     if(txSyncBusy || !unlocked) return;
     const q = loadPendingTxQueue();
     if(!q.length){
@@ -10938,7 +11001,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   }
   function paint(){
     const n=pendingCount();
-    btn.textContent=n ? `Sync to Google Sheets (${n})` : 'Sync to Google Sheets';
+    btn.textContent=n ? `Sync (${n})` : 'Sync';
     if(hint) hint.textContent=n
       ? `${n} unsynced record${n===1?'':'s'} saved safely on this device.`
       : 'All local changes are synced.';
