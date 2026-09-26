@@ -6125,6 +6125,7 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
   }
 
   function loadCapital(){
+    if(hasUnsyncedLocalWork() && MANUAL_SYNC_REQUESTED!==true){ renderCapital(capitalData); return; }
     if(!unlocked) return;
     google.script.run
       .withSuccessHandler(renderCapital)
@@ -7152,34 +7153,48 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
     });
   }
 
+
+  function hasUnsyncedLocalWork(){
+    try{
+      return loadPendingTxQueue().length>0 ||
+             loadPendingCashPiecesQueue().length>0 ||
+             loadOfflineActionQueue().length>0;
+    }catch(e){ return true; }
+  }
+
   function loadAllWithSession(token){
     unlocked=true;
     setLockedView(false);
-    showSync('Syncing your records…');
 
+    // LOCAL-FIRST: if there is unsynced work, do not fetch stale Google Sheets
+    // data because it would erase the local transaction and roll balances backward.
+    if(hasUnsyncedLocalWork()){
+      restorePendingTransactions();
+      render(); renderExpenses(); renderCapital(capitalData); renderCapitalActivity();
+      saveLocalTrackerCache();
+      showSync('Saved locally. Press Sync when ready.',true);
+      return;
+    }
+
+    showSync('Loading synced records…');
     google.script.run
       .withSuccessHandler(data=>{
-        history=mergePermanentCashCount(history,(data && data.transactions)||[]);
-        window.__gcashTransactions = history;
-        expenses=(data && data.expenses)||[];
-        transfers=(data && data.transfers)||[];
-        capitalMovements=(data && data.capitalMovements)||[];
-        capitalData=(data && data.capital)||null;
+        history=mergePermanentCashCount(history,(data&&data.transactions)||[]);
+        window.__gcashTransactions=history;
+        expenses=(data&&data.expenses)||[];
+        transfers=(data&&data.transfers)||[];
+        capitalMovements=(data&&data.capitalMovements)||[];
+        capitalData=(data&&data.capital)||null;
         unlocked=true;
-        render();
-        renderExpenses();
-        renderCapital(capitalData);
-        renderCapitalActivity();
+        render(); renderExpenses(); renderCapital(capitalData); renderCapitalActivity();
         saveLocalTrackerCache();
         setLockedView(false);
         showSync('Synced.',true);
-        setTimeout(restorePendingTransactions, 0);
       })
       .withFailureHandler(err=>{
         unlocked=true;
-        const msg = (err && err.message) || 'Could not sync records.';
         setLockedView(false);
-        showSync(msg + ' Saved records remain available.');
+        showSync(((err&&err.message)||'Could not load Google Sheets.')+' Saved local records remain available.');
       })
       .getAppDataBySession('LOCAL_NO_LOGIN');
   }
@@ -7867,10 +7882,11 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
       const id=String(payload.clientTransactionId||'');
       if(!id || history.some(x=>String(x.id)===id)) return;
       const tx=makeOptimisticTransaction(payload);
-      history.unshift(tx);
-    window.__gcashTransactions = history;
+      applyOptimisticTransaction(tx);
     });
+    window.__gcashTransactions = history;
     render();
+    saveLocalTrackerCache();
     refreshFastSyncStatus();
     renderPendingSyncPanel();
   }
@@ -10354,6 +10370,7 @@ $('saveCount').addEventListener('click',()=>{
 
 
 function loadHistory(){
+    if(hasUnsyncedLocalWork() && MANUAL_SYNC_REQUESTED!==true){ render(); return; }
   $('historyList').innerHTML='Loading saved history…';
 
   const denomMeta=[
@@ -10668,7 +10685,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     const post=key==='maya'?tx.newMaya:key==='maribank'?tx.newMaribank:tx.newGcash;
     if(isFinite(Number(pre))&&isFinite(Number(post)))parts.push(cap+' '+peso(pre)+' → '+peso(post));
     if(det)det.textContent=parts.join(' · ');
-    if(sy)sy.textContent=(tx._pendingSync||tx.pendingSync)?'Saved locally · Saved locally.':'SYNCED ✓';
+    if(sy)sy.textContent=(tx._pendingSync||tx.pendingSync)?'Saved locally.':'SYNCED ✓';
     try{localStorage.setItem('gcashLastTransactionFastV1',JSON.stringify(tx));}catch(_e){}
     if(flash!==false){
       const f=document.getElementById('recordedFastFlash');
@@ -10730,7 +10747,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     // Reconcile the card with the same records the History tab displays.
     setInterval(()=>showLatest(false),1000);
   });
-  const sync=document.getElementById('syncStatus'); if(sync)new MutationObserver(()=>{const t=String(sync.textContent||'');const el=document.getElementById('ltfSync');if(el){if(/^synced\.?$/i.test(t.trim()))el.textContent='SYNCED ✓';else if(/sync/i.test(t))el.textContent='Saved locally · Saved locally.';}}).observe(sync,{childList:true,subtree:true,characterData:true});
+  const sync=document.getElementById('syncStatus'); if(sync)new MutationObserver(()=>{const t=String(sync.textContent||'');const el=document.getElementById('ltfSync');if(el){if(/^synced\.?$/i.test(t.trim()))el.textContent='SYNCED ✓';else if(/sync/i.test(t))el.textContent='Saved locally.';}}).observe(sync,{childList:true,subtree:true,characterData:true});
 })();
 </script>
 
