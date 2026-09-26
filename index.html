@@ -9969,9 +9969,12 @@ function load(){
       let saved=null;
       try{saved=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null');}catch(_e){}
       const pendingPieces=(()=>{try{return JSON.parse(localStorage.getItem('gcash_tracker_pending_cash_pieces_v1')||'[]').length>0;}catch(_e){return false;}})();
-      const localTotal=saved&&saved.pieces?cashCounterPiecesTotal(saved.pieces):null;
-      const remoteTotal=x&&x.pieces?cashCounterPiecesTotal(x.pieces):null;
-      const keepLocal=!!(saved&&saved.pieces&&(pendingPieces || (saved._localPending && localTotal!==remoteTotal)));
+      const pendingTx=(()=>{try{return JSON.parse(localStorage.getItem('gcash_tracker_pending_tx_v1')||'[]').length>0;}catch(_e){return false;}})();
+      const pendingActions=(()=>{try{return JSON.parse(localStorage.getItem('gcashTrackerOfflineActionsV1')||'[]').length>0;}catch(_e){return false;}})();
+      // V6: keep optimistic Cash Counter only while there is genuinely unsynced work.
+      // Once all queues are empty, Google Sheets is authoritative. This prevents an
+      // old _localPending snapshot from permanently showing OVER after a server Undo.
+      const keepLocal=!!(saved&&saved.pieces&&(pendingPieces||pendingTx||pendingActions));
       current=keepLocal?saved:x;
       if(!keepLocal && current && current._localPending) current._localPending=false;
       try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(e){}
@@ -11032,7 +11035,7 @@ Undo/Delete: reverses linked Cash Counter pieces using the same record ID.
 
 <script>
 (function(){
-  const REPAIR_KEY='gcashSafeOrphanRepair_20260926_v1';
+  const REPAIR_KEY='gcashSafeOrphanRepair_20260926_v2';
   if(localStorage.getItem(REPAIR_KEY)==='done') return;
   setTimeout(function(){
     try{
