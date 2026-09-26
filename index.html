@@ -8743,19 +8743,13 @@ body > .hero{
     deleteTxYes.disabled = true;
     deleteTxYes.textContent = kind === 'transaction' ? 'Undoing…' : 'Deleting…';
 
-    // Undo transactions LOCAL-FIRST on every connection state. The complete
-    // one-record transaction is reversed immediately on this device: wallet
-    // balances, fee/earnings, exact Cash Counter pieces and History. The server
-    // reversal is queued and synced in the background, so Undo never waits for
-    // Google Sheets / Apps Script.
-    if(kind === 'transaction'){
-      deleteTransactionLocallyAndQueue(id);
+    // ONE RECORD UNDO: synced transactions are reversed on the server first.
+    // The UI is changed only after the server confirms wallet + fee + exact
+    // Cash Counter denominations were reversed together.
+    if(kind === 'transaction' && !navigator.onLine){
       deleteTxYes.disabled = false;
       deleteTxYes.textContent = 'Yes, Undo';
-      closeDeleteTxModal();
-      showSync(navigator.onLine
-        ? 'Transaction undone on this device. Server reversal is waiting to sync.'
-        : 'Transaction undone on this device. Server reversal is saved locally and waiting to sync.', true);
+      alert('Connect to the internet before Undo. This protects the one-record reversal.');
       return;
     }
 
@@ -11035,5 +11029,30 @@ Move Money + Money Count: one atomic sync.
 Change Money: one sync.
 Undo/Delete: reverses linked Cash Counter pieces using the same record ID.
 -->
+
+<script>
+(function(){
+  const REPAIR_KEY='gcashSafeOrphanRepair_20260926_v1';
+  if(localStorage.getItem(REPAIR_KEY)==='done') return;
+  setTimeout(function(){
+    try{
+      google.script.run
+        .withSuccessHandler(function(r){
+          if(r && r.repaired){
+            localStorage.setItem(REPAIR_KEY,'done');
+            try{ if(typeof window.loadCashCounterLatestStatus==='function') window.loadCashCounterLatestStatus(); }catch(e){}
+            try{ if(typeof loadCapital==='function') loadCapital(); }catch(e){}
+            setTimeout(function(){ location.reload(); },500);
+          }else if(r && r.ok){
+            localStorage.setItem(REPAIR_KEY,'done');
+          }
+        })
+        .withFailureHandler(function(){})
+        .repairLatestOrphanedTransactionCashPiecesBySession(typeof getSessionToken==='function'?getSessionToken():'');
+    }catch(e){}
+  },1800);
+})();
+</script>
+
 </body>
 </html>
