@@ -10857,139 +10857,140 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
 
 
 <style id="edit-balances-addon-style">
-#editBalancesModal .edit-balance-wallets{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
-#editBalancesModal .edit-wallet-choice{border:1px solid #d0d5dd;background:#fff;border-radius:14px;padding:12px;font-weight:800;cursor:pointer}
-#editBalancesModal .edit-wallet-choice.active{border:2px solid #155eef;background:#eff6ff;color:#0b4fc1}
-#editBalancesModal .edit-current{font-size:13px;color:#667085;margin-top:4px}
+#editBalancesModal .balance-edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+#editBalancesModal .balance-edit-field{border:1px solid #d0d5dd;border-radius:14px;padding:10px;background:#fff}
+#editBalancesModal .balance-edit-field label{display:block;font-weight:800;font-size:13px;margin-bottom:6px}
+#editBalancesModal .balance-edit-field input{width:100%;box-sizing:border-box;font-size:18px;padding:9px;border:1px solid #d0d5dd;border-radius:10px}
+#editBalancesModal .balance-total-box{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+#editBalancesModal .balance-total-box>div{border:1px solid #d0d5dd;border-radius:12px;padding:10px}
+#editBalancesModal .balance-total-box span{display:block;font-size:12px;color:#667085}
+#editBalancesModal .balance-total-box strong{display:block;margin-top:3px;font-size:16px}
+#editBalancesModal .balance-match{font-size:13px;font-weight:800;padding:9px 10px;border-radius:10px;margin:8px 0}
+#editBalancesModal .balance-match.ok{background:#ecfdf3;color:#067647}
+#editBalancesModal .balance-match.bad{background:#fef3f2;color:#b42318}
 #editBalancesModal .edit-warning{font-size:12px;line-height:1.45;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:10px;margin:10px 0;color:#9a3412}
 </style>
 
 <div id="editBalancesModal" class="capital-modal" aria-hidden="true" style="display:none">
   <div class="capital-modal-card">
     <div class="capital-modal-title">Edit Balances</div>
-    <div class="capital-modal-help">Choose one wallet and enter its exact new balance.</div>
+    <div class="capital-modal-help">Enter the exact balances. The four wallets must equal Current Capital before saving.</div>
 
-    <div class="edit-balance-wallets">
-      <button type="button" class="edit-wallet-choice active" data-edit-wallet="Cash on Hand">Cash on Hand<div class="edit-current" id="editCurrentCash">₱0.00</div></button>
-      <button type="button" class="edit-wallet-choice" data-edit-wallet="GCash">GCash<div class="edit-current" id="editCurrentGcash">₱0.00</div></button>
-      <button type="button" class="edit-wallet-choice" data-edit-wallet="Maya">Maya<div class="edit-current" id="editCurrentMaya">₱0.00</div></button>
-      <button type="button" class="edit-wallet-choice" data-edit-wallet="MariBank">MariBank<div class="edit-current" id="editCurrentMaribank">₱0.00</div></button>
+    <div class="balance-edit-grid">
+      <div class="balance-edit-field"><label for="editCashBalance">Cash on Hand</label><input id="editCashBalance" type="number" min="0" step="0.01" inputmode="decimal"></div>
+      <div class="balance-edit-field"><label for="editGcashBalance">GCash</label><input id="editGcashBalance" type="number" min="0" step="0.01" inputmode="decimal"></div>
+      <div class="balance-edit-field"><label for="editMayaBalance">Maya</label><input id="editMayaBalance" type="number" min="0" step="0.01" inputmode="decimal"></div>
+      <div class="balance-edit-field"><label for="editMaribankBalance">MariBank</label><input id="editMaribankBalance" type="number" min="0" step="0.01" inputmode="decimal"></div>
     </div>
 
-    <label class="label" for="editBalanceAmount">New exact balance</label>
-    <input id="editBalanceAmount" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Enter new balance">
-
-    <div class="edit-warning">
-      Editing Cash on Hand will NOT change your Cash Counter bills and coins. Every edit is saved in Wallet History.
+    <div class="balance-total-box">
+      <div><span>Wallet Total</span><strong id="editWalletTotal">₱0.00</strong></div>
+      <div><span>Current Capital</span><strong id="editCurrentCapital">₱0.00</strong></div>
     </div>
+    <div id="editBalanceMatch" class="balance-match bad">Balances do not match.</div>
 
+    <div class="edit-warning">Cash on Hand editing does NOT change Cash Counter bills or coins. Changes are recorded in Wallet History.</div>
     <div id="editBalanceStatus" class="status"></div>
     <div class="capital-modal-actions">
       <button type="button" id="cancelEditBalanceBtn" class="btn">Cancel</button>
-      <button type="button" id="saveEditBalanceBtn" class="btn primary">Save Balance</button>
+      <button type="button" id="saveEditBalanceBtn" class="btn primary" disabled>Save Balances</button>
     </div>
   </div>
 </div>
 
 <script id="edit-balances-addon-script">
 (function(){
-  const byId=id=>document.getElementById(id);
-  const modal=byId('editBalancesModal');
-  const openBtn=byId('editBalancesBtn');
-  const cancelBtn=byId('cancelEditBalanceBtn');
-  const saveBtn=byId('saveEditBalanceBtn');
-  const input=byId('editBalanceAmount');
-  const stat=byId('editBalanceStatus');
-  const choices=[...document.querySelectorAll('#editBalancesModal .edit-wallet-choice')];
-  let selected='Cash on Hand';
+  const $e=id=>document.getElementById(id);
+  const modal=$e('editBalancesModal'), openBtn=$e('editBalancesBtn'), cancelBtn=$e('cancelEditBalanceBtn'),
+        saveBtn=$e('saveEditBalanceBtn'), stat=$e('editBalanceStatus');
+  const ids={cash:'editCashBalance',gcash:'editGcashBalance',maya:'editMayaBalance',maribank:'editMaribankBalance'};
 
-  function balances(){
-    const c=(typeof capitalData==='object' && capitalData) ? capitalData : {};
+  function parseMoneyText(id){
+    const el=$e(id);
+    if(!el) return 0;
+    const n=Number(String(el.textContent||'').replace(/[^0-9.-]/g,''));
+    return isFinite(n)?n:0;
+  }
+  function shownBalances(){
     return {
-      'Cash on Hand':Number(c.cashOnHand||0),
-      'GCash':Number(c.gcashBalance||0),
-      'Maya':Number(c.mayaBalance||0),
-      'MariBank':Number(c.maribankBalance||0)
+      cash:parseMoneyText('cashOutAvailable'),
+      gcash:parseMoneyText('cashInAvailable'),
+      maya:parseMoneyText('mayaAvailable'),
+      maribank:parseMoneyText('maribankAvailable')
     };
   }
-  function moneyLocal(n){
+  function shownCapital(){ return parseMoneyText('totalCapital'); }
+  function fmt(n){
     try{return money(Number(n)||0);}catch(e){return '₱'+(Number(n)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
   }
-  function refresh(){
-    const b=balances();
-    byId('editCurrentCash').textContent=moneyLocal(b['Cash on Hand']);
-    byId('editCurrentGcash').textContent=moneyLocal(b.GCash);
-    byId('editCurrentMaya').textContent=moneyLocal(b.Maya);
-    byId('editCurrentMaribank').textContent=moneyLocal(b.MariBank);
-    choices.forEach(x=>x.classList.toggle('active',x.dataset.editWallet===selected));
-    input.value=b[selected].toFixed(2);
+  function values(){
+    return {
+      cash:Number($e(ids.cash).value),
+      gcash:Number($e(ids.gcash).value),
+      maya:Number($e(ids.maya).value),
+      maribank:Number($e(ids.maribank).value)
+    };
   }
-  function close(){
-    modal.classList.remove('show');
-    modal.style.display='none';
-    modal.setAttribute('aria-hidden','true');
+  function recalc(){
+    const v=values(), capital=shownCapital();
+    const valid=Object.values(v).every(n=>isFinite(n)&&n>=0);
+    const total=valid?v.cash+v.gcash+v.maya+v.maribank:NaN;
+    $e('editWalletTotal').textContent=valid?fmt(total):'Invalid';
+    $e('editCurrentCapital').textContent=fmt(capital);
+    const match=valid && Math.abs(total-capital)<=0.01;
+    const box=$e('editBalanceMatch');
+    box.className='balance-match '+(match?'ok':'bad');
+    box.textContent=match?'MATCHED. Ready to save.':
+      (valid?'Difference: '+fmt(total-capital)+'. Wallet total must equal Current Capital.':'Enter valid balances.');
+    saveBtn.disabled=!match;
+    return {valid,total,capital,match,v};
+  }
+  function open(){
+    const b=shownBalances();
+    $e(ids.cash).value=b.cash.toFixed(2);
+    $e(ids.gcash).value=b.gcash.toFixed(2);
+    $e(ids.maya).value=b.maya.toFixed(2);
+    $e(ids.maribank).value=b.maribank.toFixed(2);
     stat.textContent='';
+    modal.classList.add('show'); modal.style.display='flex'; modal.setAttribute('aria-hidden','false');
+    recalc();
   }
-  if(openBtn) openBtn.addEventListener('click',()=>{
-    selected='Cash on Hand';
-    refresh();
-    modal.classList.add('show');
-    modal.style.display='flex';
-    modal.setAttribute('aria-hidden','false');
-    setTimeout(()=>input.focus(),50);
-  });
-  choices.forEach(btn=>btn.addEventListener('click',()=>{
-    selected=btn.dataset.editWallet;
-    refresh();
-    input.focus();
-    input.select();
-  }));
+  function close(){modal.classList.remove('show');modal.style.display='none';modal.setAttribute('aria-hidden','true');stat.textContent='';}
+  if(openBtn) openBtn.addEventListener('click',open);
   cancelBtn.addEventListener('click',close);
   modal.addEventListener('click',e=>{if(e.target===modal)close();});
+  Object.values(ids).forEach(id=>$e(id).addEventListener('input',recalc));
 
   saveBtn.addEventListener('click',()=>{
-    const b=balances();
-    const oldValue=Number(b[selected]||0);
-    const newValue=Number(input.value);
-    if(!isFinite(newValue)||newValue<0){
-      stat.textContent='Enter a valid balance of 0 or higher.';
-      stat.className='status err';
-      return;
-    }
-    if(Math.abs(newValue-oldValue)<=0.005){
-      stat.textContent='No change to save.';
-      stat.className='status';
-      return;
-    }
-    const warning=selected==='Cash on Hand'
-      ? '\n\nCash Counter will stay unchanged.'
-      : '';
-    if(!confirm('Change '+selected+' from '+moneyLocal(oldValue)+' to '+moneyLocal(newValue)+'?'+warning)) return;
+    const state=recalc();
+    if(!state.match) return;
+    const old=shownBalances(), v=state.v;
+    const changes=[];
+    if(Math.abs(old.cash-v.cash)>.005) changes.push('Cash on Hand: '+fmt(old.cash)+' → '+fmt(v.cash));
+    if(Math.abs(old.gcash-v.gcash)>.005) changes.push('GCash: '+fmt(old.gcash)+' → '+fmt(v.gcash));
+    if(Math.abs(old.maya-v.maya)>.005) changes.push('Maya: '+fmt(old.maya)+' → '+fmt(v.maya));
+    if(Math.abs(old.maribank-v.maribank)>.005) changes.push('MariBank: '+fmt(old.maribank)+' → '+fmt(v.maribank));
+    if(!changes.length){stat.textContent='No changes to save.';stat.className='status';return;}
+    if(!confirm('Save these balance corrections?\n\n'+changes.join('\n')+'\n\nCurrent Capital will stay '+fmt(state.capital)+'.\nCash Counter will stay unchanged.')) return;
 
-    saveBtn.disabled=true;
-    stat.textContent='Saving…';
-    stat.className='status';
-    const id='BALADJ_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
-
+    saveBtn.disabled=true; stat.textContent='Saving…'; stat.className='status';
     google.script.run
       .withSuccessHandler(data=>{
         saveBtn.disabled=false;
         if(data&&data.capital && typeof renderCapital==='function') renderCapital(data.capital);
         if(typeof loadCapitalMovements==='function') loadCapitalMovements();
-        if(typeof window.loadCashCounterLatestStatus==='function') setTimeout(window.loadCashCounterLatestStatus,100);
-        try{saveLocalTrackerCache();}catch(e){}
-        stat.textContent='Balance updated and saved to Wallet History.';
-        stat.className='status ok';
-        setTimeout(close,450);
+        stat.textContent='Balances updated and saved to Wallet History.'; stat.className='status ok';
+        setTimeout(close,500);
       })
       .withFailureHandler(err=>{
         saveBtn.disabled=false;
-        stat.textContent=(err&&err.message)||'Could not update balance.';
+        stat.textContent=(err&&err.message)||'Could not update balances.';
         stat.className='status err';
       })
-      .setExactWalletBalanceBySession(
+      .setAllExactWalletBalancesBySession(
         (typeof getSessionToken==='function'?getSessionToken():''),
-        {wallet:selected,newBalance:newValue,clientActionId:id}
+        {cashOnHand:v.cash,gcashBalance:v.gcash,mayaBalance:v.maya,maribankBalance:v.maribank,
+         clientActionId:'BALSET_'+Date.now()+'_'+Math.random().toString(36).slice(2,8)}
       );
   });
 })();
