@@ -6473,13 +6473,32 @@ body > .hero{
     const b=moveMoneyBalances();
     if(amount>b[fromWallet]+0.001){mayaTransferStatus.textContent='Not enough '+fromWallet+' balance.';mayaTransferStatus.className='status err';return;}
     if(fromWallet==='Cash on Hand'||toWallet==='Cash on Hand'){openMoveMoneyCashPiecesDraft(amount,fromWallet,toWallet);return;}
+    if(!navigator.onLine){
+      mayaTransferStatus.textContent='Move Money needs an internet connection so the wallet balances and Google Sheet stay as one record.';
+      mayaTransferStatus.className='status err';
+      return;
+    }
     const id=offlineActionId('MOVE');
     const payload={amount,fromWallet,toWallet,clientActionId:id};
-    try{applyLocalMoveMoney(payload,id);}catch(e){mayaTransferStatus.textContent=(e&&e.message)||'Could not transfer funds.';mayaTransferStatus.className='status err';return;}
-    queueOfflineAction({id:id,method:'addMayaTransferBySession',payload:payload});
-    mayaTransferStatus.textContent=navigator.onLine?'Saved. Syncing…':'Saved offline. Waiting to sync.';
-    mayaTransferStatus.className='status ok';
-    cancelMayaTransferBtn.click();
+    saveMayaTransferBtn.disabled=true;
+    mayaTransferStatus.textContent='Saving transfer…';
+    mayaTransferStatus.className='status';
+    google.script.run
+      .withSuccessHandler(data=>{
+        saveMayaTransferBtn.disabled=false;
+        if(data&&data.transfer) replacePendingById(mayaTransfers,id,data.transfer);
+        if(data&&data.capital) renderCapital(data.capital);
+        renderMayaTransfers(); renderCapitalActivity(); saveLocalTrackerCache();
+        mayaTransferStatus.textContent='Transfer saved.';
+        mayaTransferStatus.className='status ok';
+        setTimeout(()=>cancelMayaTransferBtn.click(),250);
+      })
+      .withFailureHandler(err=>{
+        saveMayaTransferBtn.disabled=false;
+        mayaTransferStatus.textContent=(err&&err.message)||'Could not transfer funds.';
+        mayaTransferStatus.className='status err';
+      })
+      .addMayaTransferBySession(getSessionToken(),payload);
   });
   mayaTransferHistoryList.addEventListener('click',e=>{const b=e.target.closest('[data-remove-maya-transfer]');if(!b)return;const id=b.getAttribute('data-remove-maya-transfer');if(!confirm('Reverse this wallet transfer? Linked Cash Counter pieces will also be reversed.'))return;google.script.run.withSuccessHandler(d=>{mayaTransfers=(d&&d.transfers)||mayaTransfers.filter(x=>String(x.id)!==String(id));if(d&&d.capital)renderCapital(d.capital);renderMayaTransfers();renderCapitalActivity();saveLocalTrackerCache();if(typeof window.loadCashCounterLatestStatus==='function')setTimeout(window.loadCashCounterLatestStatus,100);}).withFailureHandler(e=>alert((e&&e.message)||'Could not reverse transfer.')).deleteMayaTransferBySession(getSessionToken(),id);});
 
@@ -8312,22 +8331,28 @@ body > .hero{
         received:{...cashPiecesReceived}, given:{...cashPiecesGiven}, clientActionId:id
       };
 
-      try{applyLocalMoveMoney(payload,id);}catch(e){
+      if(!navigator.onLine){
         save.disabled=false; save.textContent='Save Cash Pieces';
-        if(stat){stat.textContent=(e&&e.message)||'Could not save transfer.';stat.className='err';}
+        if(stat){stat.textContent='Move Money needs an internet connection so the wallet and Cash Counter are saved together.';stat.className='err';}
         return;
       }
 
-      try{
-        window.dispatchEvent(new CustomEvent('gcash-local-cash-pieces',{
-          detail:{transactionId:id,received:{...cashPiecesReceived},given:{...cashPiecesGiven},expectedCashMovement:(tx.toWallet==='Cash on Hand'?Number(tx.amount||0):-Number(tx.amount||0))}
-        }));
-      }catch(e){}
-
-      queueOfflineAction({id:id,method:'addMayaTransferWithCashPiecesBySession',payload:payload});
-      save.disabled=false; save.textContent='Saved';
-      if(stat){stat.textContent=navigator.onLine?'Saved. Syncing transfer and Cash Counter…':'Saved offline. Waiting to sync.';stat.className='ok';}
-      setTimeout(closeCashPiecesRecorder,100);
+      if(stat){stat.textContent='Saving transfer and Cash Counter…';stat.className='';}
+      google.script.run
+        .withSuccessHandler(data=>{
+          save.disabled=false; save.textContent='Saved';
+          if(data&&data.transfer) replacePendingById(mayaTransfers,id,data.transfer);
+          if(data&&data.capital) renderCapital(data.capital);
+          renderMayaTransfers(); renderCapitalActivity(); saveLocalTrackerCache();
+          if(stat){stat.textContent='Transfer and Cash Counter saved.';stat.className='ok';}
+          if(typeof window.loadCashCounterLatestStatus==='function') setTimeout(window.loadCashCounterLatestStatus,100);
+          setTimeout(closeCashPiecesRecorder,300);
+        })
+        .withFailureHandler(err=>{
+          save.disabled=false; save.textContent='Save Cash Pieces';
+          if(stat){stat.textContent=(err&&err.message)||'Could not save transfer.';stat.className='err';}
+        })
+        .addMayaTransferWithCashPiecesBySession(getSessionToken(),payload);
       return;
     }
 
