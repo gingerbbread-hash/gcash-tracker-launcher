@@ -7157,7 +7157,6 @@ body > .hero{
   function hasUnsyncedLocalWork(){
     try{
       return loadPendingTxQueue().length>0 ||
-             loadPendingCashPiecesQueue().length>0 ||
              loadOfflineActionQueue().length>0;
     }catch(e){ return true; }
   }
@@ -7600,71 +7599,10 @@ body > .hero{
   }
 
   function processPendingCashPiecesQueue(transactionId){
-    /* auto-sync enabled */
-    if(cashPiecesSyncBusy || !unlocked) return;
-
-    const all = loadPendingCashPiecesQueue();
-    if(!all.length) return;
-
-    let idx = 0;
-    if(transactionId){
-      idx = all.findIndex(
-        x => String(x.transactionId || '') === String(transactionId || '')
-      );
-      if(idx < 0) return;
-    }
-
-    const payload = all[idx];
-
-    // The backend can only save denominations after the parent transaction
-    // already exists in Google Sheets.
-    if(isTransactionStillPending(payload.transactionId)) return;
-
-    cashPiecesSyncBusy = true;
-
-    google.script.run
-      .withSuccessHandler(result=>{
-        const latest = loadPendingCashPiecesQueue().filter(
-          x => String(x.transactionId || '') !== String(payload.transactionId || '')
-        );
-        savePendingCashPiecesQueue(latest);
-        cashPiecesSyncBusy = false;
-        cashPiecesRetryDelay = 1200;
-        if(MANUAL_SYNC_REQUESTED===true && loadPendingCashPiecesQueue().length){
-          setTimeout(()=>processPendingCashPiecesQueue(),40);
-        }
-
-        if(typeof window.loadCashCounterLatestStatus === 'function'){
-          setTimeout(window.loadCashCounterLatestStatus, 100);
-        }
-
-        // Continue with another queued Cash Pieces record if there is one.
-        setTimeout(()=>processPendingCashPiecesQueue(), 50);
-      })
-      .withFailureHandler(err=>{
-        cashPiecesSyncBusy = false;
-
-        const msg = String((err && err.message) || '');
-        // If the transaction is not on the server yet, keep the Cash Pieces safely queued.
-        if(
-          msg.toLowerCase().includes('transaction not found') ||
-          msg.toLowerCase().includes('not found')
-        ){
-          scheduleCashPiecesRetry(payload.transactionId);
-          return;
-        }
-
-        // Keep it queued and retry quickly with a gentle backoff.
-        scheduleCashPiecesRetry(payload.transactionId);
-      })
-      .recordTransactionCashPiecesBySession(
-        getSessionToken(),
-        {
-          transactionId:String(payload.transactionId || ''),
-          received:{...(payload.received || {})},
-          given:{...(payload.given || {})}
-        }
-      );
+    // ONE RECORD mode. Never send Money Count separately.
+    // It is committed together with its transaction.
+    refreshFastSyncStatus();
+    renderPendingSyncPanel();
   }
 
   function loadPendingTxQueue(){
@@ -7787,8 +7725,7 @@ body > .hero{
     if(txSyncBusy || !unlocked) return;
     const q = loadPendingTxQueue();
     if(!q.length){
-      // A Cash Pieces record may already be waiting for its parent transaction.
-      setTimeout(()=>processPendingCashPiecesQueue(), 0);
+      // Money Count is part of the parent transaction now.
       refreshFastSyncStatus();
       // Do not block the customer flow with a full Google Sheets reload.
       // Reconcile quietly after the app has been idle for a few seconds.
@@ -7826,6 +7763,7 @@ body > .hero{
 
         q.shift();
         savePendingTxQueue(q);
+        try{removeQueuedCashPieces(serverTx.id);}catch(_e){}
         txSyncBusy = false;
         txRetryDelay = 1500;
 
@@ -7839,10 +7777,8 @@ body > .hero{
         render();
         saveLocalTrackerCache();
 
-        // If Cash Pieces were already entered while this transaction was syncing,
-        // send them now that the parent transaction exists in Google Sheets.
+        // Money Count was committed with the transaction under the same ID.
         cashPiecesPromptIds.delete(String(serverTx.id||''));
-        setTimeout(()=>processPendingCashPiecesQueue(serverTx.id), 20);
 
         if(q.length){
           setTimeout(processPendingTxQueue, 50);
@@ -7872,7 +7808,7 @@ body > .hero{
         // Keep the queue intact. Retry quickly without creating duplicates.
         scheduleTxRetry();
       })
-      .addTransactionBySession(getSessionToken(), payload);
+      .addTransactionWithCashPiecesBySession(getSessionToken(), payload);
   }
 
   function restorePendingTransactions(){
@@ -8530,7 +8466,6 @@ body > .hero{
       setTimeout(()=>{
         closeCashPiecesRecorder();
         processPendingTxQueue();
-        processPendingCashPiecesQueue(piecePayload.transactionId);
       },120);
       return;
     }
@@ -11085,5 +11020,12 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   });
 })();
 </script>
+
+<!-- ONE RECORD SYNC MODE
+Cash In/Cash Out + Money Count: one record and one sync.
+Move Money + Money Count: one atomic sync.
+Change Money: one sync.
+Undo/Delete: reverses linked Cash Counter pieces using the same record ID.
+-->
 </body>
 </html>
