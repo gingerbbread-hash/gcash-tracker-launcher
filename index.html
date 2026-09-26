@@ -10874,7 +10874,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
 <div id="editBalancesModal" class="capital-modal" aria-hidden="true" style="display:none">
   <div class="capital-modal-card">
     <div class="capital-modal-title">Edit Balances</div>
-    <div class="capital-modal-help">Enter the exact balances. The four wallets must equal Current Capital before saving.</div>
+    <div class="capital-modal-help">Enter the exact balances. The four wallets must equal Expected Total Money before saving.</div>
 
     <div class="balance-edit-grid">
       <div class="balance-edit-field"><label for="editCashBalance">Cash on Hand</label><input id="editCashBalance" type="number" min="0" step="0.01" inputmode="decimal"></div>
@@ -10885,7 +10885,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
 
     <div class="balance-total-box">
       <div><span>Wallet Total</span><strong id="editWalletTotal">₱0.00</strong></div>
-      <div><span>Current Capital</span><strong id="editCurrentCapital">₱0.00</strong></div>
+      <div><span>Expected Total Money</span><strong id="editCurrentCapital">₱0.00</strong></div>
     </div>
     <div id="editBalanceMatch" class="balance-match bad">Balances do not match.</div>
 
@@ -10919,7 +10919,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
       maribank:parseMoneyText('maribankAvailable')
     };
   }
-  function shownCapital(){ return parseMoneyText('totalCapital'); }
+  function shownCapital(){ return parseMoneyText('expectedTotalMoney'); }
   function fmt(n){
     try{return money(Number(n)||0);}catch(e){return '₱'+(Number(n)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
   }
@@ -10941,7 +10941,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     const box=$e('editBalanceMatch');
     box.className='balance-match '+(match?'ok':'bad');
     box.textContent=match?'MATCHED. Ready to save.':
-      (valid?'Difference: '+fmt(total-capital)+'. Wallet total must equal Current Capital.':'Enter valid balances.');
+      (valid?'Difference: '+fmt(total-capital)+'. Wallet total must equal Expected Total Money.':'Enter valid balances.');
     saveBtn.disabled=!match;
     return {valid,total,capital,match,v};
   }
