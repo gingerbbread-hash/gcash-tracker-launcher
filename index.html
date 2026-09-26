@@ -5069,6 +5069,11 @@ body > .hero{
         <strong>Move Money</strong>
         <small>Cash · GCash · Maya · MariBank</small>
       </button>
+      <button type="button" id="editBalancesBtn" class="wallet-transfer-card">
+        <span>Manual Correction</span>
+        <strong>Edit Balances</strong>
+        <small>Set exact wallet balance</small>
+      </button>
     </div>
 
     <div class="current-capital-focus">
@@ -6219,6 +6224,7 @@ body > .hero{
 
   function capitalActionLabel(type){
     if(type==='ADD_CAPITAL') return 'Add Capital';
+    if(type==='BALANCE_ADJUSTMENT') return 'Balance Adjustment';
     if(type==='WITHDRAW_CAPITAL') return 'Withdraw Capital';
     return 'Withdraw Earnings';
   }
@@ -6473,32 +6479,13 @@ body > .hero{
     const b=moveMoneyBalances();
     if(amount>b[fromWallet]+0.001){mayaTransferStatus.textContent='Not enough '+fromWallet+' balance.';mayaTransferStatus.className='status err';return;}
     if(fromWallet==='Cash on Hand'||toWallet==='Cash on Hand'){openMoveMoneyCashPiecesDraft(amount,fromWallet,toWallet);return;}
-    if(!navigator.onLine){
-      mayaTransferStatus.textContent='Move Money needs an internet connection so the wallet balances and Google Sheet stay as one record.';
-      mayaTransferStatus.className='status err';
-      return;
-    }
     const id=offlineActionId('MOVE');
     const payload={amount,fromWallet,toWallet,clientActionId:id};
-    saveMayaTransferBtn.disabled=true;
-    mayaTransferStatus.textContent='Saving transfer…';
-    mayaTransferStatus.className='status';
-    google.script.run
-      .withSuccessHandler(data=>{
-        saveMayaTransferBtn.disabled=false;
-        if(data&&data.transfer) replacePendingById(mayaTransfers,id,data.transfer);
-        if(data&&data.capital) renderCapital(data.capital);
-        renderMayaTransfers(); renderCapitalActivity(); saveLocalTrackerCache();
-        mayaTransferStatus.textContent='Transfer saved.';
-        mayaTransferStatus.className='status ok';
-        setTimeout(()=>cancelMayaTransferBtn.click(),250);
-      })
-      .withFailureHandler(err=>{
-        saveMayaTransferBtn.disabled=false;
-        mayaTransferStatus.textContent=(err&&err.message)||'Could not transfer funds.';
-        mayaTransferStatus.className='status err';
-      })
-      .addMayaTransferBySession(getSessionToken(),payload);
+    try{applyLocalMoveMoney(payload,id);}catch(e){mayaTransferStatus.textContent=(e&&e.message)||'Could not transfer funds.';mayaTransferStatus.className='status err';return;}
+    queueOfflineAction({id:id,method:'addMayaTransferBySession',payload:payload});
+    mayaTransferStatus.textContent=navigator.onLine?'Saved. Syncing…':'Saved offline. Waiting to sync.';
+    mayaTransferStatus.className='status ok';
+    cancelMayaTransferBtn.click();
   });
   mayaTransferHistoryList.addEventListener('click',e=>{const b=e.target.closest('[data-remove-maya-transfer]');if(!b)return;const id=b.getAttribute('data-remove-maya-transfer');if(!confirm('Reverse this wallet transfer? Linked Cash Counter pieces will also be reversed.'))return;google.script.run.withSuccessHandler(d=>{mayaTransfers=(d&&d.transfers)||mayaTransfers.filter(x=>String(x.id)!==String(id));if(d&&d.capital)renderCapital(d.capital);renderMayaTransfers();renderCapitalActivity();saveLocalTrackerCache();if(typeof window.loadCashCounterLatestStatus==='function')setTimeout(window.loadCashCounterLatestStatus,100);}).withFailureHandler(e=>alert((e&&e.message)||'Could not reverse transfer.')).deleteMayaTransferBySession(getSessionToken(),id);});
 
@@ -8331,28 +8318,22 @@ body > .hero{
         received:{...cashPiecesReceived}, given:{...cashPiecesGiven}, clientActionId:id
       };
 
-      if(!navigator.onLine){
+      try{applyLocalMoveMoney(payload,id);}catch(e){
         save.disabled=false; save.textContent='Save Cash Pieces';
-        if(stat){stat.textContent='Move Money needs an internet connection so the wallet and Cash Counter are saved together.';stat.className='err';}
+        if(stat){stat.textContent=(e&&e.message)||'Could not save transfer.';stat.className='err';}
         return;
       }
 
-      if(stat){stat.textContent='Saving transfer and Cash Counter…';stat.className='';}
-      google.script.run
-        .withSuccessHandler(data=>{
-          save.disabled=false; save.textContent='Saved';
-          if(data&&data.transfer) replacePendingById(mayaTransfers,id,data.transfer);
-          if(data&&data.capital) renderCapital(data.capital);
-          renderMayaTransfers(); renderCapitalActivity(); saveLocalTrackerCache();
-          if(stat){stat.textContent='Transfer and Cash Counter saved.';stat.className='ok';}
-          if(typeof window.loadCashCounterLatestStatus==='function') setTimeout(window.loadCashCounterLatestStatus,100);
-          setTimeout(closeCashPiecesRecorder,300);
-        })
-        .withFailureHandler(err=>{
-          save.disabled=false; save.textContent='Save Cash Pieces';
-          if(stat){stat.textContent=(err&&err.message)||'Could not save transfer.';stat.className='err';}
-        })
-        .addMayaTransferWithCashPiecesBySession(getSessionToken(),payload);
+      try{
+        window.dispatchEvent(new CustomEvent('gcash-local-cash-pieces',{
+          detail:{transactionId:id,received:{...cashPiecesReceived},given:{...cashPiecesGiven},expectedCashMovement:(tx.toWallet==='Cash on Hand'?Number(tx.amount||0):-Number(tx.amount||0))}
+        }));
+      }catch(e){}
+
+      queueOfflineAction({id:id,method:'addMayaTransferWithCashPiecesBySession',payload:payload});
+      save.disabled=false; save.textContent='Saved';
+      if(stat){stat.textContent=navigator.onLine?'Saved. Syncing transfer and Cash Counter…':'Saved offline. Waiting to sync.';stat.className='ok';}
+      setTimeout(closeCashPiecesRecorder,100);
       return;
     }
 
@@ -10870,6 +10851,146 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     try{if(typeof window.__loadGcashCashPiecesHistory==='function')window.__loadGcashCashPiecesHistory()}catch(err){}
     try{if(typeof window.loadCashCounterLatestStatus==='function')window.loadCashCounterLatestStatus()}catch(err){}
     alert(navigator.onLine?'Change Money undone on this device. The reversal will sync in the background.':'Change Money undone on this device. The reversal will sync when online.');
+  });
+})();
+</script>
+
+
+<style id="edit-balances-addon-style">
+#editBalancesModal .edit-balance-wallets{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+#editBalancesModal .edit-wallet-choice{border:1px solid #d0d5dd;background:#fff;border-radius:14px;padding:12px;font-weight:800;cursor:pointer}
+#editBalancesModal .edit-wallet-choice.active{border:2px solid #155eef;background:#eff6ff;color:#0b4fc1}
+#editBalancesModal .edit-current{font-size:13px;color:#667085;margin-top:4px}
+#editBalancesModal .edit-warning{font-size:12px;line-height:1.45;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:10px;margin:10px 0;color:#9a3412}
+</style>
+
+<div id="editBalancesModal" class="capital-modal" aria-hidden="true" style="display:none">
+  <div class="capital-modal-card">
+    <div class="capital-modal-title">Edit Balances</div>
+    <div class="capital-modal-help">Choose one wallet and enter its exact new balance.</div>
+
+    <div class="edit-balance-wallets">
+      <button type="button" class="edit-wallet-choice active" data-edit-wallet="Cash on Hand">Cash on Hand<div class="edit-current" id="editCurrentCash">₱0.00</div></button>
+      <button type="button" class="edit-wallet-choice" data-edit-wallet="GCash">GCash<div class="edit-current" id="editCurrentGcash">₱0.00</div></button>
+      <button type="button" class="edit-wallet-choice" data-edit-wallet="Maya">Maya<div class="edit-current" id="editCurrentMaya">₱0.00</div></button>
+      <button type="button" class="edit-wallet-choice" data-edit-wallet="MariBank">MariBank<div class="edit-current" id="editCurrentMaribank">₱0.00</div></button>
+    </div>
+
+    <label class="label" for="editBalanceAmount">New exact balance</label>
+    <input id="editBalanceAmount" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Enter new balance">
+
+    <div class="edit-warning">
+      Editing Cash on Hand will NOT change your Cash Counter bills and coins. Every edit is saved in Wallet History.
+    </div>
+
+    <div id="editBalanceStatus" class="status"></div>
+    <div class="capital-modal-actions">
+      <button type="button" id="cancelEditBalanceBtn" class="btn">Cancel</button>
+      <button type="button" id="saveEditBalanceBtn" class="btn primary">Save Balance</button>
+    </div>
+  </div>
+</div>
+
+<script id="edit-balances-addon-script">
+(function(){
+  const byId=id=>document.getElementById(id);
+  const modal=byId('editBalancesModal');
+  const openBtn=byId('editBalancesBtn');
+  const cancelBtn=byId('cancelEditBalanceBtn');
+  const saveBtn=byId('saveEditBalanceBtn');
+  const input=byId('editBalanceAmount');
+  const stat=byId('editBalanceStatus');
+  const choices=[...document.querySelectorAll('#editBalancesModal .edit-wallet-choice')];
+  let selected='Cash on Hand';
+
+  function balances(){
+    const c=(typeof capitalData==='object' && capitalData) ? capitalData : {};
+    return {
+      'Cash on Hand':Number(c.cashOnHand||0),
+      'GCash':Number(c.gcashBalance||0),
+      'Maya':Number(c.mayaBalance||0),
+      'MariBank':Number(c.maribankBalance||0)
+    };
+  }
+  function moneyLocal(n){
+    try{return money(Number(n)||0);}catch(e){return '₱'+(Number(n)||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
+  }
+  function refresh(){
+    const b=balances();
+    byId('editCurrentCash').textContent=moneyLocal(b['Cash on Hand']);
+    byId('editCurrentGcash').textContent=moneyLocal(b.GCash);
+    byId('editCurrentMaya').textContent=moneyLocal(b.Maya);
+    byId('editCurrentMaribank').textContent=moneyLocal(b.MariBank);
+    choices.forEach(x=>x.classList.toggle('active',x.dataset.editWallet===selected));
+    input.value=b[selected].toFixed(2);
+  }
+  function close(){
+    modal.classList.remove('show');
+    modal.style.display='none';
+    modal.setAttribute('aria-hidden','true');
+    stat.textContent='';
+  }
+  if(openBtn) openBtn.addEventListener('click',()=>{
+    selected='Cash on Hand';
+    refresh();
+    modal.classList.add('show');
+    modal.style.display='flex';
+    modal.setAttribute('aria-hidden','false');
+    setTimeout(()=>input.focus(),50);
+  });
+  choices.forEach(btn=>btn.addEventListener('click',()=>{
+    selected=btn.dataset.editWallet;
+    refresh();
+    input.focus();
+    input.select();
+  }));
+  cancelBtn.addEventListener('click',close);
+  modal.addEventListener('click',e=>{if(e.target===modal)close();});
+
+  saveBtn.addEventListener('click',()=>{
+    const b=balances();
+    const oldValue=Number(b[selected]||0);
+    const newValue=Number(input.value);
+    if(!isFinite(newValue)||newValue<0){
+      stat.textContent='Enter a valid balance of 0 or higher.';
+      stat.className='status err';
+      return;
+    }
+    if(Math.abs(newValue-oldValue)<=0.005){
+      stat.textContent='No change to save.';
+      stat.className='status';
+      return;
+    }
+    const warning=selected==='Cash on Hand'
+      ? '\n\nCash Counter will stay unchanged.'
+      : '';
+    if(!confirm('Change '+selected+' from '+moneyLocal(oldValue)+' to '+moneyLocal(newValue)+'?'+warning)) return;
+
+    saveBtn.disabled=true;
+    stat.textContent='Saving…';
+    stat.className='status';
+    const id='BALADJ_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+
+    google.script.run
+      .withSuccessHandler(data=>{
+        saveBtn.disabled=false;
+        if(data&&data.capital && typeof renderCapital==='function') renderCapital(data.capital);
+        if(typeof loadCapitalMovements==='function') loadCapitalMovements();
+        if(typeof window.loadCashCounterLatestStatus==='function') setTimeout(window.loadCashCounterLatestStatus,100);
+        try{saveLocalTrackerCache();}catch(e){}
+        stat.textContent='Balance updated and saved to Wallet History.';
+        stat.className='status ok';
+        setTimeout(close,450);
+      })
+      .withFailureHandler(err=>{
+        saveBtn.disabled=false;
+        stat.textContent=(err&&err.message)||'Could not update balance.';
+        stat.className='status err';
+      })
+      .setExactWalletBalanceBySession(
+        (typeof getSessionToken==='function'?getSessionToken():''),
+        {wallet:selected,newBalance:newValue,clientActionId:id}
+      );
   });
 })();
 </script>
