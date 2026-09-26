@@ -4787,12 +4787,12 @@ body > .hero{
 #cashCounterNative #editInventoryGrid .edit-piece-middle small{font-size:10px!important;font-weight:800!important;color:#0b5ed7!important;line-height:1.1!important}
 #cashCounterNative #editInventoryGrid .cc-piece-amount{display:block!important;text-align:right!important;font-size:13px!important;overflow-wrap:anywhere}
 </style>
-<style id="cash-in-count-update">.cash-in-four-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.cash-in-four-fields>div{padding:9px;border:1px solid #e4e7ec;border-radius:9px;display:flex;flex-direction:column;gap:4px}.cash-in-four-fields span{font-size:11px;color:#667085}.cash-in-four-fields strong{font-size:14px}</style><style>body{padding-bottom:170px!important}</style>
-</head>
+<style id="cash-in-count-update">.cash-in-four-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.cash-in-four-fields>div{padding:9px;border:1px solid #e4e7ec;border-radius:9px;display:flex;flex-direction:column;gap:4px}.cash-in-four-fields span{font-size:11px;color:#667085}.cash-in-four-fields strong{font-size:14px}</style></head>
 <body>
 <main class="app">
-  <section class="hero">
-    <h1 class="cash-app-title"><span class="tracker-title-line">GCash Tracker</span></h1>
+  <section class="hero" style="position:relative">
+    <h1 class="cash-app-title"><span class="tracker-title-line">GCash Tracker</span><button id="manualSyncNowBtn" type="button" aria-label="Sync to Google Sheets"
+style="position:absolute;right:14px;top:14px;border:1px solid rgba(255,255,255,.75);border-radius:10px;background:rgba(255,255,255,.16);color:#fff;padding:9px 14px;font-size:14px;font-weight:900;line-height:1;z-index:10">Sync</button></h1>
     <p>Synced across your phones and computers</p>
     <div class="history-mini">
 
@@ -10926,7 +10926,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
 <script id="manual-sync-mode-addon">
 (function(){
   const btn=document.getElementById('manualSyncNowBtn');
-  const hint=document.getElementById('manualSyncFixedStatus') || document.getElementById('manualSyncHint');
+  const hint=document.getElementById('manualSyncHint');
   if(!btn) return;
 
   function pendingCount(){
@@ -10994,12 +10994,5 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   window.addEventListener('storage',paint);
 })();
 </script>
-
-
-<div id="manualSyncFixedBar" style="position:fixed;left:12px;right:12px;bottom:86px;z-index:999999;background:#ffffff;border:1px solid #cfe0f5;border-radius:18px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.14)">
-  <div id="manualSyncFixedStatus" style="font-size:12px;font-weight:800;color:#64748b;text-align:center;margin-bottom:7px">Checking local records…</div>
-  <button id="manualSyncNowBtn" type="button" style="display:block;width:100%;min-height:50px;border:0;border-radius:14px;background:#1463df;color:#fff;font-size:16px;font-weight:900">Sync to Google Sheets</button>
-</div>
-
 </body>
 </html>
