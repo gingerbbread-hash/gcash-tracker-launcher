@@ -6492,54 +6492,72 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
     if(!t)return;
     if(!confirm('Reverse this wallet transfer? Linked Cash Counter pieces will also be reversed.'))return;
 
-    // Reverse Cash Counter denominations immediately on this device.
-    if(t.fromWallet==='Cash on Hand'||t.toWallet==='Cash on Hand'){
-      const ok=(typeof window.reverseLocalCashPiecesForTransaction==='function')
-        ? window.reverseLocalCashPiecesForTransaction(id) : false;
-      if(!ok){
-        alert('Cash Counter could not safely reverse the exact bills/coins. Nothing was reversed.');
+    let q=loadOfflineActionQueue();
+    const pendingAdd=q.find(a=>String(a.id||'')===id &&
+      (a.method==='addMayaTransferBySession'||a.method==='addMayaTransferWithCashPiecesBySession'));
+    const transferPayload=(pendingAdd&&pendingAdd.payload)||{};
+    const touchesCash=t.fromWallet==='Cash on Hand'||t.toWallet==='Cash on Hand';
+
+    if(touchesCash){
+      let reversed=false;
+      if(typeof window.reverseLocalCashPiecesForTransaction==='function'){
+        reversed=window.reverseLocalCashPiecesForTransaction(id)===true;
+      }
+      // Fallback: use the exact denomination payload stored with Move Money.
+      if(!reversed && transferPayload && (transferPayload.received||transferPayload.given)){
+        const d={
+          transactionId:id,
+          transactionType:'Move Money',
+          received:{...(transferPayload.given||{})},
+          given:{...(transferPayload.received||{})}
+        };
+        if(typeof applyLocalCashPiecesNow==='function'){
+          reversed=applyLocalCashPiecesNow(d)===true;
+          // This is a reversal, not a new business transaction. Remove the temporary
+          // reversal history row immediately so no duplicate record is created.
+          try{
+            const key='gcashCashCounterHistoryV1';
+            let rows=JSON.parse(localStorage.getItem(key)||'[]');
+            if(Array.isArray(rows)){
+              rows=rows.filter(r=>String((r&&r.id)||'')!=='LOCAL_PIECES_'+id &&
+                String(((r&&r.details)||{}).transactionId||'')!==id);
+              localStorage.setItem(key,JSON.stringify(rows));
+            }
+          }catch(_e){}
+        }
+      }
+      if(!reversed){
+        alert('Cash Counter could not find the exact bills/coins for this transfer. Nothing was reversed.');
         return;
       }
     }
 
-    // Reverse the wallet movement against CURRENT balances so later records are preserved.
     const amount=Number(t.amount||0);
     const key=w=>w==='GCash'?'gcashBalance':w==='Maya'?'mayaBalance':w==='MariBank'?'maribankBalance':'cashOnHand';
     const c={...(capitalData||{})};
     c[key(t.fromWallet)]=Number(c[key(t.fromWallet)]||0)+amount;
     c[key(t.toWallet)]=Number(c[key(t.toWallet)]||0)-amount;
-    c.cashOutAvailable=Math.max(Number(c.cashOnHand||0),0);
-    capitalData=c;
-    renderCapital(c);
+    capitalData=c; renderCapital(c);
 
     mayaTransfers=mayaTransfers.filter(x=>String(x.id||'')!==id);
-    renderMayaTransfers();
-    renderCapitalActivity();
-    saveLocalTrackerCache();
+    renderMayaTransfers(); renderCapitalActivity(); saveLocalTrackerCache();
 
-    // If the transfer has never been synced, cancel its queued ADD completely.
-    let q=loadOfflineActionQueue();
-    const wasPending=q.some(a=>
-      String(a.id||'')===id &&
-      (a.method==='addMayaTransferBySession'||a.method==='addMayaTransferWithCashPiecesBySession')
-    );
-    if(wasPending){
+    if(pendingAdd){
+      // Never reached Google Sheets: cancel the ADD. No DELETE is queued.
       q=q.filter(a=>String(a.id||'')!==id);
       saveOfflineActionQueue(q);
     }else{
-      // Already in Google Sheets: queue the server reversal for the next manual Sync.
-      queueOfflineAction({
-        id:'DELMOVE_'+id,
-        method:'deleteMayaTransferBySession',
-        payload:{id:id}
-      });
+      // It may already exist on Google Sheets. Queue one idempotent server reversal.
+      if(!q.some(a=>a.method==='deleteMayaTransferBySession' &&
+                    String((a.payload||{}).id||'')===id)){
+        q.push({id:'DELMOVE_'+id,method:'deleteMayaTransferBySession',payload:{id:id},queuedAt:Date.now()});
+        saveOfflineActionQueue(q);
+      }
     }
-
     try{removeQueuedCashPieces(id);}catch(_e){}
     try{if(typeof window.gcashRefreshManualSync==='function')window.gcashRefreshManualSync();}catch(_e){}
-    mayaTransferStatus.textContent=wasPending
-      ? 'Transfer reversed locally.'
-      : 'Transfer reversed locally. Google Sheets reversal is waiting for Sync.';
+    try{if(typeof window.loadCashCounterLatestStatus==='function')window.loadCashCounterLatestStatus();}catch(_e){}
+    mayaTransferStatus.textContent=pendingAdd?'Transfer reversed locally.':'Transfer reversed locally. Google Sheets reversal is waiting for Sync.';
     mayaTransferStatus.className='status ok';
   });
 
@@ -11057,5 +11075,54 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   window.addEventListener('storage',paint);
 })();
 </script>
+
+<script id="repair-known-move-money-shortage-v1">
+(function(){
+  const FLAG='gcashRepairMoveMoney1000_20260926_v1';
+  if(localStorage.getItem(FLAG)==='done') return;
+
+  function tryRepair(){
+    try{
+      const s=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null');
+      if(!s||!s.pieces) return false;
+      const tracker=(typeof capitalData!=='undefined'&&capitalData)?Number(capitalData.cashOnHand||0):NaN;
+      const physical=typeof cashCounterPiecesTotal==='function'?cashCounterPiecesTotal(s.pieces):NaN;
+      if(!Number.isFinite(tracker)||!Number.isFinite(physical)) return false;
+
+      // Repair only the exact known state: Cash Counter is ₱1,000 below Cash on Hand.
+      if(Math.abs((tracker-physical)-1000)>0.01) return false;
+
+      const pieces={...s.pieces};
+      // Existing Cash Counter denomination key for ₱1,000.
+      const thousandKey=(typeof D!=='undefined'&&Array.isArray(D))
+        ? ((D.find(x=>Number(x[1])===1000)||[])[0]||'1000')
+        : '1000';
+      pieces[thousandKey]=Number(pieces[thousandKey]||0)+1;
+      const newPhysical=typeof cashCounterPiecesTotal==='function'
+        ? cashCounterPiecesTotal(pieces) : physical+1000;
+
+      const fixed={...s,pieces,physicalCash:newPhysical,physicalTotal:newPhysical,
+        trackerCashOnHand:tracker,difference:newPhysical-tracker,
+        status:Math.abs(newPhysical-tracker)<=0.01?'MATCHED':'REVIEW',_localPending:true};
+      localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(fixed));
+      localStorage.setItem(FLAG,'done');
+
+      if(typeof current!=='undefined') current=fixed;
+      try{renderCashCounterInventory(fixed);}catch(_e){}
+      try{renderSummary(fixed);}catch(_e){}
+      try{sendCashCounterStatusToTracker();}catch(_e){}
+      try{if(typeof window.loadCashCounterLatestStatus==='function')window.loadCashCounterLatestStatus();}catch(_e){}
+      return true;
+    }catch(e){return false;}
+  }
+
+  let tries=0;
+  const timer=setInterval(()=>{
+    tries++;
+    if(tryRepair()||tries>20) clearInterval(timer);
+  },250);
+})();
+</script>
+
 </body>
 </html>
