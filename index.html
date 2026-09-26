@@ -8791,11 +8791,23 @@ body > .hero{
           history = history.filter(x => String(x.id) !== String(id));
           window.__gcashTransactions = history;
           render();
-          loadCapital();
 
-          if(typeof window.loadCashCounterLatestStatus === 'function'){
-            setTimeout(window.loadCashCounterLatestStatus, 250);
-          }
+          // V7 INSTANT UNDO REFRESH:
+          // The server has already reversed the transaction and its exact Money Count.
+          // Immediately fetch BOTH authoritative wallet balances and Cash Counter inventory
+          // so the user does not need to close/reopen the app to see BALANCES OK.
+          loadCapital();
+          try{
+            // Cash Counter's load() performs a real getCashCounter() server fetch.
+            // loadCashCounterLatestStatus() is local-only and was the reason the old
+            // Cash Counter could remain visible after a successful server Undo.
+            setTimeout(function(){
+              try{ if(typeof load==='function') load(); }
+              catch(_e){
+                if(typeof window.loadCashCounterLatestStatus==='function') window.loadCashCounterLatestStatus();
+              }
+            }, 80);
+          }catch(_e){}
         }
 
         deleteTxYes.disabled = false;
@@ -11057,5 +11069,6 @@ Undo/Delete: reverses linked Cash Counter pieces using the same record ID.
 })();
 </script>
 
+<!-- V7: immediate authoritative Cash Counter + capital refresh after successful Undo -->
 </body>
 </html>
