@@ -5069,8 +5069,7 @@ body > .hero{
         <strong>Move Money</strong>
         <small>Cash · GCash · Maya · MariBank</small>
       </button>
-      
-    </div>
+</div>
 
     <div class="current-capital-focus">
       <span>Current Capital</span>
@@ -5141,6 +5140,8 @@ body > .hero{
     <div class="small-note" style="margin-top:7px">The calculator works without signing in. Sign in to save or view your records.</div>
   </div>
   <div id="syncStatus" class="sync"></div>
+  <button id="manualSyncNowBtn" type="button" class="btn btn-primary" style="width:100%;margin:8px 0 6px;font-weight:900">Sync to Google Sheets</button>
+  <div id="manualSyncHint" class="small-note" style="margin-bottom:7px;text-align:center">Daily records stay on this device until you tap Sync.</div>
   <button id="pendingSyncBtn" type="button" class="pending-sync-btn" style="display:none">Pending Sync</button>
   <div id="pendingSyncModal" class="pending-sync-modal" aria-hidden="true">
     <div class="pending-sync-card">
@@ -5630,7 +5631,3183 @@ body > .hero{
 })();
 </script>
 
+<script>
+(function(){
+  const BOOTSTRAP_HANDOFF = '';
+  const BOOTSTRAP_DEVICE = '';
+  const APP_URL = '';
+  const $ = id => document.getElementById(id);
+  const syncStatus = $('syncStatus');
+  const googleSignInBtn = $('googleSignInBtn');
+  const signedOutAuth = $('signedOutAuth');
+  const signedInAuth = $('signedInAuth');
+  const signedInEmail = $('signedInEmail');
+  const accountMenuBtn = $('accountMenuBtn');
+  const accountPopover = $('accountPopover');
+  const signOutBtn = $('signOutBtn');
+  const claimLegacyBtn = $('claimLegacyBtn');
+  const pairHomeBtn = $('pairHomeBtn');
+  const createPairingCodeBtn = $('createPairingCodeBtn');
+  const createdPairingCodeWrap = $('createdPairingCodeWrap');
+  const createdPairingCode = $('createdPairingCode');
+  const createPairingCodeStatus = $('createPairingCodeStatus');
+  const authStatus = $('authStatus');
+  const txType = $('txType'), chargeMode = $('chargeMode'), amount = $('amount'), cashReceived = $('cashReceived');
+  const customerHistoryList = $('customerHistoryList'), customerHistoryEmpty = $('customerHistoryEmpty');
+  const fee = $('fee'), total = $('total'), change = $('change'), totalLabel = $('totalLabel');
+  const cashReceivedLabel = $('cashReceivedLabel'), changeLabel = $('changeLabel');
+  const noExactCashWrap = $('noExactCashWrap'), noExactCashBtn = $('noExactCashBtn');
+  let noExactCashMode = false;
+  const form = $('txForm'), status = $('status'), historyEl = $('history'), emptyEl = $('empty');
+  const countText = $('countText'), sumFeesEl = $('sumFees'), sumAmountEl = $('sumAmount');
+  const sumTotalEl = $('sumTotal'), sumCashInEl = $('sumCashIn'), sumCashOutEl = $('sumCashOut');
+  const earningsLabel = $('earningsLabel'), refreshBtn = $('refreshBtn'), clearBtn = $('clearBtn');
+  const clearInputsBtn = $('clearInputsBtn');
+  const deleteTxModal = $('deleteTxModal');
+  const deleteTxYes = $('deleteTxYes');
+  const deleteTxNo = $('deleteTxNo');
+  let pendingDeleteTxId = '';
+  let pendingDeleteKind = 'transaction';
+  const periodButtons = document.querySelectorAll('.period-btn');
+  const typeFilterButtons = document.querySelectorAll('.type-filter-btn');
+  const txTypeButtons = [];
+  const deductToggleBtn = $('deductToggleBtn');
+  const typeModal = $('typeModal');
+  const confirmCashIn = $('confirmCashIn');
+  const confirmCashOut = $('confirmCashOut');
+  const cancelTypeChoice = $('cancelTypeChoice');
+  const typeChoiceActions = $('typeChoiceActions');
+  const feeLocationStep = $('feeLocationStep');
+  const feeToGcash = $('feeToGcash');
+  const feeToMaya = $('feeToMaya');
+  const feeToMaribank = $('feeToMaribank');
+  const feeToCash = $('feeToCash');
+  const cashInWalletStep = $('cashInWalletStep');
+  const cashInFromGcash = $('cashInFromGcash');
+  const cashInFromMaya = $('cashInFromMaya');
+  const cashInFromMaribank = $('cashInFromMaribank');
+  const cashOutWalletStep = $('cashOutWalletStep');
+  const cashOutToGcash = $('cashOutToGcash');
+  const cashOutToMaya = $('cashOutToMaya');
+  let selectedTransactionWallet = '';
+  const adjustCapitalBtn = $('adjustCapitalBtn');
+  const capitalModal = $('capitalModal');
+  const capitalCashInput = $('capitalCashInput');
+  const capitalGcashInput = $('capitalGcashInput');
+  const capitalSaripayInput = $('capitalSaripayInput');
+  const capitalModalStatus = $('capitalModalStatus');
+  const saveCapitalBtn = $('saveCapitalBtn');
+  const cancelCapitalBtn = $('cancelCapitalBtn');
+  const capitalStatus = $('capitalStatus');
+  const cashOutAvailable = $('cashOutAvailable');
+  const cashInAvailable = $('cashInAvailable');
+  const mayaAvailable=$('mayaAvailable'), homeMayaBalance=$('homeMayaBalance'), capitalMayaInput=$('capitalMayaInput');
+  const maribankAvailable=$('maribankAvailable'), homeMaribankBalance=$('homeMaribankBalance'), capitalMaribankInput=$('capitalMaribankInput');
+  const mayaTransferBtn=$('mayaTransferBtn'), mayaTransferModal=$('mayaTransferModal'), mayaTransferAmount=$('mayaTransferAmount'), mayaTransferStatus=$('mayaTransferStatus');
+  const transferFromWallet=$('transferFromWallet'), transferToWallet=$('transferToWallet'), cancelMayaTransferBtn=$('cancelMayaTransferBtn'), saveMayaTransferBtn=$('saveMayaTransferBtn');
+  const mayaTransferHistoryToggle=$('mayaTransferHistoryToggle'), mayaTransferHistorySection=$('mayaTransferHistorySection'), mayaTransferHistoryEmpty=$('mayaTransferHistoryEmpty'), mayaTransferHistoryList=$('mayaTransferHistoryList');
+  let mayaTransfers=[];
+  let capitalMovements=[];
+  const availableEarningsEl=$('availableEarnings'), withdrawnEarningsEl=$('withdrawnEarnings');
+  const addCapitalActionBtn=$('addCapitalActionBtn'), withdrawCapitalActionBtn=$('withdrawCapitalActionBtn'), withdrawEarningsActionBtn=$('withdrawEarningsActionBtn');
+  const capitalActionModal=$('capitalActionModal'), capitalActionTitle=$('capitalActionTitle'), capitalActionHelp=$('capitalActionHelp');
+  const capitalActionAmount=$('capitalActionAmount'), capitalActionNote=$('capitalActionNote'), capitalActionAvailable=$('capitalActionAvailable'), capitalActionStatus=$('capitalActionStatus');
+  const saveCapitalActionBtn=$('saveCapitalActionBtn'), cancelCapitalActionBtn=$('cancelCapitalActionBtn');
+  const capitalActivityToggle=$('capitalActivityToggle'), capitalActivitySection=$('capitalActivitySection'), capitalActivityEmpty=$('capitalActivityEmpty'), capitalActivityList=$('capitalActivityList');
+  const capitalWalletChoices=[...document.querySelectorAll('[data-capital-wallet]')];
+  let capitalActionType='ADD_CAPITAL', capitalActionWallet='Cash on Hand';
+  const saripayAvailable = $('saripayAvailable');
+  const saripayTransferBtn = $('saripayTransferBtn');
+  const saripayTransferModal = $('saripayTransferModal');
+  const saripayTransferAmount = $('saripayTransferAmount');
+  const transferNoDeduction = $('transferNoDeduction');
+  const transferWithDeduction = $('transferWithDeduction');
+  const saripayTransferReceived = $('saripayTransferReceived');
+  const saripayTransferStatus = $('saripayTransferStatus');
+  const saveSaripayTransferBtn = $('saveSaripayTransferBtn');
+  const cancelSaripayTransferBtn = $('cancelSaripayTransferBtn');
+  let saripayTransferDeduction = false;
+  const totalCapital = $('totalCapital');
+  const netEarnings = $('netEarnings');
+  const expectedTotalMoney = $('expectedTotalMoney');
+  const capitalExpensesTotal = $('capitalExpensesTotal');
+  const addExpenseBtn = $('addExpenseBtn');
+  const expenseHistoryToggle = $('expenseHistoryToggle');
+  const expenseHistorySection = $('expenseHistorySection');
+  const expenseHistoryList = $('expenseHistoryList');
+  const expenseHistoryEmpty = $('expenseHistoryEmpty');
+  const expenseModal = $('expenseModal');
+  const expenseNameInput = $('expenseNameInput');
+  const expenseAmountInput = $('expenseAmountInput');
+  const expenseNoteInput = $('expenseNoteInput');
+  const expensePaidCash = $('expensePaidCash');
+  const expensePaidGcash = $('expensePaidGcash');
+  const expenseModalStatus = $('expenseModalStatus');
+  const saveExpenseBtn = $('saveExpenseBtn');
+  const cancelExpenseBtn = $('cancelExpenseBtn');
+  let capitalData = null;
+  let expenses = [];
+  let transfers = [];
+  let expensePaidFrom = 'Cash';
+  let pendingPayload = null;
+  let transactionSaving = false;
+  const recordTransactionBtn = form ? form.querySelector('.action-record') : null;
 
+  let history = [];
+  window.__gcashTransactions = history;
+  let selectedPeriod = 'today';
+  let selectedTypeFilter = 'all';
+  let selectedSpecificDate = '';
+  let calMonth = new Date(new Date().getFullYear(),new Date().getMonth(),1);
+  let calSelected = '';
+  let unlocked = true;
+
+  const money = n => new Intl.NumberFormat('en-PH',{style:'currency',currency:'PHP'}).format(Number(n)||0);
+  const calcFee = v => v > 0 ? Math.ceil(v/500)*5 : 0;
+
+  function updateChangeStyle(value){
+    const box = change.closest('.result-change');
+    if(!box) return;
+    box.classList.toggle('no-change', !(Number(value) > 0));
+  }
+
+  function preview(){
+    const v = Number(amount.value), c = Number(cashReceived.value);
+    const isDeduct = chargeMode.value === 'deduct';
+
+    noExactCashWrap.classList.toggle('show', isDeduct);
+    if(!isDeduct && noExactCashMode){
+      noExactCashMode=false;
+      noExactCashBtn.classList.remove('active');
+      noExactCashBtn.setAttribute('aria-pressed','false');
+    }
+    cashReceivedLabel.textContent = noExactCashMode && isDeduct ? 'Cash Given' : 'Cash received';
+    changeLabel.textContent = noExactCashMode && isDeduct ? 'Change to Receive' : 'Change';
+    totalLabel.textContent = isDeduct ? 'Cash In/Out Amount' : 'Total';
+
+    if(!amount.value || !isFinite(v) || v <= 0){
+      fee.textContent = money(0);
+      total.textContent = money(0);
+      change.textContent = money(0);
+      updateChangeStyle(0);
+      return;
+    }
+
+    const f = calcFee(v);
+
+    if(isDeduct){
+      const net = Math.max(v - f, 0);
+      const basis = noExactCashMode ? net : v;
+      const ch = Math.max((isFinite(c)?c:0)-basis,0);
+      fee.textContent = money(f);
+      total.textContent = money(net);
+      change.textContent = money(ch);
+      updateChangeStyle(ch);
+    } else {
+      const t = v + f;
+      const ch = Math.max((isFinite(c)?c:0)-t,0);
+      fee.textContent = money(f);
+      total.textContent = money(t);
+      change.textContent = money(ch);
+      updateChangeStyle(ch);
+    }
+  }
+
+  function txDate(tx){ return new Date(tx.timestamp); }
+  function startToday(){ const d=new Date(); d.setHours(0,0,0,0); return d; }
+  function startWeek(){ const d=startToday(), day=d.getDay(), diff=day===0?6:day-1; d.setDate(d.getDate()-diff); return d; }
+  function startMonth(){ const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),1); }
+  function startYear(){ const d=new Date(); return new Date(d.getFullYear(),0,1); }
+  function filtered(){
+    let shown = history;
+
+    if(selectedSpecificDate){
+      shown = shown.filter(x => txLocalDateKey(x) === selectedSpecificDate);
+    } else if(selectedPeriod!=='all'){
+      const s = selectedPeriod==='today'?startToday():selectedPeriod==='week'?startWeek():selectedPeriod==='month'?startMonth():startYear();
+      shown = shown.filter(x => txDate(x) >= s);
+    }
+
+    if(selectedTypeFilter!=='all'){
+      shown = shown.filter(x => x.type === selectedTypeFilter);
+    }
+
+    return shown;
+  }
+  function periodName(){
+    if(selectedSpecificDate){
+      const parts=selectedSpecificDate.split('-').map(Number);
+      const d=new Date(parts[0],parts[1]-1,parts[2]);
+      return d.toLocaleDateString('en-PH',{month:'long',day:'numeric',year:'numeric'});
+    }
+    return selectedPeriod==='today'?'Daily':selectedPeriod==='week'?'Weekly':selectedPeriod==='month'?'Monthly':selectedPeriod==='year'?'Yearly':'All Time';
+  }
+
+  function dateKey(obj){
+    const raw=obj && (obj.timestamp || obj.date);
+    if(!raw) return '';
+    const d=new Date(raw); if(isNaN(d.getTime())) return '';
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  function balanceMoveHtml(name, previous, latest){
+    if(previous===null || previous===undefined || latest===null || latest===undefined || !isFinite(Number(previous)) || !isFinite(Number(latest))) return '';
+    const p=Number(previous), n=Number(latest), d=n-p;
+    const sign=d>0?'+':d<0?'−':'';
+    const cls=d>0?'pos':d<0?'neg':'';
+    return `<div class="balance-move">
+      <div class="balance-move-name">${escapeHtml(name)}</div>
+      <div class="balance-flow-grid">
+        <div class="balance-cell">
+          <span class="balance-cell-value balance-prev">${money(p)}</span>
+          <span class="balance-cell-label">BEFORE</span>
+        </div>
+        <div class="balance-cell">
+          <span class="balance-cell-value balance-delta ${cls}">${sign}${money(Math.abs(d))}</span>
+          <span class="balance-cell-label">AMOUNT</span>
+        </div>
+        <div class="balance-cell">
+          <span class="balance-cell-value balance-new">${money(n)}</span>
+          <span class="balance-cell-label">AFTER</span>
+        </div>
+      </div>
+    </div>`;
+  }
+  function transactionBalanceHtml(tx){
+    const wallet=(tx.walletDestination||'GCash');
+    let walletName='GCash', before=tx.previousGcash, after=tx.newGcash;
+    if(wallet==='Maya'){ walletName='Maya'; before=tx.previousMaya; after=tx.newMaya; }
+    else if(wallet==='MariBank'){ walletName='MariBank'; before=tx.previousMaribank; after=tx.newMaribank; }
+    else if(wallet==='Saripay'){ walletName='SariPay'; before=tx.previousSaripay; after=tx.newSaripay; }
+
+    const valid=v=>v!==null && v!==undefined && v!=='';
+    const finalRow=(label,value)=>valid(value)
+      ? `<div class="pro-final-row"><span>${label}</span><strong>${money(value)}</strong></div>` : '';
+    const detailRow=(label,a,b)=>valid(a)&&valid(b)
+      ? `<div class="pro-detail-row"><span>${label}</span><strong>${money(a)} <b>→</b> ${money(b)}</strong></div>` : '';
+
+    const id='txd_'+String(tx.id||Math.random()).replace(/[^a-zA-Z0-9_-]/g,'');
+    return `<div class="pro-balance">
+      <div class="pro-balance-title">BALANCE AFTER TRANSACTION</div>
+      ${finalRow(walletName,after)}
+      ${finalRow('Cash on Hand',tx.newCash)}
+      <button type="button" class="pro-detail-toggle" onclick="toggleTxBalanceDetails('${id}',this)">View details <span>›</span></button>
+      <div id="${id}" class="pro-detail-panel">
+        <div class="pro-detail-title">BEFORE → AFTER</div>
+        ${detailRow(walletName,before,after)}
+        ${detailRow('Cash on Hand',tx.previousCash,tx.newCash)}
+      </div>
+    </div>`;
+  }
+  function toggleTxBalanceDetails(id,btn){
+    const panel=document.getElementById(id);
+    if(!panel)return;
+    const open=panel.classList.toggle('show');
+    btn.innerHTML=open?'Hide details <span>⌄</span>':'View details <span>›</span>';
+  }
+  function transferBalanceHtml(t){
+    const rows=balanceMoveHtml('Saripay',t.previousSaripay,t.newSaripay)+balanceMoveHtml('GCash',t.previousGcash,t.newGcash);
+    return rows?`<div class="balance-moves">${rows}</div>`:'';
+  }
+  function transactionWalletLabel(tx){
+    return tx.walletDestination || 'GCash';
+  }
+
+  const ccHistoryDenoms=[['1000','₱1,000'],['500','₱500'],['200','₱200'],['100','₱100'],['50','₱50'],['20b','₱20 bill'],['20c','₱20 coin'],['10','₱10'],['5','₱5'],['1','₱1']];
+  let ccHistoryRecords=[];
+  function ccPieceLines(pieces){
+    return ccHistoryDenoms.filter(([k])=>Number(pieces&&pieces[k]||0)>0).map(([k,label])=>`<span class="cc-hist-piece">${window.pesoDenominationIcon(k)} ${Number(pieces[k])} × ${label}</span>`).join('');
+  }
+  function ccPiecePanel(record){
+    if(!record || !record.details)return '';
+    const d=record.details;
+    const received=ccPieceLines(d.received),given=ccPieceLines(d.given||d.change);
+    if(!received&&!given)return '';
+    return `<div class="cc-hist-pieces">${received?`<div class="cc-hist-side cc-hist-in"><strong>Money received</strong><div>${received}</div></div>`:''}${given?`<div class="cc-hist-side cc-hist-out"><strong>Money given</strong><div>${given}</div></div>`:''}</div>`;
+  }
+  function ccLinkedRecord(tx){
+    // New architecture: Cash Count belongs to the transaction itself.
+    // Keep the old Cash Counter History lookup only as a compatibility fallback.
+    if(tx && tx.cashPieces && (tx.cashPieces.received || tx.cashPieces.given || tx.cashPieces.change)){
+      return {action:'TRANSACTION_PIECES',details:{
+        transactionId:String(tx.id||''), transactionType:String(tx.type||''),
+        amount:Number(tx.amount||0), fee:Number(tx.fee||0),
+        received:{...(tx.cashPieces.received||{})},
+        given:{...(tx.cashPieces.given||tx.cashPieces.change||{})},
+        localPending:!!tx._pendingSync
+      }};
+    }
+    return ccHistoryRecords.find(r=>r&&r.details&&String(r.details.transactionId||'')===String(tx.id||'')&&['TRANSACTION_PIECES','CASH_IN_PIECES','CASH_OUT_PIECES'].includes(r.action));
+  }
+  function ccTransactionCountHtml(tx){
+    const record=ccLinkedRecord(tx);
+    if(!record){
+      return `<div class="cc-hist-pieces"><div class="cc-hist-side"><strong>Cash Count · Needs attention</strong><div>This older transaction has no saved bill-and-coin details. New transactions save the Cash Count inside the transaction automatically.</div></div></div>`;
+    }
+    const d=record.details||{};
+    const received=ccPieceLines(d.received);
+    const given=ccPieceLines(d.given||d.change);
+    const values=ccHistoryDenoms.reduce((sum,[key])=>{
+      const value=key==='20b'||key==='20c'?20:Number(key);
+      return sum+(Number(d.received&&d.received[key]||0)-Number((d.given||d.change)&& (d.given||d.change)[key]||0))*value;
+    },0);
+    const pending=!!d.localPending;
+    return `<div class="cc-hist-pieces"><div class="cc-hist-side"><strong>Cash Count · ${pending?'Saved on device':'Recorded'}</strong>
+      ${received?`<div class="cc-hist-side cc-hist-in"><strong>Money received</strong><div>${received}</div></div>`:''}
+      ${given?`<div class="cc-hist-side cc-hist-out"><strong>Money given</strong><div>${given}</div></div>`:''}
+      ${!received&&!given?'<div>No denominations saved in this record.</div>':''}
+      <div class="cc-hist-zero">Net Cash Counter movement: ${values>=0?'+':'−'}${money(Math.abs(values))}</div>
+      ${pending?'<div class="cc-count-pending">Cash Count sync confirmation pending.</div>':''}
+    </div></div>`;
+  }
+  function ccExchangeCard(r){
+    const d=r.details||{};
+    return `<div class="history-tx-card cc-exchange-card"><div class="history-tx-head"><div><span class="badge cc-exchange-badge">Change Money</span><div class="history-tx-meta">${escapeHtml(r.date||'')}</div></div><strong class="history-tx-amount">${money(Number(d.receivedTotal||r.receiveTotal||0))}</strong></div>${ccPiecePanel(r)}<div class="cc-hist-zero">Net change to total cash: ${money(0)}</div><div class="history-tx-actions"><button class="link-btn" type="button" data-cc-change-undo="${escapeHtml(String(d.transactionId||r.id||''))}">Undo Change Money</button></div></div>`;
+  }
+  function ccLoadMainHistory(){
+    try{
+      const cached=JSON.parse(localStorage.getItem('gcashCashCounterHistoryV1')||'[]');
+      if(Array.isArray(cached))ccHistoryRecords=cached;
+    }catch(e){}
+    if(calSelected)renderDay(calSelected);
+    if(!navigator.onLine)return;
+    google.script.run.withSuccessHandler(rows=>{
+      if(!Array.isArray(rows))return;
+      let undoneChangeIds=[];try{undoneChangeIds=JSON.parse(localStorage.getItem('gcashChangeMoneyUndoneV1')||'[]')||[]}catch(e){}
+      const undoneChangeSet=new Set(Array.isArray(undoneChangeIds)?undoneChangeIds.map(String):[]);
+      rows=rows.filter(r=>!(r&&r.action==='CHANGE_MONEY'&&r.details&&undoneChangeSet.has(String(r.details.transactionId||''))));
+      const serverTxIds=new Set(rows.map(r=>String(r&&r.details&&r.details.transactionId||'')));
+      const localOnly=ccHistoryRecords.filter(r=>r&&r.details&&r.details.localPending&&
+        !serverTxIds.has(String(r.details.transactionId||'')));
+      ccHistoryRecords=[...localOnly,...rows];
+      try{localStorage.setItem('gcashCashCounterHistoryV1',JSON.stringify(ccHistoryRecords));}catch(e){}
+      if(calSelected)renderDay(calSelected);
+    }).withFailureHandler(()=>{}).getCashCountHistory();
+  }
+  window.__loadGcashCashPiecesHistory=ccLoadMainHistory;
+  function renderDay(key){
+    const box=$('calDetail'); if(!box)return;
+    const txs=history.filter(x=>dateKey(x)===key);
+    const fees=txs.reduce((s,x)=>s+Number(x.fee||0),0);
+    const ci=txs.filter(x=>x.type==='Cash In').reduce((s,x)=>s+Number(x.amount||0),0);
+    const co=txs.filter(x=>x.type==='Cash Out').reduce((s,x)=>s+Number(x.amount||0),0);
+    const q=key.split('-').map(Number), d=new Date(q[0],q[1]-1,q[2]);
+    const txhtml=txs.map(tx=>`<div class="history-tx-card ${transactionWalletLabel(tx)==='Maya'?'history-wallet-maya':transactionWalletLabel(tx)==='MariBank'?'history-wallet-maribank':'history-wallet-gcash'}">
+      <div class="history-tx-head">
+        <div>
+          <div class="history-tx-kind">
+            <span class="badge ${tx.type==='Cash In'?'badge-cashin':'badge-cashout'}">${escapeHtml(tx.type)}</span>
+            <span class="history-wallet-pill">${escapeHtml(transactionWalletLabel(tx))}</span>
+            ${tx._pendingSync ? '<span class="history-sync-pill">SYNCING…</span>' : ''}
+          </div>
+          ${tx.type==='Cash In'?'':`<div class="history-tx-fee">Fee earned ${money(tx.fee)}</div>`}
+        </div>
+        <div>
+          ${tx.type==='Cash In'?'':`<div class="history-tx-amount">${money(tx.amount)}</div>`}
+          <div class="history-tx-meta">${escapeHtml(tx.date||'')}</div>
+        </div>
+      </div>
+
+      ${tx.type==='Cash In' ? `<div class="cash-in-four-fields"><div><span>Transaction amount</span><strong>${money(tx.amount)}</strong></div><div><span>Fee</span><strong>${money(tx.fee)}</strong></div><div><span>Cash received</span><strong>${money(ccLinkedRecord(tx)?.details?.received ? ccHistoryDenoms.reduce((sum,[k])=>sum+Number(ccLinkedRecord(tx).details.received[k]||0)*({'1000':1000,'500':500,'200':200,'100':100,'50':50,'20b':20,'20c':20,'10':10,'5':5,'1':1}[k]),0) : Number(tx.cashReceived||tx.received||tx.total||0))}</strong></div><div><span>Change</span><strong>${money(ccLinkedRecord(tx)?.details?.given ? ccHistoryDenoms.reduce((sum,[k])=>sum+Number(ccLinkedRecord(tx).details.given[k]||0)*({'1000':1000,'500':500,'200':200,'100':100,'50':50,'20b':20,'20c':20,'10':10,'5':5,'1':1}[k]),0) : Math.max(0,Number(tx.cashReceived||tx.received||tx.total||0)-Number(tx.total||0)))}</strong></div></div>` : ''}
+      ${ccTransactionCountHtml(tx)}
+      <div class="history-tx-actions"><button class="link-btn" type="button" data-cal-remove="${escapeHtml(tx.id)}">Undo Transaction</button></div>
+    </div>`).join('');
+    const exchangeHtml=ccHistoryRecords.filter(r=>r&&r.action==='CHANGE_MONEY'&&r.details&&r.details.dateKey===key).map(ccExchangeCard).join('');
+    box.innerHTML=`<div class="cal-head"><strong>${d.toLocaleDateString('en-PH',{month:'long',day:'numeric',year:'numeric'})}</strong><strong>${money(fees)} fees</strong></div><div class="cal-sum"><div class="metric"><small>Cash In</small><strong>${money(ci)}</strong></div><div class="metric"><small>Cash Out</small><strong>${money(co)}</strong></div></div>${txhtml}${exchangeHtml}${(!txhtml&&!exchangeHtml)?'<div class="history-empty">No transactions on this date.</div>':''}`;
+    box.style.display='block';
+  }
+  function renderCalendar(){
+    const grid=$('calGrid'), title=$('calTitle'); if(!grid||!title)return;
+    const y=calMonth.getFullYear(),m=calMonth.getMonth(),prefix=`${y}-${String(m+1).padStart(2,'0')}-`;
+    title.textContent=calMonth.toLocaleDateString('en-PH',{month:'long',year:'numeric'}); grid.innerHTML='';
+    for(let i=0;i<new Date(y,m,1).getDay();i++){const z=document.createElement('div');z.className='cal-day blank';grid.appendChild(z)}
+    for(let day=1;day<=new Date(y,m+1,0).getDate();day++){
+      const key=prefix+String(day).padStart(2,'0'), txs=history.filter(x=>dateKey(x)===key), fees=txs.reduce((a,x)=>a+Number(x.fee||0),0);
+      const z=document.createElement('button');z.type='button';z.dataset.calDate=key;z.className='cal-day'+(txs.length?' has':'')+(calSelected===key?' sel':'');
+      z.innerHTML=`<span class="cal-num">${day}</span>${txs.length?`<span class="cal-fee">${money(fees)}</span>`:''}`;grid.appendChild(z);
+    }
+    const mt=history.filter(x=>dateKey(x).startsWith(prefix)); countText.textContent=`${mt.length} transaction${mt.length===1?'':'s'} · ${title.textContent}`;
+    if(calSelected.startsWith(prefix))renderDay(calSelected);else $('calDetail').style.display='none';
+  }
+  function render(){
+    if(emptyEl)emptyEl.style.display='none';
+    if(historyEl)historyEl.innerHTML='';
+
+    // Home/Wallet actions should not rebuild the whole calendar.
+    const historyPage = document.getElementById('tabHistoryPage');
+    if(historyPage && historyPage.classList.contains('active')){
+      renderCalendar();
+      window.__gcashHistoryDirty = false;
+    }else{
+      window.__gcashHistoryDirty = true;
+    }
+
+    // Update the small Home Today summary from the same in-memory transaction list.
+    if(typeof window.refreshTodayDashboard === 'function'){
+      window.refreshTodayDashboard();
+    }
+  }
+
+  // Allow the tab controller to render History only when the user opens it.
+  window.__renderGcashHistory = function(){
+    renderCalendar();
+    window.__gcashHistoryDirty = false;
+    if(typeof window.refreshHistoryDaySummary === 'function'){
+      window.refreshHistoryDaySummary();
+    }
+  };
+
+  function showSync(text, ok=false){
+    syncStatus.textContent = text;
+    syncStatus.style.color = ok ? 'var(--success)' : 'var(--muted)';
+  }
+
+  function setActiveOption(buttons,value){
+    buttons.forEach(btn=>btn.classList.toggle('active',btn.dataset.value===value));
+  }
+
+  function resetChargeMode(){
+    chargeMode.value = 'add';
+    deductToggleBtn.classList.remove('active');
+    deductToggleBtn.textContent = 'Deduct Fee';
+    preview();
+  }
+
+  deductToggleBtn.addEventListener('click',()=>{
+    const deducting = chargeMode.value !== 'deduct';
+    chargeMode.value = deducting ? 'deduct' : 'add';
+    deductToggleBtn.classList.toggle('active', deducting);
+    deductToggleBtn.textContent = deducting ? 'Deduct Fee ✓' : 'Deduct Fee';
+    preview();
+  });
+
+  function renderCapital(data){
+    capitalData = data || null;
+
+    if(!data || !data.initialized){
+      cashOutAvailable.textContent = money(0);
+      cashInAvailable.textContent = money(0);
+      mayaAvailable.textContent=money(0); if(homeMayaBalance)homeMayaBalance.textContent=money(0);
+      if(maribankAvailable)maribankAvailable.textContent=money(0); if(homeMaribankBalance)homeMaribankBalance.textContent=money(0);
+      saripayAvailable.textContent = money(0);
+      totalCapital.textContent = money(0);
+      netEarnings.textContent = money(0);
+      if(availableEarningsEl) availableEarningsEl.textContent = money(0);
+      if(withdrawnEarningsEl) withdrawnEarningsEl.textContent = money(0);
+      expectedTotalMoney.textContent = money(0);
+      capitalExpensesTotal.textContent = money(0);
+      capitalStatus.textContent = unlocked ? 'Set your current balances to start monitoring.' : 'Loading your balances…';
+      document.querySelector('.cash-balance').classList.remove('negative');
+      document.querySelector('.gcash-balance').classList.remove('negative');
+      return;
+    }
+
+    cashOutAvailable.textContent = money(data.cashOnHand);
+    cashInAvailable.textContent = money(data.gcashBalance);
+    mayaAvailable.textContent=money(data.mayaBalance||0); if(homeMayaBalance)homeMayaBalance.textContent=money(data.mayaBalance||0);
+    if(maribankAvailable)maribankAvailable.textContent=money(data.maribankBalance||0); if(homeMaribankBalance)homeMaribankBalance.textContent=money(data.maribankBalance||0);
+    saripayAvailable.textContent = money(data.saripayBalance || 0);
+    totalCapital.textContent = money(data.currentCapital ?? data.totalCapital ?? data.baseCapital);
+    netEarnings.textContent = money(data.netEarnings || 0);
+    if(availableEarningsEl) availableEarningsEl.textContent = money(data.availableEarnings ?? data.netEarnings ?? 0);
+    if(withdrawnEarningsEl) withdrawnEarningsEl.textContent = money(data.withdrawnEarnings || 0);
+    expectedTotalMoney.textContent = money(data.expectedTotalMoney ?? (Number(data.cashOnHand||0)+Number(data.gcashBalance||0)));
+    capitalExpensesTotal.textContent = money(data.totalExpenses || 0);
+    capitalStatus.textContent = 'Capital and available earnings are tracked separately.';
+    // Persist the latest complete on-screen state after successful mutations.
+    setTimeout(saveLocalTrackerCache, 0);
+
+    document.querySelector('.cash-balance').classList.toggle('negative', Number(data.cashOnHand) < 0);
+    document.querySelector('.gcash-balance').classList.toggle('negative', Number(data.gcashBalance) < 0);
+    // Notify Cash Counter when the authoritative wallet balance changes.
+    // This only refreshes its display; it does not mutate denominations or money.
+    window.dispatchEvent(new CustomEvent('tracker-cash-balance-updated', {
+      detail:{cashOnHand:Number(data.cashOnHand)}
+    }));
+  }
+
+  function loadCapital(){
+    if(!unlocked) return;
+    google.script.run
+      .withSuccessHandler(renderCapital)
+      .withFailureHandler(err => {
+        capitalStatus.textContent = err.message || 'Could not load capital.';
+      })
+      .getCapitalBySession(getSessionToken());
+  }
+
+  function openCapitalModal(){
+    if(!unlocked){
+      status.textContent='';
+      status.className='status err';
+      return;
+    }
+    capitalCashInput.value = capitalData && capitalData.initialized ? Number(capitalData.cashOnHand || 0).toFixed(2) : '';
+    capitalGcashInput.value = capitalData && capitalData.initialized ? Number(capitalData.gcashBalance || 0).toFixed(2) : '';
+    capitalMayaInput.value=capitalData&&capitalData.initialized?Number(capitalData.mayaBalance||0).toFixed(2):'';
+    capitalMaribankInput.value=capitalData&&capitalData.initialized?Number(capitalData.maribankBalance||0).toFixed(2):'';
+    capitalSaripayInput.value = capitalData && capitalData.initialized ? Number(capitalData.saripayBalance || 0).toFixed(2) : '';
+    capitalModalStatus.textContent = '';
+    capitalModal.classList.add('show');
+    capitalModal.style.display='flex';
+    capitalModal.setAttribute('aria-hidden','false');
+  }
+
+  function closeCapitalModal(){
+    capitalModal.classList.remove('show');
+    capitalModal.style.display='none';
+    capitalModal.setAttribute('aria-hidden','true');
+  }
+
+  adjustCapitalBtn.addEventListener('click', openCapitalModal);
+  cancelCapitalBtn.addEventListener('click', closeCapitalModal);
+  capitalModal.addEventListener('click',e=>{
+    if(e.target===capitalModal) closeCapitalModal();
+  });
+
+  saveCapitalBtn.addEventListener('click',()=>{
+    if(!unlocked) return;
+    const cash = Number(capitalCashInput.value);
+    const gcash = Number(capitalGcashInput.value);
+    const maya=Number(capitalMayaInput.value);
+    const maribank=Number(capitalMaribankInput.value);
+    const saripay = Number((capitalData && capitalData.saripayBalance) || 0);
+
+    if(!isFinite(cash) || cash < 0 || !isFinite(gcash) || gcash < 0 || !isFinite(maya) || maya < 0 || !isFinite(maribank) || maribank < 0 || !isFinite(saripay) || saripay < 0){
+      capitalModalStatus.textContent='Enter valid balances.';
+      capitalModalStatus.className='status err';
+      return;
+    }
+
+    saveCapitalBtn.disabled=true;
+    capitalModalStatus.textContent='Saving…';
+    capitalModalStatus.className='status';
+
+    google.script.run
+      .withSuccessHandler(data=>{
+        saveCapitalBtn.disabled=false;
+        renderCapital(data);
+        closeCapitalModal();
+      })
+      .withFailureHandler(err=>{
+        saveCapitalBtn.disabled=false;
+        capitalModalStatus.textContent=err.message || 'Could not save capital.';
+        capitalModalStatus.className='status err';
+      })
+      .setCapitalBySession(getSessionToken(),cash,gcash,saripay,maya,maribank);
+  });
+
+  function renderExpenses(){
+    expenseHistoryList.innerHTML = '';
+    expenseHistoryEmpty.style.display = expenses.length ? 'none' : 'block';
+
+    expenses.forEach(x => {
+      const item = document.createElement('div');
+      item.className = 'expense-item';
+      item.innerHTML = `
+        <div class="expense-item-top">
+          <div>
+            <div class="expense-item-title">${escapeHtml(x.expense || 'Expense')}</div>
+            <div class="expense-item-meta">${escapeHtml(x.date)} · Deducted from Earnings · Paid from ${escapeHtml(x.paidFrom === 'GCash' ? 'GCash Balance' : x.paidFrom === 'Saripay Transfer' ? 'Saripay Transfer' : 'Cash on Hand')}</div>
+          </div>
+          <div class="expense-item-amount">-${money(x.amount)}</div>
+        </div>
+        ${x.note ? `<div class="expense-item-note">${escapeHtml(x.note)}</div>` : ''}
+        <div class="expense-item-actions">
+          <button type="button" class="expense-remove" data-expense-id="${x.id}">Remove</button>
+        </div>`;
+      expenseHistoryList.appendChild(item);
+    });
+  }
+
+
+  function capitalActionLabel(type){
+    if(type==='ADD_CAPITAL') return 'Add Capital';
+    if(type==='BALANCE_ADJUSTMENT') return 'Balance Adjustment';
+    if(type==='WITHDRAW_CAPITAL') return 'Withdraw Capital';
+    return 'Withdraw Earnings';
+  }
+
+  function renderCapitalActivity(){
+    if(!capitalActivityList || !capitalActivityEmpty) return;
+    capitalActivityList.innerHTML='';
+    const combined=[];
+    capitalMovements.forEach(m=>combined.push({kind:'capital',date:m.date||'',timestamp:m.timestamp||m.date||'',data:m}));
+    mayaTransfers.forEach(t=>combined.push({kind:'transfer',date:t.date||'',timestamp:t.timestamp||t.date||'',data:t}));
+    expenses.forEach(x=>combined.push({kind:'expense',date:x.date||'',timestamp:x.timestamp||x.date||'',data:x}));
+    combined.sort((a,b)=>String(b.timestamp||b.date).localeCompare(String(a.timestamp||a.date)));
+    capitalActivityEmpty.style.display=combined.length?'none':'block';
+    combined.forEach(row=>{
+      const item=document.createElement('div');
+      item.className='capital-activity-item';
+      if(row.kind==='transfer'){
+        const t=row.data;
+        item.innerHTML=`<div class="capital-activity-top"><div class="capital-activity-type">Transfer Money</div><div class="capital-activity-amount">${money(t.amount)}</div></div><div class="capital-activity-meta">${escapeHtml(t.fromWallet||'')} → ${escapeHtml(t.toWallet||'')} · ${escapeHtml(t.date||'')}</div><div class="capital-activity-remove"><button type="button" class="link-btn" data-wallet-transfer-id="${escapeHtml(t.id)}">Reverse</button></div>`;
+      }else if(row.kind==='expense'){
+        const x=row.data;
+        item.innerHTML=`<div class="capital-activity-top"><div class="capital-activity-type">Withdraw Earnings</div><div class="capital-activity-amount" style="color:#b42318">−${money(x.amount)}</div></div><div class="capital-activity-meta">${escapeHtml(x.expense||'Expense')} · ${escapeHtml(x.paidFrom==='GCash'?'GCash':x.paidFrom==='Maya'?'Maya':'Cash on Hand')} · ${escapeHtml(x.date||'')}</div>${x.note?`<div class="capital-activity-note">${escapeHtml(x.note)}</div>`:''}<div class="capital-activity-remove"><button type="button" class="link-btn" data-expense-id="${escapeHtml(x.id)}">Reverse</button></div>`;
+      }else{
+        const m=row.data;
+        const sign=m.type==='ADD_CAPITAL'?'+':'−';
+        const amountColor=m.type==='ADD_CAPITAL'?'#067647':(m.type==='WITHDRAW_EARNINGS'?'#b42318':'#c2410c');
+        item.innerHTML=`<div class="capital-activity-top"><div class="capital-activity-type">${escapeHtml(capitalActionLabel(m.type))}</div><div class="capital-activity-amount" style="color:${amountColor}">${sign}${money(m.amount)}</div></div><div class="capital-activity-meta">${escapeHtml(m.wallet||'')} · ${escapeHtml(m.date||'')}</div>${m.note?`<div class="capital-activity-note">${escapeHtml(m.note)}</div>`:''}<div class="capital-activity-remove"><button type="button" class="link-btn" data-capital-movement-id="${escapeHtml(m.id)}">Reverse</button></div>`;
+      }
+      capitalActivityList.appendChild(item);
+    });
+  }
+
+  function setCapitalActionWallet(wallet){
+    capitalActionWallet = wallet;
+    capitalWalletChoices.forEach(btn=>btn.classList.toggle('active',btn.dataset.capitalWallet===wallet));
+    updateCapitalActionAvailable();
+  }
+
+  function updateCapitalActionAvailable(){
+    if(!capitalActionAvailable) return;
+    const c=capitalData||{};
+    const walletBalance=capitalActionWallet==='GCash'
+      ? Number(c.gcashBalance||0)
+      : capitalActionWallet==='Maya'
+        ? Number(c.mayaBalance||0)
+        : capitalActionWallet==='MariBank'
+          ? Number(c.maribankBalance||0)
+          : Number(c.cashOnHand||0);
+
+    if(capitalActionType==='ADD_CAPITAL'){
+      capitalActionAvailable.innerHTML='The amount will be added to <strong>'+escapeHtml(capitalActionWallet)+'</strong> and Current Capital.';
+    }else if(capitalActionType==='WITHDRAW_CAPITAL'){
+      capitalActionAvailable.innerHTML='Wallet balance: <strong>'+money(walletBalance)+'</strong><br>Current Capital: <strong>'+money(c.currentCapital ?? c.totalCapital ?? 0)+'</strong>';
+    }else{
+      capitalActionAvailable.innerHTML='Wallet balance: <strong>'+money(walletBalance)+'</strong><br>Available Earnings: <strong>'+money(c.availableEarnings ?? c.netEarnings ?? 0)+'</strong>';
+    }
+  }
+
+  function openCapitalAction(type){
+    if(!unlocked || !capitalData || !capitalData.initialized) return;
+    capitalActionType=type;
+    capitalActionAmount.value='';
+    capitalActionNote.value='';
+    capitalActionStatus.textContent='';
+    setCapitalActionWallet('Cash on Hand');
+
+    capitalActionTitle.textContent=capitalActionLabel(type);
+    capitalActionHelp.textContent=
+      type==='ADD_CAPITAL' ? 'Add new money to the business without counting it as earnings.' :
+      type==='WITHDRAW_CAPITAL' ? 'Take back part of your business capital without counting it as an expense.' :
+      'Take profit out for yourself without changing lifetime Net Earnings.';
+
+    saveCapitalActionBtn.textContent=capitalActionLabel(type);
+    capitalActionModal.classList.add('show');
+    capitalActionModal.style.display='flex';
+    capitalActionModal.setAttribute('aria-hidden','false');
+  }
+
+  function closeCapitalAction(){
+    capitalActionModal.classList.remove('show');
+    capitalActionModal.style.display='none';
+    capitalActionModal.setAttribute('aria-hidden','true');
+  }
+
+  function loadCapitalMovements(){
+    if(!unlocked) return;
+    google.script.run
+      .withSuccessHandler(data=>{
+        capitalMovements=data||[];
+        renderCapitalActivity();
+        saveLocalTrackerCache();
+      })
+      .withFailureHandler(()=>{})
+      .getCapitalMovementsBySession(getSessionToken());
+  }
+
+  if(addCapitalActionBtn) addCapitalActionBtn.addEventListener('click',()=>openCapitalAction('ADD_CAPITAL'));
+  if(withdrawCapitalActionBtn) withdrawCapitalActionBtn.addEventListener('click',()=>openCapitalAction('WITHDRAW_CAPITAL'));
+  if(withdrawEarningsActionBtn) withdrawEarningsActionBtn.addEventListener('click',()=>openCapitalAction('WITHDRAW_EARNINGS'));
+  if(cancelCapitalActionBtn) cancelCapitalActionBtn.addEventListener('click',closeCapitalAction);
+  if(capitalActionModal) capitalActionModal.addEventListener('click',e=>{if(e.target===capitalActionModal)closeCapitalAction();});
+  capitalWalletChoices.forEach(btn=>btn.addEventListener('click',()=>setCapitalActionWallet(btn.dataset.capitalWallet)));
+
+  if(capitalActivityToggle) capitalActivityToggle.addEventListener('click',()=>{
+    const open=capitalActivitySection.style.display!=='none';
+    capitalActivitySection.style.display=open?'none':'block';
+    capitalActivityToggle.textContent=open?'Wallet History':'Hide Wallet History';
+    if(!open){ loadCapitalMovements(); loadMayaTransfers(); }
+  });
+
+  if(saveCapitalActionBtn) saveCapitalActionBtn.addEventListener('click',()=>{
+    const amount=Number(capitalActionAmount.value);
+    if(!isFinite(amount)||amount<=0){
+      capitalActionStatus.textContent='Enter a valid amount.';
+      capitalActionStatus.className='status err';
+      return;
+    }
+
+    const id=offlineActionId('CAP');
+    const payload={
+      type:capitalActionType,
+      amount:amount,
+      wallet:capitalActionWallet,
+      note:capitalActionNote.value,
+      clientActionId:id
+    };
+
+    try{
+      applyLocalCapitalAction(payload,id);
+    }catch(err){
+      capitalActionStatus.textContent=(err&&err.message)||'Could not save.';
+      capitalActionStatus.className='status err';
+      return;
+    }
+
+    queueOfflineAction({id:id,method:'addCapitalMovementBySession',payload:payload});
+    saveCapitalActionBtn.disabled=false;
+    capitalActionStatus.textContent=navigator.onLine?'Saved. Saved locally.':'Saved offline. Waiting for manual sync.';
+    capitalActionStatus.className='status ok';
+    closeCapitalAction();
+  });
+
+  if(capitalActivityList) capitalActivityList.addEventListener('click',e=>{
+    const expenseBtn=e.target.closest('[data-expense-id]');
+    if(expenseBtn){
+      const id=expenseBtn.dataset.expenseId;
+      if(!confirm('Reverse this old expense / withdrawn earnings record?')) return;
+      google.script.run
+        .withSuccessHandler(()=>{
+          expenses=expenses.filter(x=>String(x.id)!==String(id));
+          renderExpenses();
+          renderCapitalActivity();
+          loadCapital();
+          saveLocalTrackerCache();
+        })
+        .withFailureHandler(err=>alert((err&&err.message)||'Could not reverse record.'))
+        .deleteExpenseBySession(getSessionToken(),id);
+      return;
+    }
+    const transferBtn=e.target.closest('[data-wallet-transfer-id]');
+    if(transferBtn){
+      const id=transferBtn.dataset.walletTransferId;
+      if(!confirm('Reverse this wallet transfer?')) return;
+      google.script.run.withSuccessHandler(d=>{mayaTransfers=(d&&d.transfers)||mayaTransfers.filter(x=>String(x.id)!==String(id));if(d&&d.capital)renderCapital(d.capital);renderMayaTransfers();renderCapitalActivity();saveLocalTrackerCache();}).withFailureHandler(err=>alert((err&&err.message)||'Could not reverse transfer.')).deleteMayaTransferBySession(getSessionToken(),id);
+      return;
+    }
+    const btn=e.target.closest('[data-capital-movement-id]');
+    if(!btn) return;
+    const id=btn.dataset.capitalMovementId;
+    if(!confirm('Remove this capital activity and reverse its effect?')) return;
+
+    google.script.run
+      .withSuccessHandler(data=>{
+        capitalMovements=(data&&data.movements)||capitalMovements.filter(x=>String(x.id)!==String(id));
+        if(data&&data.capital) renderCapital(data.capital);
+        renderCapitalActivity();
+        saveLocalTrackerCache();
+      })
+      .withFailureHandler(err=>alert((err&&err.message)||'Could not remove capital activity.'))
+      .deleteCapitalMovementBySession(getSessionToken(),id);
+  });
+
+
+  function escapeHtml(value){
+    return String(value ?? '')
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#039;');
+  }
+
+  function loadExpenses(){
+    if(!unlocked) return;
+    google.script.run
+      .withSuccessHandler(data=>{
+        expenses = data || [];
+        renderExpenses();
+      })
+      .withFailureHandler(()=>{})
+      .getExpensesBySession(getSessionToken());
+  }
+
+  function setExpensePaidFrom(value){
+    expensePaidFrom = value === 'GCash' ? 'GCash' : 'Cash';
+    expensePaidCash.classList.toggle('active', expensePaidFrom === 'Cash');
+    expensePaidGcash.classList.toggle('active', expensePaidFrom === 'GCash');
+  }
+
+  function renderMayaTransfers(){mayaTransferHistoryList.innerHTML='';mayaTransferHistoryEmpty.style.display=mayaTransfers.length?'none':'block';mayaTransfers.forEach(t=>{const item=document.createElement('div');item.className='maya-transfer-item';let balances=`GCash: ${money(t.previousGcash)} → ${money(t.newGcash)} · Maya: ${money(t.previousMaya)} → ${money(t.newMaya)} · MariBank: ${money(t.previousMaribank||0)} → ${money(t.newMaribank||0)}`;if(t.previousCash!==null&&t.previousCash!==undefined)balances=`Cash: ${money(t.previousCash)} → ${money(t.newCash)} · `+balances;item.innerHTML=`<div class="maya-transfer-top"><span>${escapeHtml(t.fromWallet)} → ${escapeHtml(t.toWallet)}</span><span>${money(t.amount)}</span></div><div class="maya-transfer-meta">${escapeHtml(t.date||'')}</div><div class="maya-transfer-meta">${balances}</div><div style="text-align:right"><button type="button" class="link-btn" data-remove-maya-transfer="${escapeHtml(t.id)}">Remove</button></div>`;mayaTransferHistoryList.appendChild(item);});}
+  function loadMayaTransfers(){if(!unlocked)return;google.script.run.withSuccessHandler(d=>{mayaTransfers=d||[];renderMayaTransfers();renderCapitalActivity();}).withFailureHandler(()=>{}).getMayaTransfersBySession(getSessionToken());}
+  function moveMoneyBalances(){
+    return {
+      'Cash on Hand':Number((capitalData&&capitalData.cashOnHand)||0),
+      'GCash':Number((capitalData&&capitalData.gcashBalance)||0),
+      'Maya':Number((capitalData&&capitalData.mayaBalance)||0),
+      'MariBank':Number((capitalData&&capitalData.maribankBalance)||0)
+    };
+  }
+  function updateMoveMoneyPreview(){
+    const box=document.getElementById('moveMoneyPreview');
+    if(!box)return;
+    const amount=Number(mayaTransferAmount.value||0),fromWallet=transferFromWallet.value,toWallet=transferToWallet.value,b=moveMoneyBalances();
+    if(fromWallet===toWallet||!isFinite(amount)||amount<=0){box.innerHTML='Choose two wallets and enter an amount to see the balance preview.';return;}
+    const afterFrom=b[fromWallet]-amount, afterTo=b[toWallet]+amount;
+    const cashNote=(fromWallet==='Cash on Hand'||toWallet==='Cash on Hand')
+      ? '<br><strong>Cash Counter:</strong> exact bills/coins required before saving.'
+      : '<br><strong>Cash Counter:</strong> no change.';
+    box.innerHTML=`${escapeHtml(fromWallet)}: <strong>${money(b[fromWallet])} → ${money(afterFrom)}</strong><br>${escapeHtml(toWallet)}: <strong>${money(b[toWallet])} → ${money(afterTo)}</strong>${cashNote}`;
+  }
+  function openMoveMoneyCashPiecesDraft(amount,fromWallet,toWallet){
+    const b=moveMoneyBalances();
+    const newCash=b['Cash on Hand']+(toWallet==='Cash on Hand'?amount:0)-(fromWallet==='Cash on Hand'?amount:0);
+    cashPiecesPendingTx={
+      id:'MOVE_DRAFT_'+Date.now(), type:'Move Money', amount, fromWallet, toWallet,
+      previousCash:b['Cash on Hand'], newCash, _walletTransferDraft:true
+    };
+    mayaTransferModal.classList.remove('show');
+    mayaTransferModal.style.display='none';
+    openCashPiecesRecorder();
+  }
+  mayaTransferBtn.addEventListener('click',()=>{mayaTransferAmount.value='';mayaTransferStatus.textContent='';transferFromWallet.value='GCash';transferToWallet.value='Maya';mayaTransferModal.classList.add('show');mayaTransferModal.style.display='flex';updateMoveMoneyPreview();});
+  cancelMayaTransferBtn.addEventListener('click',()=>{mayaTransferModal.classList.remove('show');mayaTransferModal.style.display='none';});
+  transferFromWallet.addEventListener('change',()=>{if(transferToWallet.value===transferFromWallet.value){transferToWallet.value=['Cash on Hand','GCash','Maya','MariBank'].find(x=>x!==transferFromWallet.value);}mayaTransferStatus.textContent='';updateMoveMoneyPreview();});
+  transferToWallet.addEventListener('change',()=>{if(transferToWallet.value===transferFromWallet.value){mayaTransferStatus.textContent='Choose a different destination wallet.';mayaTransferStatus.className='status err';}else mayaTransferStatus.textContent='';updateMoveMoneyPreview();});
+  mayaTransferAmount.addEventListener('input',updateMoveMoneyPreview);
+  mayaTransferHistoryToggle.addEventListener('click',()=>{const o=mayaTransferHistorySection.style.display==='none';mayaTransferHistorySection.style.display=o?'block':'none';mayaTransferHistoryToggle.textContent=o?'Hide Transfer History':'View Transfer History';if(o)loadMayaTransfers();});
+  saveMayaTransferBtn.addEventListener('click',()=>{
+    const amount=Number(mayaTransferAmount.value),fromWallet=transferFromWallet.value,toWallet=transferToWallet.value;
+    if(fromWallet===toWallet){mayaTransferStatus.textContent='Choose two different wallets.';mayaTransferStatus.className='status err';return;}
+    if(!isFinite(amount)||amount<=0){mayaTransferStatus.textContent='Enter a valid transfer amount.';mayaTransferStatus.className='status err';return;}
+    const b=moveMoneyBalances();
+    if(amount>b[fromWallet]+0.001){mayaTransferStatus.textContent='Not enough '+fromWallet+' balance.';mayaTransferStatus.className='status err';return;}
+    if(fromWallet==='Cash on Hand'||toWallet==='Cash on Hand'){openMoveMoneyCashPiecesDraft(amount,fromWallet,toWallet);return;}
+    const id=offlineActionId('MOVE');
+    const payload={amount,fromWallet,toWallet,clientActionId:id};
+    try{applyLocalMoveMoney(payload,id);}catch(e){mayaTransferStatus.textContent=(e&&e.message)||'Could not transfer funds.';mayaTransferStatus.className='status err';return;}
+    queueOfflineAction({id:id,method:'addMayaTransferBySession',payload:payload});
+    mayaTransferStatus.textContent=navigator.onLine?'Saved. Saved locally.':'Saved offline. Waiting for manual sync.';
+    mayaTransferStatus.className='status ok';
+    cancelMayaTransferBtn.click();
+  });
+  mayaTransferHistoryList.addEventListener('click',e=>{const b=e.target.closest('[data-remove-maya-transfer]');if(!b)return;const id=b.getAttribute('data-remove-maya-transfer');if(!confirm('Reverse this wallet transfer? Linked Cash Counter pieces will also be reversed.'))return;google.script.run.withSuccessHandler(d=>{mayaTransfers=(d&&d.transfers)||mayaTransfers.filter(x=>String(x.id)!==String(id));if(d&&d.capital)renderCapital(d.capital);renderMayaTransfers();renderCapitalActivity();saveLocalTrackerCache();if(typeof window.loadCashCounterLatestStatus==='function')setTimeout(window.loadCashCounterLatestStatus,100);}).withFailureHandler(e=>alert((e&&e.message)||'Could not reverse transfer.')).deleteMayaTransferBySession(getSessionToken(),id);});
+
+  function updateSaripayTransferPreview(){
+    const amount = Number(saripayTransferAmount.value || 0);
+    const deduction = saripayTransferDeduction ? 10 : 0;
+    saripayTransferReceived.textContent = money(Math.max(amount - deduction, 0));
+  }
+
+  function setSaripayTransferDeduction(on){
+    saripayTransferDeduction = !!on;
+    transferNoDeduction.classList.toggle('active', !saripayTransferDeduction);
+    transferWithDeduction.classList.toggle('active', saripayTransferDeduction);
+    updateSaripayTransferPreview();
+  }
+
+  function openSaripayTransferModal(){
+    saripayTransferAmount.value='';
+    saripayTransferStatus.textContent='';
+    setSaripayTransferDeduction(false);
+    saripayTransferModal.classList.add('show');
+    saripayTransferModal.style.display='flex';
+    saripayTransferModal.setAttribute('aria-hidden','false');
+  }
+
+  function closeSaripayTransferModal(){
+    saripayTransferModal.classList.remove('show');
+    saripayTransferModal.style.display='none';
+    saripayTransferModal.setAttribute('aria-hidden','true');
+  }
+
+  saripayTransferBtn.addEventListener('click', openSaripayTransferModal);
+  cancelSaripayTransferBtn.addEventListener('click', closeSaripayTransferModal);
+  transferNoDeduction.addEventListener('click',()=>setSaripayTransferDeduction(false));
+  transferWithDeduction.addEventListener('click',()=>setSaripayTransferDeduction(true));
+  saripayTransferAmount.addEventListener('input', updateSaripayTransferPreview);
+  saripayTransferModal.addEventListener('click',e=>{if(e.target===saripayTransferModal) closeSaripayTransferModal();});
+
+  saveSaripayTransferBtn.addEventListener('click',()=>{
+    const amount = Number(saripayTransferAmount.value);
+    if(!isFinite(amount) || amount <= 0){
+      saripayTransferStatus.textContent='Enter a valid transfer amount.';
+      saripayTransferStatus.className='status err';
+      return;
+    }
+    saveSaripayTransferBtn.disabled=true;
+    saripayTransferStatus.textContent='Transferring…';
+    saripayTransferStatus.className='status';
+
+    google.script.run
+      .withSuccessHandler(data=>{
+        saveSaripayTransferBtn.disabled=false;
+        if(data && data.transfer) transfers.unshift(data.transfer);
+        if(data && data.expense) expenses.unshift(data.expense);
+        if(data && data.capital) renderCapital(data.capital);
+        renderExpenses();
+        render();
+        saveLocalTrackerCache();
+        closeSaripayTransferModal();
+      })
+      .withFailureHandler(err=>{
+        saveSaripayTransferBtn.disabled=false;
+        saripayTransferStatus.textContent=(err && err.message) || 'Could not transfer Saripay balance.';
+        saripayTransferStatus.className='status err';
+      })
+      .addSaripayTransferBySession(getSessionToken(),{
+        amount,
+        applyDeduction:saripayTransferDeduction
+      });
+  });
+
+  function openExpenseModal(){
+    if(!unlocked){
+      status.textContent='';
+      status.className='status err';
+      return;
+    }
+    expenseNameInput.value='';
+    expenseAmountInput.value='';
+    expenseNoteInput.value='';
+    expenseModalStatus.textContent='';
+    setExpensePaidFrom('Cash');
+    expenseModal.classList.add('show');
+    expenseModal.style.display='flex';
+    expenseModal.setAttribute('aria-hidden','false');
+  }
+
+  function closeExpenseModal(){
+    expenseModal.classList.remove('show');
+    expenseModal.style.display='none';
+    expenseModal.setAttribute('aria-hidden','true');
+  }
+
+  addExpenseBtn.addEventListener('click', openExpenseModal);
+  cancelExpenseBtn.addEventListener('click', closeExpenseModal);
+  expensePaidCash.addEventListener('click',()=>setExpensePaidFrom('Cash'));
+  expensePaidGcash.addEventListener('click',()=>setExpensePaidFrom('GCash'));
+  expenseModal.addEventListener('click',e=>{
+    if(e.target===expenseModal) closeExpenseModal();
+  });
+
+  expenseHistoryToggle.addEventListener('click',()=>{
+    const open = expenseHistorySection.style.display !== 'none';
+    expenseHistorySection.style.display = open ? 'none' : 'block';
+    expenseHistoryToggle.textContent = open ? 'View Expense History' : 'Hide Expense History';
+  });
+
+  saveExpenseBtn.addEventListener('click',()=>{
+    if(!unlocked) return;
+    const expAmount = Number(expenseAmountInput.value);
+    if(!isFinite(expAmount) || expAmount <= 0){
+      expenseModalStatus.textContent='Enter a valid expense amount.';
+      expenseModalStatus.className='status err';
+      return;
+    }
+
+    saveExpenseBtn.disabled=true;
+    expenseModalStatus.textContent='Saving…';
+    expenseModalStatus.className='status';
+
+    google.script.run
+      .withSuccessHandler(expense=>{
+        saveExpenseBtn.disabled=false;
+        expenses.unshift(expense);
+        renderExpenses();
+        closeExpenseModal();
+        loadCapital();
+      })
+      .withFailureHandler(err=>{
+        saveExpenseBtn.disabled=false;
+        expenseModalStatus.textContent=err.message || 'Could not save expense.';
+        expenseModalStatus.className='status err';
+      })
+      .addExpenseBySession(getSessionToken(),{
+        expense: expenseNameInput.value,
+        amount: expAmount,
+        paidFrom: expensePaidFrom,
+        note: expenseNoteInput.value
+      });
+  });
+
+  expenseHistoryList.addEventListener('click',e=>{
+    const btn = e.target.closest('[data-expense-id]');
+    if(!btn || !unlocked) return;
+    const id = btn.dataset.expenseId;
+    if(!confirm('Remove this capital expense?')) return;
+
+    google.script.run
+      .withSuccessHandler(()=>{
+        expenses = expenses.filter(x=>x.id!==id);
+        renderExpenses();
+        loadCapital();
+      })
+      .withFailureHandler(err=>alert(err.message || 'Could not remove expense.'))
+      .deleteExpenseBySession(getSessionToken(),id);
+  });
+
+  const SESSION_KEY = 'gcashGoogleSession';
+  const SESSION_DB = 'GCashTrackerAuth';
+  const SESSION_STORE = 'auth';
+  let sessionTokenCache = '';
+
+  function readCookieSession(){
+    try{
+      const m = document.cookie.match(new RegExp('(?:^|;\\s*)' + SESSION_KEY + '=([^;]*)'));
+      return m ? decodeURIComponent(m[1]) : '';
+    }catch(e){
+      return '';
+    }
+  }
+
+  function writeCookieSession(token){
+    try{
+      document.cookie = SESSION_KEY + '=' + encodeURIComponent(token || '') +
+        '; Max-Age=315360000; Path=/; SameSite=Lax; Secure';
+    }catch(e){}
+  }
+
+  function clearCookieSession(){
+    try{
+      document.cookie = SESSION_KEY + '=; Max-Age=0; Path=/; SameSite=Lax; Secure';
+    }catch(e){}
+  }
+
+  function openSessionDb(){
+    return new Promise((resolve,reject)=>{
+      if(!window.indexedDB) return reject(new Error('IndexedDB unavailable'));
+      const req = indexedDB.open(SESSION_DB,1);
+      req.onupgradeneeded = ()=>{
+        const db=req.result;
+        if(!db.objectStoreNames.contains(SESSION_STORE)){
+          db.createObjectStore(SESSION_STORE);
+        }
+      };
+      req.onsuccess=()=>resolve(req.result);
+      req.onerror=()=>reject(req.error || new Error('Could not open session storage'));
+    });
+  }
+
+  async function readIndexedSession(){
+    try{
+      const db=await openSessionDb();
+      return await new Promise((resolve,reject)=>{
+        const tx=db.transaction(SESSION_STORE,'readonly');
+        const req=tx.objectStore(SESSION_STORE).get(SESSION_KEY);
+        req.onsuccess=()=>resolve(String(req.result || ''));
+        req.onerror=()=>reject(req.error);
+      });
+    }catch(e){
+      return '';
+    }
+  }
+
+  async function writeIndexedSession(token){
+    try{
+      const db=await openSessionDb();
+      await new Promise((resolve,reject)=>{
+        const tx=db.transaction(SESSION_STORE,'readwrite');
+        tx.objectStore(SESSION_STORE).put(String(token || ''),SESSION_KEY);
+        tx.oncomplete=()=>resolve();
+        tx.onerror=()=>reject(tx.error);
+      });
+    }catch(e){}
+  }
+
+  async function clearIndexedSession(){
+    try{
+      const db=await openSessionDb();
+      await new Promise((resolve,reject)=>{
+        const tx=db.transaction(SESSION_STORE,'readwrite');
+        tx.objectStore(SESSION_STORE).delete(SESSION_KEY);
+        tx.oncomplete=()=>resolve();
+        tx.onerror=()=>reject(tx.error);
+      });
+    }catch(e){}
+  }
+
+  function getSessionToken(){
+    return 'LOCAL_NO_LOGIN';
+  }
+
+  async function restoreSessionToken(){
+    let token = getSessionToken();
+    if(!token){
+      token = await readIndexedSession();
+    }
+    if(token){
+      sessionTokenCache = token;
+      try{ localStorage.setItem(SESSION_KEY,token); }catch(e){}
+      writeCookieSession(token);
+      writeIndexedSession(token);
+    }
+    return token || '';
+  }
+
+  function saveSessionToken(token){
+    sessionTokenCache = String(token || '');
+    try{ localStorage.setItem(SESSION_KEY,sessionTokenCache); }catch(e){}
+    writeCookieSession(sessionTokenCache);
+    writeIndexedSession(sessionTokenCache);
+  }
+
+  function clearSessionToken(){
+    sessionTokenCache = '';
+    try{ localStorage.removeItem(SESSION_KEY); }catch(e){}
+    clearCookieSession();
+    clearIndexedSession();
+  }
+
+  function setLockedView(locked){
+    document.body.classList.remove('app-locked');
+    if(signedOutAuth) signedOutAuth.style.display = 'none';
+    if(signedInAuth) signedInAuth.style.display = 'none';
+  }
+
+  function applySignedInUser(user){
+    if(signedInEmail) signedInEmail.textContent = user && user.email ? user.email : '';
+    if(claimLegacyBtn){
+      claimLegacyBtn.style.display = user && user.legacyAvailable ? 'block' : 'none';
+    }
+  }
+
+  const LOCAL_CACHE_KEY = 'gcashTrackerAllRecordsV2';
+
+  const OFFLINE_ACTION_QUEUE_KEY='gcashTrackerOfflineActionsV1';
+  let MANUAL_SYNC_REQUESTED=false;
+  let offlineActionBusy=false;
+  let offlineActionRetry=1400;
+
+  function offlineActionId(prefix){
+    return String(prefix||'ACT')+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,10);
+  }
+
+  function loadOfflineActionQueue(){
+    try{
+      const q=JSON.parse(localStorage.getItem(OFFLINE_ACTION_QUEUE_KEY)||'[]');
+      return Array.isArray(q)?q:[];
+    }catch(e){ return []; }
+  }
+
+  function saveOfflineActionQueue(q){
+    try{localStorage.setItem(OFFLINE_ACTION_QUEUE_KEY,JSON.stringify(q||[]));}catch(e){}
+    renderPendingSyncPanel();
+    try{refreshFastSyncStatus();}catch(e){}
+  }
+
+  function queueOfflineAction(action){
+    const q=loadOfflineActionQueue();
+    q.push({...action,queuedAt:Date.now()});
+    saveOfflineActionQueue(q);
+    showSync('Saved locally. Sync when ready.', true);
+  }
+
+  window.addEventListener('gcash-queue-offline-action',function(e){
+    const d=(e&&e.detail)||{};
+    if(!d.id||!d.method) return;
+    queueOfflineAction({id:String(d.id),method:String(d.method),payload:d.payload||{}});
+  });
+
+  function queuedTotalCount(){
+    let n=loadOfflineActionQueue().length;
+    try{n+=loadPendingTxQueue().length;}catch(e){}
+    try{n+=loadPendingCashPiecesQueue().length;}catch(e){}
+    return n;
+  }
+
+  function actionLabel(a){
+    const p=(a&&a.payload)||{};
+    if(a.method==='addCapitalMovementBySession'){
+      if(p.type==='ADD_CAPITAL') return 'Add Capital';
+      if(p.type==='WITHDRAW_CAPITAL') return 'Withdraw Capital';
+      return 'Withdraw Earnings';
+    }
+    if(a.method==='addMayaTransferBySession'||a.method==='addMayaTransferWithCashPiecesBySession') return 'Move Money';
+    if(a.method==='saveCashCount') return 'Cash Check';
+    if(a.method==='saveManualCashCounterCorrection') return 'Cash Counter Reconciliation';
+    if(a.method==='saveCashCounterChangeMoney') return 'Change Money';
+    if(a.method==='setCashOnHandToCountedCashBySession') return 'Cash on Hand Adjustment';
+    if(a.method==='deleteTransactionBySession') return 'Delete Transaction';
+    return a.method||'Record';
+  }
+
+  function renderPendingSyncPanel(){
+    const btn=document.getElementById('pendingSyncBtn');
+    const list=document.getElementById('pendingSyncList');
+    const net=document.getElementById('pendingSyncNetwork');
+    if(!btn||!list||!net) return;
+    const actions=loadOfflineActionQueue();
+    let tx=[], cp=[];
+    try{tx=loadPendingTxQueue();}catch(e){}
+    try{cp=loadPendingCashPiecesQueue();}catch(e){}
+    const total=actions.length+tx.length+cp.length;
+    btn.style.display=total?'block':'none';
+    btn.textContent=total?`Pending Sync (${total})`:'Pending Sync';
+    net.innerHTML=navigator.onLine
+      ? 'Older pending records are held for review. They will NOT be resent automatically.'
+      : 'Offline. Older records remain on this device and will NOT be resent automatically.';
+
+    const rows=[];
+    actions.forEach(a=>rows.push(`<div class="pending-sync-item"><strong>${escapeHtml(actionLabel(a))}</strong><small>${escapeHtml(new Date(a.queuedAt||Date.now()).toLocaleString())}</small></div>`));
+    tx.forEach(a=>rows.push(`<div class="pending-sync-item"><strong>${escapeHtml((a.payload&&a.payload.type)||'Cash transaction')}</strong><small>Transaction waiting for Google Sheets</small></div>`));
+    cp.forEach(a=>rows.push(`<div class="pending-sync-item"><strong>Cash Counter pieces</strong><small>Waiting for transaction/Cash Counter sync</small></div>`));
+    list.innerHTML=rows.join('')||'<div class="pending-sync-item"><strong>Nothing waiting to sync.</strong></div>';
+  }
+
+  function replacePendingById(arr, id, serverObj){
+    const idx=arr.findIndex(x=>String(x.id||'')===String(id||''));
+    if(idx>=0) arr[idx]=serverObj;
+    else if(serverObj) arr.unshift(serverObj);
+  }
+
+  function handleOfflineActionSuccess(a,data){
+    if(a.method==='addCapitalMovementBySession'){
+      if(data&&data.movement) replacePendingById(capitalMovements,a.id,data.movement);
+      if(data&&data.capital) renderCapital(data.capital);
+      renderCapitalActivity(); saveLocalTrackerCache();
+    }else if(a.method==='setCashOnHandToCountedCashBySession'){
+      if(data&&data.movement) replacePendingById(capitalMovements,a.id,data.movement);
+      if(data&&data.capital) renderCapital(data.capital);
+      renderCapitalActivity(); saveLocalTrackerCache();
+      try{ window.gcashCashCounterUpdatePending=false; sendCashCounterStatusToTracker(); }catch(_e){}
+    }else if(a.method==='addMayaTransferBySession'||a.method==='addMayaTransferWithCashPiecesBySession'){
+      if(data&&data.transfer) replacePendingById(mayaTransfers,a.id,data.transfer);
+      if(data&&data.capital) renderCapital(data.capital);
+      renderMayaTransfers(); renderCapitalActivity(); saveLocalTrackerCache();
+      window.dispatchEvent(new CustomEvent('offline-wallet-action-synced',{detail:{action:a,data:data}}));
+    }else if(a.method==='saveCashCount'||a.method==='saveManualCashCounterCorrection'||a.method==='saveCashCounterChangeMoney'){
+      window.dispatchEvent(new CustomEvent('offline-cashcounter-action-synced',{detail:{action:a,data:data}}));
+    }
+  }
+
+  function scheduleOfflineActionRetry(){
+    const wait=offlineActionRetry;
+    offlineActionRetry=Math.min(Math.round(offlineActionRetry*1.8),30000);
+    setTimeout(processOfflineActionQueue,wait);
+  }
+
+  function processOfflineActionQueue(){
+    if(!MANUAL_SYNC_REQUESTED){ renderPendingSyncPanel(); return; }
+    if(offlineActionBusy||!navigator.onLine) { renderPendingSyncPanel(); return; }
+    const q=loadOfflineActionQueue();
+    if(!q.length){offlineActionRetry=1400;renderPendingSyncPanel();return;}
+    const a=q[0];
+    offlineActionBusy=true;
+
+    let runner=google.script.run
+      .withSuccessHandler(data=>{
+        const latest=loadOfflineActionQueue();
+        const idx=latest.findIndex(x=>String(x.id)===String(a.id));
+        if(idx>=0) latest.splice(idx,1);
+        saveOfflineActionQueue(latest);
+        offlineActionBusy=false;
+        offlineActionRetry=1400;
+        handleOfflineActionSuccess(a,data);
+        setTimeout(processOfflineActionQueue,0);
+      })
+      .withFailureHandler(err=>{
+        offlineActionBusy=false;
+        renderPendingSyncPanel();
+        scheduleOfflineActionRetry();
+      });
+
+    try{
+      if(a.method==='addCapitalMovementBySession'){
+        runner.addCapitalMovementBySession(getSessionToken(),a.payload);
+      }else if(a.method==='addMayaTransferBySession'){
+        runner.addMayaTransferBySession(getSessionToken(),a.payload);
+      }else if(a.method==='addMayaTransferWithCashPiecesBySession'){
+        runner.addMayaTransferWithCashPiecesBySession(getSessionToken(),a.payload);
+      }else if(a.method==='saveCashCount'){
+        runner.saveCashCount(a.payload.pieces,a.id);
+      }else if(a.method==='saveManualCashCounterCorrection'){
+        runner.saveManualCashCounterCorrection(a.payload.pieces,a.payload.reason,a.payload.note,a.id);
+      }else if(a.method==='saveCashCounterChangeMoney'){
+        runner.saveCashCounterChangeMoney(a.payload.pieces,a.id,a.payload.exchange||null);
+      }else if(a.method==='deleteTransactionBySession'){
+        runner.deleteTransactionBySession(getSessionToken(),a.payload.id);
+      }else if(a.method==='setCashOnHandToCountedCashBySession'){
+        runner.setCashOnHandToCountedCashBySession(getSessionToken(),a.payload);
+      }else{
+        const latest=loadOfflineActionQueue();
+        latest.shift(); saveOfflineActionQueue(latest);
+        offlineActionBusy=false;
+        setTimeout(processOfflineActionQueue,0);
+      }
+    }catch(e){
+      offlineActionBusy=false;
+      scheduleOfflineActionRetry();
+    }
+  }
+
+  function applyLocalCapitalAction(payload,id){
+    const c={...(capitalData||{})};
+    if(!c.initialized) throw new Error('Set your capital balances first while online.');
+    const wallet=payload.wallet;
+    const amount=Number(payload.amount||0);
+    const key=wallet==='GCash'?'gcashBalance':wallet==='Maya'?'mayaBalance':wallet==='MariBank'?'maribankBalance':'cashOnHand';
+    const prev=Number(c[key]||0);
+    const currentCap=Number(c.currentCapital ?? c.totalCapital ?? 0);
+    const available=Number(c.availableEarnings ?? c.netEarnings ?? 0);
+    if(payload.type!=='ADD_CAPITAL' && amount>prev+0.001) throw new Error('Not enough '+wallet+' balance.');
+    if(payload.type==='WITHDRAW_CAPITAL' && amount>currentCap+0.001) throw new Error('Withdrawal is more than your current capital.');
+    if(payload.type==='WITHDRAW_EARNINGS' && amount>available+0.001) throw new Error('Withdrawal is more than your available earnings.');
+
+    c[key]=payload.type==='ADD_CAPITAL'?prev+amount:prev-amount;
+    if(payload.type==='ADD_CAPITAL') c.currentCapital=currentCap+amount;
+    else if(payload.type==='WITHDRAW_CAPITAL') c.currentCapital=currentCap-amount;
+    else c.currentCapital=currentCap;
+
+    c.availableEarnings=payload.type==='WITHDRAW_EARNINGS'?available-amount:available;
+    c.withdrawnEarnings=Number(c.withdrawnEarnings||0)+(payload.type==='WITHDRAW_EARNINGS'?amount:0);
+    c.expectedTotalMoney=Number(c.currentCapital||0)+Number(c.availableEarnings||0);
+
+    const now=new Date();
+    const movement={
+      id:id,timestamp:now.toISOString(),date:now.toLocaleString(),
+      type:payload.type,amount:amount,wallet:wallet,note:payload.note||'',
+      previousWallet:prev,newWallet:Number(c[key]||0),
+      previousCurrentCapital:currentCap,newCurrentCapital:Number(c.currentCapital||0),
+      previousAvailableEarnings:available,newAvailableEarnings:Number(c.availableEarnings||0),
+      _pendingSync:true
+    };
+    capitalMovements.unshift(movement);
+    renderCapital(c); renderCapitalActivity(); saveLocalTrackerCache();
+    return movement;
+  }
+
+  function applyLocalMoveMoney(payload,id){
+    const c={...(capitalData||{})};
+    if(!c.initialized) throw new Error('Set your capital balances first while online.');
+    const map={'Cash on Hand':'cashOnHand','GCash':'gcashBalance','Maya':'mayaBalance','MariBank':'maribankBalance'};
+    const from=payload.fromWallet,to=payload.toWallet,amount=Number(payload.amount||0);
+    const fk=map[from],tk=map[to];
+    if(!fk||!tk||from===to) throw new Error('Choose two different wallets.');
+    const beforeFrom=Number(c[fk]||0),beforeTo=Number(c[tk]||0);
+    if(amount>beforeFrom+0.001) throw new Error('Not enough '+from+' balance.');
+    c[fk]=beforeFrom-amount; c[tk]=beforeTo+amount;
+    const now=new Date();
+    const t={
+      id:id,timestamp:now.toISOString(),date:now.toLocaleString(),
+      fromWallet:from,toWallet:to,amount:amount,_pendingSync:true,
+      previousGcash:Number((capitalData&&capitalData.gcashBalance)||0),
+      newGcash:Number(c.gcashBalance||0),
+      previousMaya:Number((capitalData&&capitalData.mayaBalance)||0),
+      newMaya:Number(c.mayaBalance||0),
+      previousMaribank:Number((capitalData&&capitalData.maribankBalance)||0),
+      newMaribank:Number(c.maribankBalance||0),
+      previousCash:Number((capitalData&&capitalData.cashOnHand)||0),
+      newCash:Number(c.cashOnHand||0)
+    };
+    mayaTransfers.unshift(t);
+    renderCapital(c); renderMayaTransfers(); renderCapitalActivity(); saveLocalTrackerCache();
+    return t;
+  }
+
+  const pendingSyncBtn=document.getElementById('pendingSyncBtn');
+  const pendingSyncModal=document.getElementById('pendingSyncModal');
+  const pendingSyncClose=document.getElementById('pendingSyncClose');
+  if(pendingSyncBtn) pendingSyncBtn.addEventListener('click',()=>{renderPendingSyncPanel();pendingSyncModal.classList.add('show');pendingSyncModal.setAttribute('aria-hidden','false');});
+  if(pendingSyncClose) pendingSyncClose.addEventListener('click',()=>{pendingSyncModal.classList.remove('show');pendingSyncModal.setAttribute('aria-hidden','true');});
+  if(pendingSyncModal) pendingSyncModal.addEventListener('click',e=>{if(e.target===pendingSyncModal) pendingSyncClose.click();});
+  window.addEventListener('online',()=>{renderPendingSyncPanel();processOfflineActionQueue();});
+  window.addEventListener('offline',renderPendingSyncPanel);
+  window.addEventListener('focus',processOfflineActionQueue);
+  setTimeout(()=>{renderPendingSyncPanel();processOfflineActionQueue();},300);
+
+
+
+  function saveLocalTrackerCache(){
+    try{
+      const snapshot = {
+        version: 2,
+        savedAt: Date.now(),
+        transactions: Array.isArray(history) ? history : [],
+        expenses: Array.isArray(expenses) ? expenses : [],
+        transfers: Array.isArray(transfers) ? transfers : [],
+        capitalMovements: Array.isArray(capitalMovements) ? capitalMovements : [],
+        capital: capitalData || null
+      };
+      localStorage.setItem(LOCAL_CACHE_KEY, JSON.stringify(snapshot));
+    }catch(e){}
+  }
+
+  function loadLocalTrackerCache(){
+    try{
+      const raw = localStorage.getItem(LOCAL_CACHE_KEY);
+      if(!raw) return false;
+
+      const data = JSON.parse(raw);
+      history = Array.isArray(data.transactions) ? data.transactions : [];
+      window.__gcashTransactions = history;
+      expenses = Array.isArray(data.expenses) ? data.expenses : [];
+      transfers = Array.isArray(data.transfers) ? data.transfers : [];
+      capitalMovements = Array.isArray(data.capitalMovements) ? data.capitalMovements : [];
+      capitalData = data.capital || null;
+      unlocked = true;
+
+      // Paint saved data immediately before any server request starts.
+      render();
+      renderExpenses();
+      renderCapital(capitalData);
+      renderCapitalActivity();
+      setLockedView(false);
+      showSync('Saved records loaded. Saved locally.');
+      return true;
+    }catch(e){
+      return false;
+    }
+  }
+
+  function loadAllWithSession(token){
+    unlocked=true;
+    setLockedView(false);
+    showSync('Syncing your records…');
+
+    google.script.run
+      .withSuccessHandler(data=>{
+        history=(data && data.transactions)||[];
+        window.__gcashTransactions = history;
+        expenses=(data && data.expenses)||[];
+        transfers=(data && data.transfers)||[];
+        capitalMovements=(data && data.capitalMovements)||[];
+        capitalData=(data && data.capital)||null;
+        unlocked=true;
+        render();
+        renderExpenses();
+        renderCapital(capitalData);
+        renderCapitalActivity();
+        saveLocalTrackerCache();
+        setLockedView(false);
+        showSync('Synced.',true);
+        setTimeout(restorePendingTransactions, 0);
+      })
+      .withFailureHandler(err=>{
+        unlocked=true;
+        const msg = (err && err.message) || 'Could not sync records.';
+        setLockedView(false);
+        showSync(msg + ' Saved records remain available.');
+      })
+      .getAppDataBySession('LOCAL_NO_LOGIN');
+  }
+
+  function openGoogleAuth(){
+    googleSignInBtn.disabled=true;
+    showSync('Opening Google sign-in…');
+
+    google.script.run
+      .withSuccessHandler(url=>{
+        googleSignInBtn.disabled=false;
+        window.top.location.href=url;
+      })
+      .withFailureHandler(err=>{
+        googleSignInBtn.disabled=false;
+        showSync((err && err.message) || 'Google sign-in is not configured.');
+      })
+      .getGoogleSignInUrl();
+  }
+
+  function consumeBootstrapHandoff(handoff){
+    showSync('Restoring your Google account…');
+    google.script.run
+      .withSuccessHandler(token=>{
+        saveSessionToken(token);
+        loadAllWithSession(token);
+      })
+      .withFailureHandler(err=>{
+        showSync((err && err.message) || 'Sign-in handoff expired. Sign in again.');
+      })
+      .consumeSessionHandoff(handoff);
+  }
+
+  function restoreFromTrustedDevice(deviceToken){
+    showSync('Restoring your Google account…');
+    google.script.run
+      .withSuccessHandler(token=>{
+        saveSessionToken(token);
+        loadAllWithSession(token);
+      })
+      .withFailureHandler(err=>{
+        clearSessionToken();
+        showSync((err && err.message) || 'This device needs Google sign-in again.');
+      })
+      .restoreSessionFromDevice(deviceToken);
+  }
+
+  googleSignInBtn.addEventListener('click',()=>{
+    openGoogleAuth();
+  });
+
+  if(accountMenuBtn && accountPopover){
+    accountMenuBtn.addEventListener('click',(e)=>{
+      e.stopPropagation();
+      const opening = !accountPopover.classList.contains('show');
+      accountPopover.classList.toggle('show', opening);
+      accountMenuBtn.setAttribute('aria-expanded', opening ? 'true' : 'false');
+    });
+
+    accountPopover.addEventListener('click',e=>e.stopPropagation());
+
+    document.addEventListener('click',()=>{
+      accountPopover.classList.remove('show');
+      accountMenuBtn.setAttribute('aria-expanded','false');
+    });
+  }
+
+  if(createPairingCodeBtn){
+    createPairingCodeBtn.addEventListener('click',()=>{
+      createPairingCodeBtn.disabled=true;
+      createPairingCodeStatus.textContent='Creating pairing code…';
+      createPairingCodeStatus.className='status';
+
+      google.script.run
+        .withSuccessHandler(code=>{
+          createPairingCodeBtn.disabled=false;
+          createdPairingCode.textContent=String(code||'');
+          createdPairingCodeWrap.style.display='block';
+          createPairingCodeStatus.textContent='Enter this code in the Blogger tracker.';
+          createPairingCodeStatus.className='status ok';
+        })
+        .withFailureHandler(err=>{
+          createPairingCodeBtn.disabled=false;
+          createPairingCodeStatus.textContent=(err && err.message) || 'Could not create pairing code.';
+          createPairingCodeStatus.className='status err';
+        })
+        .generateGithubPairingCode();
+    });
+  }
+
+  if(pairHomeBtn){
+    pairHomeBtn.addEventListener('click',()=>{
+      const token=getSessionToken();
+      if(!token){
+        showSync('');
+        return;
+      }
+
+      pairHomeBtn.disabled=true;
+      showSync('Preparing Home Screen pairing…');
+
+      google.script.run
+        .withSuccessHandler(url=>{
+          pairHomeBtn.disabled=false;
+          if(accountPopover) accountPopover.classList.remove('show');
+          if(accountMenuBtn) accountMenuBtn.setAttribute('aria-expanded','false');
+          window.top.location.href=url;
+        })
+        .withFailureHandler(err=>{
+          pairHomeBtn.disabled=false;
+          showSync((err && err.message) || 'Could not prepare Home Screen pairing.');
+        })
+        .createHomeScreenPairingLink(token);
+    });
+  }
+
+  signOutBtn.addEventListener('click',()=>{
+    const token=getSessionToken();
+    const device=BOOTSTRAP_DEVICE || '';
+    if(accountPopover) accountPopover.classList.remove('show');
+    if(accountMenuBtn) accountMenuBtn.setAttribute('aria-expanded','false');
+    clearSessionToken();
+    unlocked=false;
+    history=[]; window.__gcashTransactions = history; expenses=[]; capitalMovements=[]; capitalData=null;
+    render(); renderExpenses(); renderCapital(null);
+    setLockedView(true);
+    showSync('Signing out…');
+
+    google.script.run
+      .withSuccessHandler(()=>{
+        showSync('Signed out. Calculator is still available.');
+        try{ window.parent.postMessage({type:'gcash-signout'}, '*'); }catch(e){}
+      })
+      .withFailureHandler(()=>{
+        showSync('Signed out on this page.');
+        try{ window.parent.postMessage({type:'gcash-signout'}, '*'); }catch(e){}
+      })
+      .signOutGoogleSession(token,device);
+  });
+
+  claimLegacyBtn.addEventListener('click',()=>{
+    const token=getSessionToken();
+    if(!token) return;
+    if(!confirm('Import all existing records from the old PIN version into this Google account? This can only be done once.')) return;
+
+    claimLegacyBtn.disabled=true;
+    if(authStatus){
+      authStatus.textContent='Importing existing records…';
+      authStatus.className='status';
+    }
+
+    google.script.run
+      .withSuccessHandler(data=>{
+        claimLegacyBtn.disabled=false;
+        history=(data && data.transactions)||[];
+        window.__gcashTransactions = history;
+        expenses=(data && data.expenses)||[];
+        capitalMovements=(data && data.capitalMovements)||[];
+        capitalData=(data && data.capital)||null;
+        applySignedInUser((data && data.user)||{});
+        render(); renderExpenses(); renderCapital(capitalData);
+        if(authStatus){
+          authStatus.textContent='Existing records imported to this account.';
+          authStatus.className='status ok';
+        }
+      })
+      .withFailureHandler(err=>{
+        claimLegacyBtn.disabled=false;
+        if(authStatus){
+          authStatus.textContent=(err && err.message)||'Could not import existing records.';
+          authStatus.className='status err';
+        }
+      })
+      .claimLegacyData(token);
+  });
+
+  refreshBtn.addEventListener('click',()=>{
+    loadAllWithSession('LOCAL_NO_LOGIN');
+  });
+
+  noExactCashBtn.addEventListener('click',()=>{
+    if(chargeMode.value !== 'deduct') return;
+    noExactCashMode = !noExactCashMode;
+    noExactCashBtn.classList.toggle('active', noExactCashMode);
+    noExactCashBtn.setAttribute('aria-pressed', noExactCashMode ? 'true' : 'false');
+    cashReceived.value='';
+  
+  function forceHomeWalletLayoutV2(){
+    const cash=document.getElementById('homeCashBalance')?.closest('.home-balance-mini');
+    const sari=document.getElementById('homeSaripayBalance')?.closest('.home-balance-mini');
+    const gcash=document.getElementById('homeGcashBalance')?.closest('.home-balance-mini');
+    const maya=document.getElementById('homeMayaBalance')?.closest('.home-balance-mini');
+    const mari=document.getElementById('homeMaribankBalance')?.closest('.home-balance-mini');
+    const grid=cash?.parentElement;
+    if(!grid) return;
+    grid.style.setProperty('display','grid','important');
+    grid.style.setProperty('grid-template-columns','minmax(0,1fr) minmax(0,1fr)','important');
+    grid.style.setProperty('gap','8px','important');
+    [cash,sari,gcash,maya,mari].forEach(card=>{
+      if(card){
+        card.style.setProperty('width','100%','important');
+        card.style.setProperty('min-width','0','important');
+        grid.appendChild(card);
+      }
+    });
+  }
+  forceHomeWalletLayoutV2();
+  setTimeout(forceHomeWalletLayoutV2,100);
+  setTimeout(forceHomeWalletLayoutV2,800);
+
+
+  function forceFinalWalletOrder(){
+    // Home: GCash | Maya, then Cash wide.
+    const hg=document.getElementById('homeGcashBalance')?.closest('.home-balance-mini');
+    const hm=document.getElementById('homeMayaBalance')?.closest('.home-balance-mini');
+    const hmb=document.getElementById('homeMaribankBalance')?.closest('.home-balance-mini');
+    const hc=document.getElementById('homeCashBalance')?.closest('.home-balance-mini');
+    const homeGrid=hg?.parentElement;
+    if(homeGrid){
+      homeGrid.style.setProperty('display','grid','important');
+      homeGrid.style.setProperty('grid-template-columns','repeat(2,minmax(0,1fr))','important');
+      [hg,hm,hmb,hc].forEach(x=>{if(x) homeGrid.appendChild(x);});
+      if(hc){
+        hc.style.setProperty('grid-column','1 / -1','important');
+        hc.style.setProperty('background','#fff7ed','important');
+        hc.style.setProperty('border-color','#fed7aa','important');
+      }
+    }
+
+    // Wallets: GCash | Maya, then Cash on Hand wide.
+    const wg=document.getElementById('cashInAvailable')?.closest('.capital-balance');
+    const wm=document.getElementById('mayaAvailable')?.closest('.capital-balance');
+    const wmb=document.getElementById('maribankAvailable')?.closest('.capital-balance');
+    const wc=document.getElementById('cashOutAvailable')?.closest('.capital-balance');
+    const walletGrid=wg?.parentElement;
+    if(walletGrid){
+      walletGrid.style.setProperty('display','grid','important');
+      walletGrid.style.setProperty('grid-template-columns','repeat(2,minmax(0,1fr))','important');
+      [wg,wm,wmb,wc].forEach(x=>{if(x) walletGrid.appendChild(x);});
+      if(wc){
+        wc.style.setProperty('grid-column','1 / -1','important');
+        wc.style.setProperty('background','#fff7ed','important');
+        wc.style.setProperty('border-color','#fed7aa','important');
+        wc.style.setProperty('color','#c2410c','important');
+      }
+    }
+  }
+  forceFinalWalletOrder();
+  setTimeout(forceFinalWalletOrder,100);
+  setTimeout(forceFinalWalletOrder,800);
+
+  preview();
+    if(noExactCashMode) cashReceived.focus();
+  });
+
+  amount.addEventListener('input', preview);
+  cashReceived.addEventListener('input', preview);
+
+  clearInputsBtn.addEventListener('click', () => {
+    amount.value = '';
+    cashReceived.value = '';
+    noExactCashMode=false;
+    noExactCashBtn.classList.remove('active');
+    noExactCashBtn.setAttribute('aria-pressed','false');
+    status.textContent = '';
+    status.className = 'status';
+    resetChargeMode();
+    amount.focus();
+  });
+
+  periodButtons.forEach(btn=>btn.addEventListener('click',function(){
+    selectedPeriod=this.dataset.period;
+    periodButtons.forEach(b=>b.classList.toggle('active', b===this));
+    render();
+  }));
+
+  typeFilterButtons.forEach(btn=>btn.addEventListener('click',function(){
+    selectedTypeFilter=this.dataset.typefilter;
+    typeFilterButtons.forEach(b=>b.classList.toggle('active', b===this));
+    render();
+  }));
+
+  const calPrev=$('calPrev'),calNext=$('calNext'),calGrid=$('calGrid'),calDetail=$('calDetail');
+  if(calPrev)calPrev.addEventListener('click',()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()-1,1);calSelected='';renderCalendar()});
+  if(calNext)calNext.addEventListener('click',()=>{calMonth=new Date(calMonth.getFullYear(),calMonth.getMonth()+1,1);calSelected='';renderCalendar()});
+  if(calGrid)calGrid.addEventListener('click',e=>{
+    const b=e.target.closest('[data-cal-date]');
+    if(!b)return;
+    const key=b.dataset.calDate;
+    if(calSelected===key){
+      calSelected='';
+      renderCalendar();
+      return;
+    }
+    calSelected=key;
+    renderCalendar();
+  });
+  if(calDetail)calDetail.addEventListener('click',e=>{
+    const transferBtn=e.target.closest('[data-cal-transfer-remove]');
+    if(transferBtn){
+      pendingDeleteKind='transfer';
+      pendingDeleteTxId=String(transferBtn.dataset.calTransferRemove||'');
+      if(!pendingDeleteTxId)return;
+      document.getElementById('deleteTxTitle').textContent='Delete this Saripay transfer?';
+      document.querySelector('.delete-tx-note').textContent='This will reverse the Saripay → GCash transfer and remove its ₱10 expense too if one was used.';
+      deleteTxModal.classList.add('show');
+      deleteTxModal.setAttribute('aria-hidden','false');
+      return;
+    }
+    const b=e.target.closest('[data-cal-remove]');
+    if(!b)return;
+    pendingDeleteKind='transaction';
+    pendingDeleteTxId=String(b.dataset.calRemove||'');
+    if(!pendingDeleteTxId)return;
+    document.getElementById('deleteTxTitle').textContent='Undo this transaction?';
+    document.querySelector('.delete-tx-note').textContent='Wallet balances, earnings, Cash Counter bills and coins, and History totals will all be reversed.';
+    deleteTxModal.classList.add('show');
+    deleteTxModal.setAttribute('aria-hidden','false')
+  });
+
+  function closeTypeModal(){
+    typeModal.classList.remove('show');
+    typeModal.style.display='none';
+    typeModal.setAttribute('aria-hidden','true');
+    if(typeChoiceActions) typeChoiceActions.style.display='grid';
+    if(cashInWalletStep) cashInWalletStep.classList.remove('show');
+    if(cashOutWalletStep) cashOutWalletStep.classList.remove('show');
+    if(feeLocationStep) feeLocationStep.classList.remove('show');
+    selectedTransactionWallet='';
+  }
+
+  const TX_QUEUE_KEY = 'gcash_tracker_pending_tx_v1';
+  const CASH_PIECES_QUEUE_KEY = 'gcash_tracker_pending_cash_pieces_v1';
+  let txSyncBusy = false;
+  let cashPiecesSyncBusy = false;
+  let txRetryDelay = 1500;
+  let cashPiecesRetryDelay = 1200;
+  const cashPiecesPromptIds = new Set();
+
+  function pendingSyncCount(){
+    let n=loadPendingTxQueue().length + loadPendingCashPiecesQueue().length;
+    try{ n += loadOfflineActionQueue().length; }catch(e){}
+    return n;
+  }
+
+  function refreshFastSyncStatus(){
+    const n = pendingSyncCount();
+    if(n > 0) showSync(`${n} older record${n===1?'':'s'} held for review (not auto-resending).`);
+    else showSync('Synced.', true);
+  }
+
+  function scheduleTxRetry(){
+    const wait = txRetryDelay;
+    txRetryDelay = Math.min(Math.round(txRetryDelay * 1.8), 30000);
+    setTimeout(processPendingTxQueue, wait);
+  }
+
+  function scheduleCashPiecesRetry(transactionId){
+    const wait = cashPiecesRetryDelay;
+    cashPiecesRetryDelay = Math.min(Math.round(cashPiecesRetryDelay * 1.8), 20000);
+    setTimeout(()=>processPendingCashPiecesQueue(transactionId), wait);
+  }
+
+  function loadPendingCashPiecesQueue(){
+    try{
+      const q = JSON.parse(localStorage.getItem(CASH_PIECES_QUEUE_KEY) || '[]');
+      return Array.isArray(q) ? q : [];
+    }catch(e){ return []; }
+  }
+
+  function savePendingCashPiecesQueue(q){
+    try{
+      localStorage.setItem(CASH_PIECES_QUEUE_KEY, JSON.stringify(q || []));
+    }catch(e){}
+    try{ refreshFastSyncStatus(); }catch(e){}
+  }
+
+  function queueCashPieces(payload){
+    if(!payload || !payload.transactionId) return;
+    const q = loadPendingCashPiecesQueue();
+    const id = String(payload.transactionId || '');
+
+    const idx = q.findIndex(x => String(x.transactionId || '') === id);
+    if(idx >= 0) q[idx] = payload;
+    else q.push(payload);
+
+    savePendingCashPiecesQueue(q);
+  }
+
+  function removeQueuedCashPieces(transactionId){
+    const id = String(transactionId || '');
+    const q = loadPendingCashPiecesQueue().filter(
+      x => String(x.transactionId || '') !== id
+    );
+    savePendingCashPiecesQueue(q);
+  }
+
+  function isTransactionStillPending(transactionId){
+    const id = String(transactionId || '');
+    return loadPendingTxQueue().some(
+      x => String(x.clientTransactionId || '') === id
+    );
+  }
+
+  function processPendingCashPiecesQueue(transactionId){
+    if(!MANUAL_SYNC_REQUESTED) { try{refreshFastSyncStatus();}catch(e){} return; }
+    // Legacy pending records are preserved for manual reconciliation; never replay automatically.
+    return;
+
+    if(cashPiecesSyncBusy || !unlocked) return;
+
+    const all = loadPendingCashPiecesQueue();
+    if(!all.length) return;
+
+    let idx = 0;
+    if(transactionId){
+      idx = all.findIndex(
+        x => String(x.transactionId || '') === String(transactionId || '')
+      );
+      if(idx < 0) return;
+    }
+
+    const payload = all[idx];
+
+    // The backend can only save denominations after the parent transaction
+    // already exists in Google Sheets.
+    if(isTransactionStillPending(payload.transactionId)) return;
+
+    cashPiecesSyncBusy = true;
+
+    google.script.run
+      .withSuccessHandler(result=>{
+        const latest = loadPendingCashPiecesQueue().filter(
+          x => String(x.transactionId || '') !== String(payload.transactionId || '')
+        );
+        savePendingCashPiecesQueue(latest);
+        cashPiecesSyncBusy = false;
+        cashPiecesRetryDelay = 1200;
+
+        if(typeof window.loadCashCounterLatestStatus === 'function'){
+          setTimeout(window.loadCashCounterLatestStatus, 100);
+        }
+
+        // Continue with another queued Cash Pieces record if there is one.
+        setTimeout(()=>processPendingCashPiecesQueue(), 50);
+      })
+      .withFailureHandler(err=>{
+        cashPiecesSyncBusy = false;
+
+        const msg = String((err && err.message) || '');
+        // If the transaction is not on the server yet, keep the Cash Pieces safely queued.
+        if(
+          msg.toLowerCase().includes('transaction not found') ||
+          msg.toLowerCase().includes('not found')
+        ){
+          scheduleCashPiecesRetry(payload.transactionId);
+          return;
+        }
+
+        // Keep it queued and retry quickly with a gentle backoff.
+        scheduleCashPiecesRetry(payload.transactionId);
+      })
+      .recordTransactionCashPiecesBySession(
+        getSessionToken(),
+        {
+          transactionId:String(payload.transactionId || ''),
+          received:{...(payload.received || {})},
+          given:{...(payload.given || {})}
+        }
+      );
+  }
+
+  function loadPendingTxQueue(){
+    try{
+      const q = JSON.parse(localStorage.getItem(TX_QUEUE_KEY) || '[]');
+      return Array.isArray(q) ? q : [];
+    }catch(e){ return []; }
+  }
+
+  function savePendingTxQueue(q){
+    try{ localStorage.setItem(TX_QUEUE_KEY, JSON.stringify(q || [])); }catch(e){}
+    try{ refreshFastSyncStatus(); }catch(e){}
+  }
+
+  function makeOptimisticTransaction(payload){
+    const entered = Number(payload.amount || 0);
+    const feeValue = calcFee(entered);
+    const deduct = payload.chargeMode === 'deduct';
+    const txAmount = deduct ? Math.max(entered - feeValue, 0) : entered;
+    const txTotal = deduct ? entered : entered + feeValue;
+    const cash = Number(payload.cashReceived || 0);
+    const changeValue = Math.max(cash - txTotal, 0);
+
+    const beforeCash = Number((capitalData && capitalData.cashOnHand) || 0);
+    const beforeGcash = Number((capitalData && capitalData.gcashBalance) || 0);
+    const beforeMaya = Number((capitalData && capitalData.mayaBalance) || 0);
+    const beforeMaribank = Number((capitalData && capitalData.maribankBalance) || 0);
+    const beforeSaripay = Number((capitalData && capitalData.saripayBalance) || 0);
+
+    let afterCash = beforeCash;
+    let afterGcash = beforeGcash;
+    let afterMaya = beforeMaya;
+    let afterMaribank = beforeMaribank;
+    let afterSaripay = beforeSaripay;
+
+    if(payload.type === 'Cash In'){
+      if(payload.feeLocation === 'Cash on Hand') afterCash += txTotal;
+      else afterCash += txAmount;
+
+      if(payload.walletDestination === 'MariBank') afterMaribank -= txAmount;
+      else if(payload.walletDestination === 'Maya') afterMaya -= txAmount;
+      else afterGcash -= txAmount;
+
+      if(payload.feeLocation === 'Maya') afterMaya += feeValue;
+      else if(payload.feeLocation === 'GCash') afterGcash += feeValue;
+      else if(payload.feeLocation === 'MariBank') afterMaribank += feeValue;
+    }else{
+      afterCash -= txAmount;
+      if(payload.walletDestination === 'MariBank') afterMaribank += txAmount;
+      else if(payload.walletDestination === 'Maya') afterMaya += txAmount;
+      else afterGcash += txAmount;
+
+      if(payload.feeLocation === 'Cash on Hand') afterCash += feeValue;
+      else if(payload.feeLocation === 'Maya') afterMaya += feeValue;
+      else if(payload.feeLocation === 'GCash') afterGcash += feeValue;
+    }
+
+    const now = new Date();
+    return {
+      id: payload.clientTransactionId,
+      timestamp: now.toISOString(),
+      date: new Intl.DateTimeFormat('en-PH',{
+        month:'2-digit',day:'2-digit',year:'numeric',
+        hour:'2-digit',minute:'2-digit'
+      }).format(now),
+      type: payload.type,
+      amount: txAmount,
+      fee: feeValue,
+      total: txTotal,
+      cashReceived: cash,
+      change: changeValue,
+      chargeMode: payload.chargeMode,
+      feeLocation: payload.feeLocation || '',
+      walletDestination: payload.walletDestination || 'GCash',
+      previousCash: beforeCash, newCash: afterCash,
+      previousGcash: beforeGcash, newGcash: afterGcash,
+      previousMaya: beforeMaya, newMaya: afterMaya,
+      previousMaribank: beforeMaribank, newMaribank: afterMaribank,
+      previousSaripay: beforeSaripay, newSaripay: afterSaripay,
+      _pendingSync: true
+    };
+  }
+
+  function applyOptimisticTransaction(tx){
+    history.unshift(tx);
+    window.__gcashTransactions = history;
+
+    // Make the newly recorded transaction immediately visible in Calendar History.
+    // This applies to GCash, Maya, and MariBank Cash In, plus GCash/Maya Cash Out.
+    const newTxDate = dateKey(tx);
+    if(newTxDate){
+      const parts = newTxDate.split('-').map(Number);
+      calMonth = new Date(parts[0], parts[1]-1, 1);
+      calSelected = newTxDate;
+    }
+
+    if(capitalData && capitalData.initialized){
+      capitalData.cashOnHand = Number(tx.newCash);
+      capitalData.gcashBalance = Number(tx.newGcash);
+      capitalData.mayaBalance = Number(tx.newMaya ?? capitalData.mayaBalance ?? 0);
+      capitalData.maribankBalance = Number(tx.newMaribank ?? capitalData.maribankBalance ?? 0);
+      capitalData.saripayBalance = Number(tx.newSaripay);
+      capitalData.grossFees = Number(capitalData.grossFees || 0) + Number(tx.fee || 0);
+      capitalData.netEarnings = Number(capitalData.netEarnings || 0) + Number(tx.fee || 0);
+      capitalData.availableEarnings = Number(capitalData.availableEarnings || 0) + Number(tx.fee || 0);
+      capitalData.expectedTotalMoney = Number(capitalData.expectedTotalMoney || 0) + Number(tx.fee || 0);
+      renderCapital(capitalData);
+    }
+    render();
+    saveLocalTrackerCache();
+    try{ window.dispatchEvent(new CustomEvent('gcash-local-transaction-recorded',{detail:{...tx}})); }catch(_e){}
+  }
+
+  function processPendingTxQueue(){
+    if(!MANUAL_SYNC_REQUESTED) { refreshFastSyncStatus(); return; }
+    if(txSyncBusy || !unlocked) return;
+    const q = loadPendingTxQueue();
+    if(!q.length){
+      // A Cash Pieces record may already be waiting for its parent transaction.
+      setTimeout(()=>processPendingCashPiecesQueue(), 0);
+      refreshFastSyncStatus();
+      // Do not block the customer flow with a full Google Sheets reload.
+      // Reconcile quietly after the app has been idle for a few seconds.
+      clearTimeout(window.__gcashIdleCapitalRefresh);
+      window.__gcashIdleCapitalRefresh=setTimeout(()=>{
+        if(!loadPendingTxQueue().length && !txSyncBusy){ try{ loadCapital(); }catch(_e){} }
+      },5000);
+      return;
+    }
+
+    txSyncBusy = true;
+    const payload = q[0];
+    showSync(`Syncing ${q.length} transaction${q.length===1?'':'s'}…`);
+
+    google.script.run
+      .withSuccessHandler(serverTx=>{
+        const idx = history.findIndex(x => String(x.id) === String(serverTx.id));
+        // Preserve locally recorded Cash Count even when an older Apps Script
+        // response does not echo the cashPieces field back to the browser.
+        const localTx = idx >= 0 ? history[idx] : null;
+        if(localTx && localTx.cashPieces && !serverTx.cashPieces){
+          serverTx.cashPieces=localTx.cashPieces;
+        }
+        if(idx >= 0) history[idx] = serverTx;
+        else history.unshift(serverTx);
+        window.__gcashTransactions = history;
+
+        q.shift();
+        savePendingTxQueue(q);
+        txSyncBusy = false;
+        txRetryDelay = 1500;
+
+        const syncedDate = dateKey(serverTx);
+        if(syncedDate){
+          const parts = syncedDate.split('-').map(Number);
+          calMonth = new Date(parts[0], parts[1]-1, 1);
+          calSelected = syncedDate;
+        }
+
+        render();
+        saveLocalTrackerCache();
+
+        // If Cash Pieces were already entered while this transaction was syncing,
+        // send them now that the parent transaction exists in Google Sheets.
+        cashPiecesPromptIds.delete(String(serverTx.id||''));
+        setTimeout(()=>processPendingCashPiecesQueue(serverTx.id), 20);
+
+        if(q.length){
+          setTimeout(processPendingTxQueue, 50);
+        }else{
+          showSync('Synced.', true);
+          clearTimeout(window.__gcashIdleCapitalRefresh);
+          window.__gcashIdleCapitalRefresh=setTimeout(()=>{
+            if(!loadPendingTxQueue().length && !txSyncBusy){ try{ loadCapital(); }catch(_e){} }
+          },5000);
+        }
+      })
+      .withFailureHandler(err=>{
+        txSyncBusy = false;
+        const msg=(err && err.message) || 'Google Sheets sync delayed.';
+
+        if(msg.toLowerCase().includes('cancelled before sync')){
+          const remaining = loadPendingTxQueue().filter(
+            x => String(x.clientTransactionId || '') !== String(payload.clientTransactionId || '')
+          );
+          savePendingTxQueue(remaining);
+          showSync('Deleted transaction will not sync.', true);
+          setTimeout(processPendingTxQueue, 50);
+          return;
+        }
+
+        showSync(msg + ' Transaction is safe on this device and will retry.');
+        // Keep the queue intact. Retry quickly without creating duplicates.
+        scheduleTxRetry();
+      })
+      .addTransactionBySession(getSessionToken(), payload);
+  }
+
+  function restorePendingTransactions(){
+    const q = loadPendingTxQueue();
+    if(!q.length) return;
+    q.forEach(payload=>{
+      const id=String(payload.clientTransactionId||'');
+      if(!id || history.some(x=>String(x.id)===id)) return;
+      const tx=makeOptimisticTransaction(payload);
+      history.unshift(tx);
+    window.__gcashTransactions = history;
+    });
+    render();
+    refreshFastSyncStatus();
+    renderPendingSyncPanel();
+  }
+
+  function kickFastSync(){
+    // Manual-sync mode: opening/focusing/coming online never uploads records.
+    refreshFastSyncStatus();
+    renderPendingSyncPanel();
+  }
+
+  window.addEventListener('online', kickFastSync);
+  window.addEventListener('focus', kickFastSync);
+  document.addEventListener('visibilitychange',()=>{
+    if(document.visibilityState==='visible') kickFastSync();
+  });
+
+  function setTransactionSaving(on){
+    transactionSaving = !!on;
+    if(recordTransactionBtn){
+      recordTransactionBtn.disabled = transactionSaving;
+      recordTransactionBtn.textContent = transactionSaving ? 'Recording…' : 'Record Transaction';
+      recordTransactionBtn.style.opacity = transactionSaving ? '.65' : '';
+      recordTransactionBtn.style.cursor = transactionSaving ? 'not-allowed' : '';
+    }
+  }
+
+  function applyTransactionSnapshotImmediately(tx){
+    if(!tx) return;
+
+    // Use the permanent balance snapshot returned by Apps Script immediately,
+    // so the user sees the new wallet balances without waiting for a second sync.
+    if(tx.newCash !== undefined && tx.newCash !== null){
+      cashOutAvailable.textContent = money(tx.newCash);
+    }
+    if(tx.newGcash !== undefined && tx.newGcash !== null){
+      cashInAvailable.textContent = money(tx.newGcash);
+    }
+    if(tx.newSaripay !== undefined && tx.newSaripay !== null){
+      saripayAvailable.textContent = money(tx.newSaripay);
+    }
+
+    if(capitalData && capitalData.initialized){
+      capitalData.cashOnHand = Number(tx.newCash ?? capitalData.cashOnHand ?? 0);
+      capitalData.gcashBalance = Number(tx.newGcash ?? capitalData.gcashBalance ?? 0);
+      capitalData.saripayBalance = Number(tx.newSaripay ?? capitalData.saripayBalance ?? 0);
+      capitalData.grossFees = Number(capitalData.grossFees || 0) + Number(tx.fee || 0);
+      capitalData.netEarnings = Number(capitalData.netEarnings || 0) + Number(tx.fee || 0);
+      capitalData.availableEarnings = Number(capitalData.availableEarnings || 0) + Number(tx.fee || 0);
+      capitalData.expectedTotalMoney = Number(capitalData.expectedTotalMoney || 0) + Number(tx.fee || 0);
+      netEarnings.textContent = money(capitalData.netEarnings);
+      if(availableEarningsEl) availableEarningsEl.textContent = money(capitalData.availableEarnings);
+      expectedTotalMoney.textContent = money(capitalData.expectedTotalMoney);
+      saveLocalTrackerCache();
+    }
+  }
+  let cashPiecesPendingTx = null;
+  let cashPiecesMode = 'received';
+
+  const CASH_PIECE_DENOMS = [
+    {key:'1000',label:'₱1,000',value:1000,kind:'bill'},
+    {key:'500',label:'₱500',value:500,kind:'bill'},
+    {key:'200',label:'₱200',value:200,kind:'bill'},
+    {key:'100',label:'₱100',value:100,kind:'bill'},
+    {key:'50',label:'₱50',value:50,kind:'bill'},
+    {key:'20b',label:'₱20 Bill',value:20,kind:'bill'},
+    {key:'20c',label:'₱20 Coin',value:20,kind:'coin'},
+    {key:'10',label:'₱10',value:10,kind:'coin'},
+    {key:'5',label:'₱5',value:5,kind:'coin'},
+    {key:'1',label:'₱1',value:1,kind:'coin'}
+  ];
+
+  let cashPiecesReceived = {};
+  let cashPiecesGiven = {};
+
+  function zeroCashPieces(){
+    const x={};
+    CASH_PIECE_DENOMS.forEach(d=>x[d.key]=0);
+    return x;
+  }
+
+  function pieceTotal(obj){
+    return CASH_PIECE_DENOMS.reduce(
+      (sum,d)=>sum+(Math.max(0,Math.floor(Number(obj[d.key]||0)))*d.value),0
+    );
+  }
+
+  function expectedCashMovement(tx){
+    if(tx && tx.previousCash !== null && tx.previousCash !== undefined &&
+       tx.newCash !== null && tx.newCash !== undefined){
+      return Number(tx.newCash||0)-Number(tx.previousCash||0);
+    }
+
+    if(!tx) return 0;
+    if(tx.type==='Cash In') return Number(tx.total||0);
+
+    let n = -Number(tx.amount||0);
+    if(String(tx.feeLocation||'')==='Cash on Hand') n += Number(tx.fee||0);
+    return n;
+  }
+
+  function showCashPiecesOffer(tx){
+    if(!tx || (tx.type!=='Cash In' && tx.type!=='Cash Out' && tx.type!=='Move Money')) return;
+    cashPiecesPendingTx=tx;
+
+    const expected=expectedCashMovement(tx);
+    const box=document.getElementById('cashPiecesOffer');
+    const summary=document.getElementById('cashPiecesOfferSummary');
+    const note=document.getElementById('cashPiecesOfferNote');
+    if(!box || !summary) return;
+
+    if(note){
+      note.textContent = tx.type==='Move Money'
+        ? (tx.fromWallet==='Cash on Hand'
+            ? 'Select the exact physical bills and coins you are removing from Cash on Hand.'
+            : 'Select the exact physical bills and coins you are adding to Cash on Hand.')
+        : tx.type==='Cash In'
+          ? 'Record the actual bills and coins received and any change you gave.'
+          : 'Record the actual cash you gave the customer and any cash fee you received.';
+    }
+
+    const cashOutCashFee =
+      tx.type==='Cash Out' &&
+      String(tx.feeLocation||'')==='Cash on Hand' &&
+      Number(tx.fee||0)>0;
+
+    if(cashOutCashFee){
+      summary.innerHTML=
+        `Type: <strong>${tx.type}</strong><br>`+
+        `Transaction amount: <strong>${money(Number(tx.amount||0))}</strong><br>`+
+        `Cash given to customer: <strong>-${money(Number(tx.amount||0))}</strong><br>`+
+        `Cash fee received: <strong>+${money(Number(tx.fee||0))}</strong>`;
+    }else{
+      summary.innerHTML=
+        `Type: <strong>${tx.type}</strong><br>`+
+        `Transaction amount: <strong>${money(Number(tx.amount||tx.total||0))}</strong><br>`+
+        `Expected Cash on Hand change: <strong>${expected>=0?'+':''}${money(expected)}</strong>`;
+    }
+
+    box.classList.add('show');
+    box.setAttribute('aria-hidden','false');
+  }
+
+  function closeCashPiecesOffer(clearTx=true){
+    const box=document.getElementById('cashPiecesOffer');
+    if(box){
+      box.classList.remove('show');
+      box.setAttribute('aria-hidden','true');
+    }
+    if(clearTx) cashPiecesPendingTx=null;
+  }
+
+  function renderCashPiecesGrid(){
+    const grid=document.getElementById('cashPiecesGrid');
+    if(!grid) return;
+
+    const data = cashPiecesMode==='received' ? cashPiecesReceived : cashPiecesGiven;
+
+    grid.innerHTML=CASH_PIECE_DENOMS.map(d=>{
+      const qty=Math.max(0,Math.floor(Number(data[d.key]||0)));
+      return `
+        <div class="cash-piece-card">
+          <div class="cash-piece-title"><span class="peso-denom-label">${window.pesoDenominationIcon(d.key)}<span>${d.label}</span></span></div>
+          <div class="cash-piece-controls">
+            <button type="button" class="cash-piece-minus" data-piece-key="${d.key}">−</button>
+            <input type="number" inputmode="numeric" min="0" step="1"
+                   data-piece-input="${d.key}" value="${qty}">
+            <button type="button" class="cash-piece-plus" data-piece-key="${d.key}">+</button>
+          </div>
+          <div class="cash-piece-subtotal">Subtotal: ${money(qty*d.value)}</div>
+        </div>`;
+    }).join('');
+
+    updateCashPiecesTotals();
+  }
+
+  function cashInRequiredReceived(tx){
+    const entered=Number(tx && (tx._transactionPayload?.cashReceived ?? tx.cashReceived));
+    return Number.isFinite(entered) && entered>0 ? entered : expectedCashMovement(tx);
+  }
+
+  function updateCashPiecesTarget(){
+    const tx=cashPiecesPendingTx;
+    const panel=document.getElementById('cashPiecesTargetPanel');
+    if(!panel)return;
+    const isCashIn=!!tx&&tx.type==='Cash In';
+    panel.style.display=isCashIn?'':'none';
+    if(!isCashIn)return;
+    const requiredReceived=cashInRequiredReceived(tx);
+    const due=Math.round((requiredReceived-expectedCashMovement(tx))*100)/100;
+    const received=pieceTotal(cashPiecesReceived);
+    const given=pieceTotal(cashPiecesGiven);
+    const isReceived=cashPiecesMode==='received';
+    const target=isReceived?requiredReceived:due;
+    const counted=isReceived?received:given;
+    const label=document.getElementById('cashPiecesTargetLabel');
+    const amount=document.getElementById('cashPiecesTargetAmount');
+    const progress=document.getElementById('cashPiecesTargetProgress');
+    if(label)label.textContent=isReceived?'Cash Received · amount to count':'Change Given · amount to give';
+    if(amount)amount.textContent=money(target);
+    if(progress){
+      const delta=Math.round((target-counted)*100)/100;
+      progress.textContent=`Counted ${money(counted)} · ${Math.abs(delta)<0.01?'Matched':delta>0?money(delta)+' remaining':money(-delta)+' too much'}`;
+      progress.style.color=Math.abs(delta)<0.01?'#137547':'#a52720';
+    }
+  }
+
+  function updateCashPiecesTotals(){
+    const receivedTotal=pieceTotal(cashPiecesReceived);
+    const cashIn=cashPiecesPendingTx&&cashPiecesPendingTx.type==='Cash In';
+    const requiredReceived=cashIn?cashInRequiredReceived(cashPiecesPendingTx):0;
+    const changeDue=Math.round((requiredReceived-expectedCashMovement(cashPiecesPendingTx))*100)/100;
+    const givenTotal=pieceTotal(cashPiecesGiven);
+    const net=receivedTotal-givenTotal;
+    const expected=expectedCashMovement(cashPiecesPendingTx);
+
+    const a=document.getElementById('cashPiecesReceivedTotal');
+    const b=document.getElementById('cashPiecesGivenTotal');
+    const c=document.getElementById('cashPiecesNetTotal');
+    const match=document.getElementById('cashPiecesMatch');
+    const save=document.getElementById('cashPiecesSave');
+
+    if(a) a.textContent=money(receivedTotal);
+    if(b) b.textContent=money(givenTotal);
+    if(c) c.textContent=(net>=0?'+':'')+money(net);
+    updateCashPiecesTarget();
+
+    const specialCashOutCashFee =
+      cashPiecesPendingTx &&
+      cashPiecesPendingTx.type==='Cash Out' &&
+      String(cashPiecesPendingTx.feeLocation||'')==='Cash on Hand' &&
+      Number(cashPiecesPendingTx.fee||0)>0;
+
+    let ok;
+    if(specialCashOutCashFee){
+      const needGiven=Number(cashPiecesPendingTx.amount||0);
+      const needReceived=Number(cashPiecesPendingTx.fee||0);
+      ok=Math.abs(givenTotal-needGiven)<0.01 && Math.abs(receivedTotal-needReceived)<0.01;
+
+      if(match){
+        match.className='cash-pieces-match '+(ok?'ok':'bad');
+        match.textContent=ok
+          ? `MATCHED. Cash Given ${money(needGiven)} and Cash Fee Received ${money(needReceived)}.`
+          : `Enter Cash Given ${money(needGiven)} and Cash Fee Received ${money(needReceived)}.`;
+      }
+    }else{
+      ok=cashIn
+        ? changeDue>=0 && Math.abs(receivedTotal-requiredReceived)<0.01 && Math.abs(givenTotal-changeDue)<0.01
+        : Math.abs(net-expected)<0.01;
+      if(match){
+        match.className='cash-pieces-match '+(ok?'ok':'bad');
+        if(ok){
+          match.textContent=cashIn ? `MATCHED. Cash received ${money(receivedTotal)}; change given ${money(givenTotal)}.` : cashPiecesPendingTx&&cashPiecesPendingTx.type==='Move Money'?'MATCHED. Cash pieces equal the transfer amount.':'MATCHED. Cash pieces equal the transaction.';
+        }else{
+          const diff=expected-net;
+          match.textContent=cashIn ? (changeDue<0 ? 'Cash received entered on Home is less than the amount due. Nothing recorded.' : Math.abs(receivedTotal-requiredReceived)>=0.01 ? `Count ${money(requiredReceived)} received on Home; counted ${money(receivedTotal)}. Nothing recorded until matched.` : `Change to give ${money(changeDue)}; counted ${money(givenTotal)}. Nothing recorded until matched.`) : `Not matched. ${diff>0?'Need +':'Need '}${money(diff)} more net cash movement.`;
+        }
+      }
+    }
+    if(save) save.disabled=!ok;
+  }
+
+  function updateCashPiecesSectionText(){
+    const note=document.getElementById('cashPiecesSectionNote');
+    if(!note || !cashPiecesPendingTx) return;
+
+    if(cashPiecesPendingTx.type==='Move Money'){
+      if(cashPiecesMode==='received') note.textContent='Cash Added: enter the exact bills and coins physically added to Cash on Hand.';
+      else note.textContent='Cash Removed: enter the exact bills and coins physically removed from Cash on Hand.';
+    }else if(cashPiecesMode==='received'){
+      note.textContent = cashPiecesPendingTx.type==='Cash In'
+        ? 'Money Received: enter the bills and coins the customer handed to you.'
+        : 'Money Received: enter only cash received from the customer, such as a fee paid into Cash on Hand.';
+    }else{
+      note.textContent = cashPiecesPendingTx.type==='Cash In'
+        ? 'Change Given: count the actual bills and coins you handed back. The total must match the calculated change.'
+        : 'Money Given: enter the bills and coins you handed to the customer for the Cash Out.';
+    }
+  }
+
+  function openCashPiecesRecorder(){
+    const tx=cashPiecesPendingTx;
+    if(!tx) return;
+
+    closeCashPiecesOffer(false);
+
+    cashPiecesReceived=zeroCashPieces();
+    cashPiecesGiven=zeroCashPieces();
+    cashPiecesMode=(tx.type==='Move Money' && tx.fromWallet==='Cash on Hand') ? 'given' : 'received';
+
+    const modal=document.getElementById('cashPiecesModal');
+    const title=document.getElementById('cashPiecesTitle');
+    const subtitle=document.getElementById('cashPiecesSubtitle');
+    const txType=document.getElementById('cashPiecesTxType');
+    const txAmount=document.getElementById('cashPiecesTxAmount');
+    const expected=document.getElementById('cashPiecesExpected');
+    const recTab=document.getElementById('cashPiecesReceivedTab');
+    const givTab=document.getElementById('cashPiecesGivenTab');
+    const stat=document.getElementById('cashPiecesStatus');
+
+    if(title) title.textContent=tx.type==='Move Money'?'Enter transfer bills and coins':'Enter bills and coins';
+    if(subtitle) subtitle.textContent=tx.type==='Move Money'
+      ? `${tx.fromWallet} → ${tx.toWallet}. Select the exact cash denominations.`
+      : 'This belongs to the transaction you entered on Home. Enter the actual bills and coins; cancelling cancels that transaction.';
+    if(txType) txType.textContent=tx.type==='Move Money'?`${tx.fromWallet} → ${tx.toWallet}`:tx.type;
+    if(txAmount) txAmount.textContent=money(Number(tx.amount||tx.total||0));
+
+    const exp=expectedCashMovement(tx);
+    const specialCashOutCashFee =
+      tx.type==='Cash Out' &&
+      String(tx.feeLocation||'')==='Cash on Hand' &&
+      Number(tx.fee||0)>0;
+
+    if(expected){
+      const expectedBox=expected.closest('.cash-pieces-summary-box');
+      if(specialCashOutCashFee){
+        if(expectedBox) expectedBox.style.display='none';
+      }else{
+        if(expectedBox) expectedBox.style.display='';
+        expected.textContent=(exp>=0?'+':'')+money(exp);
+      }
+    }
+
+    const netRow=document.getElementById('cashPiecesNetTotal')?.closest('.cash-pieces-live-row');
+    if(netRow) netRow.style.display=(tx.type==='Cash In'||specialCashOutCashFee)?'none':'';
+    const receivedRow=document.getElementById('cashPiecesReceivedTotal')?.closest('.cash-pieces-live-row');
+    const givenRow=document.getElementById('cashPiecesGivenTotal')?.closest('.cash-pieces-live-row');
+    if(receivedRow) receivedRow.querySelector('span').textContent=tx.type==='Cash In'?'Cash received':'Money Received';
+    if(givenRow) givenRow.querySelector('span').textContent=tx.type==='Cash In'?'Change Given (counted)':'Money Given';
+
+    if(recTab){
+      recTab.textContent=tx.type==='Move Money'?'Cash Added':'Money Received';
+      recTab.classList.toggle('active',cashPiecesMode==='received');
+      recTab.style.display=(tx.type==='Move Money'&&tx.fromWallet==='Cash on Hand')?'none':'';
+    }
+    if(givTab){
+      givTab.textContent=tx.type==='Cash In'?'Change Given':tx.type==='Move Money'?'Cash Removed':'Money Given';
+      givTab.classList.toggle('active',cashPiecesMode==='given');
+      givTab.style.display=(tx.type==='Move Money'&&tx.toWallet==='Cash on Hand')?'none':'';
+    }
+    if(stat) stat.textContent='';
+
+    updateCashPiecesSectionText();
+    renderCashPiecesGrid();
+
+    if(modal){
+      modal.classList.add('show');
+      modal.setAttribute('aria-hidden','false');
+      modal.scrollTop=0;
+    }
+  }
+
+  function closeCashPiecesRecorder(){
+    const modal=document.getElementById('cashPiecesModal');
+    if(modal){
+      modal.classList.remove('show');
+      modal.setAttribute('aria-hidden','true');
+    }
+    cashPiecesPendingTx=null;
+  }
+
+  function cancelCashPiecesAndTransaction(){
+    const tx=cashPiecesPendingTx;
+
+    // Cash Pieces are mandatory. Cancel means cancel the whole unsaved
+    // Cash In / Cash Out / Move Money operation. Nothing is added to
+    // History, balances, Cash Counter, earnings, or Pending Sync.
+    const isDraft=!!(tx && (tx._transactionDraft || tx._walletTransferDraft));
+
+    closeCashPiecesRecorder();
+
+    if(isDraft){
+      pendingPayload=null;
+      selectedTransactionWallet='';
+      try{ closeTypeModal(); }catch(e){}
+
+      // A cancelled transaction should leave no partial entry behind.
+      amount.value='';
+      cashReceived.value='';
+      txType.value='';
+      resetChargeMode();
+      setTransactionSaving(false);
+
+      status.textContent='Cancelled. Nothing was recorded.';
+      status.className='status';
+    }
+  }
+
+  document.getElementById('cashPiecesOpen')?.addEventListener('click',openCashPiecesRecorder);
+  document.getElementById('cashPiecesX')?.addEventListener('click',cancelCashPiecesAndTransaction);
+  document.getElementById('cashPiecesCancel')?.addEventListener('click',cancelCashPiecesAndTransaction);
+
+  document.getElementById('cashPiecesReceivedTab')?.addEventListener('click',()=>{
+    cashPiecesMode='received';
+    document.getElementById('cashPiecesReceivedTab')?.classList.add('active');
+    document.getElementById('cashPiecesGivenTab')?.classList.remove('active');
+    updateCashPiecesSectionText();
+    renderCashPiecesGrid();
+  });
+
+  document.getElementById('cashPiecesGivenTab')?.addEventListener('click',()=>{
+    cashPiecesMode='given';
+    document.getElementById('cashPiecesGivenTab')?.classList.add('active');
+    document.getElementById('cashPiecesReceivedTab')?.classList.remove('active');
+    updateCashPiecesSectionText();
+    renderCashPiecesGrid();
+  });
+
+  document.getElementById('cashPiecesGrid')?.addEventListener('click',e=>{
+    const plus=e.target.closest('.cash-piece-plus');
+    const minus=e.target.closest('.cash-piece-minus');
+    const btn=plus||minus;
+    if(!btn) return;
+
+    const key=btn.dataset.pieceKey;
+    const data=cashPiecesMode==='received' ? cashPiecesReceived : cashPiecesGiven;
+    let n=Math.max(0,Math.floor(Number(data[key]||0)));
+    n=plus ? n+1 : Math.max(0,n-1);
+    data[key]=n;
+    renderCashPiecesGrid();
+  });
+
+  document.getElementById('cashPiecesGrid')?.addEventListener('change',e=>{
+    const input=e.target.closest('[data-piece-input]');
+    if(!input) return;
+    const key=input.dataset.pieceInput;
+    const data=cashPiecesMode==='received' ? cashPiecesReceived : cashPiecesGiven;
+    data[key]=Math.max(0,Math.floor(Number(input.value||0)));
+    renderCashPiecesGrid();
+  });
+
+  document.getElementById('cashPiecesSave')?.addEventListener('click',()=>{
+    const tx=cashPiecesPendingTx;
+    if(!tx) return;
+
+    const save=document.getElementById('cashPiecesSave');
+    const stat=document.getElementById('cashPiecesStatus');
+
+    if(tx.type==='Cash In'){
+      updateCashPiecesTotals();
+      const requiredReceived=cashInRequiredReceived(tx);
+      const changeDue=requiredReceived-expectedCashMovement(tx);
+      if(changeDue<0 || Math.abs(pieceTotal(cashPiecesReceived)-requiredReceived)>0.01 || Math.abs(pieceTotal(cashPiecesGiven)-changeDue)>0.01){
+        if(stat){stat.textContent='Cash received must match Home and change given must match the change due. Nothing recorded.';stat.className='err';}
+        return;
+      }
+      // Counted physical cash is the source of truth for the transaction and Sheets.
+      const counted=pieceTotal(cashPiecesReceived);
+      tx.cashReceived=counted;
+      tx.change=pieceTotal(cashPiecesGiven);
+      if(tx._transactionPayload){tx._transactionPayload.cashReceived=counted;tx._transactionPayload.change=pieceTotal(cashPiecesGiven);}
+      cashReceived.value=String(counted);
+    }
+    const piecePayload={
+      transactionId:String(tx.id||''),
+      transactionType:String(tx.type||''),
+      amount:Number(tx.amount||tx.total||0),fee:Number(tx.fee||0),
+      received:{...cashPiecesReceived},
+      given:{...cashPiecesGiven}
+    };
+
+    if(Math.abs(pieceTotal(cashPiecesReceived)-pieceTotal(cashPiecesGiven)-expectedCashMovement(tx))>0.01){
+      if(stat){stat.textContent='Cash Count does not balance. Nothing recorded.';stat.className='err';}
+      return;
+    }
+    save.disabled=true;
+
+    // ONLINE-ONLY: transaction is written to Sheets before any local wallet or
+    // Cash Counter mutation. Never queue/replay an ambiguous transaction.
+    if(false && tx._transactionDraft){
+      if(!navigator.onLine){
+        save.disabled=false;
+        if(stat){stat.textContent='Internet required. Nothing recorded.';stat.className='err';}
+        return;
+      }
+      const payload={...(tx._transactionPayload||{})};
+      if(!payload.clientTransactionId){
+        save.disabled=false;
+        if(stat){stat.textContent='Missing transaction ID. Nothing recorded.';stat.className='err';}
+        return;
+      }
+      const unresolvedKey='gcash_online_unconfirmed_tx_v1';
+      // Keep an independent recovery copy until Sheets acknowledges the ID.
+      try{
+        const old=JSON.parse(localStorage.getItem(unresolvedKey)||'[]');
+        if(!old.some(x=>x.payload&&x.payload.clientTransactionId===payload.clientTransactionId)){
+          old.push({payload:{...payload,cashPieces:{received:{...cashPiecesReceived},given:{...cashPiecesGiven}}},received:{...cashPiecesReceived},given:{...cashPiecesGiven},createdAt:new Date().toISOString()});
+          localStorage.setItem(unresolvedKey,JSON.stringify(old));
+        }
+      }catch(e){
+        save.disabled=false;
+        if(stat){stat.textContent='Cannot save safety copy on this device. Nothing sent.';stat.className='err';}
+        return;
+      }
+      if(stat){stat.textContent='Waiting for Google Sheets confirmation…';stat.className='';}
+      setTransactionSaving(true);
+      payload.cashPieces={received:{...cashPiecesReceived},given:{...cashPiecesGiven},fee:Number(tx.fee||0)};
+      google.script.run.withSuccessHandler(serverTx=>{
+        try{
+          const old=JSON.parse(localStorage.getItem(unresolvedKey)||'[]');
+          localStorage.setItem(unresolvedKey,JSON.stringify(old.filter(x=>x.payload&&x.payload.clientTransactionId!==payload.clientTransactionId)));
+        }catch(e){}
+        const existing=history.findIndex(x=>String(x.id)===String(serverTx.id));
+        if(existing>=0)history[existing]=serverTx;else history.unshift(serverTx);
+        window.__gcashTransactions=history;
+        applyTransactionSnapshotImmediately(serverTx);
+        render();saveLocalTrackerCache();
+        amount.value='';cashReceived.value='';txType.value='';pendingPayload=null;selectedTransactionWallet='';resetChargeMode();
+        delete tx._transactionDraft;delete tx._transactionPayload;
+        save.disabled=false;setTransactionSaving(false);
+        if(stat){stat.textContent='Transaction and Cash Count saved together in Google Sheets.';stat.className='ok';}
+        status.textContent='Saved in Google Sheets.';status.className='status ok';
+        // The online-first path previously saved History and the wallet but
+        // never applied the counted denominations to the local Cash Counter.
+        // Use the SAME transaction ID for idempotency, and retain the local
+        // inventory until the server's inventory catches up.
+        try{
+          const id=String(serverTx.id||payload.clientTransactionId||'');
+          const countedDetail={transactionId:id,transactionType:String(serverTx.type||tx.type||''),
+            amount:Number(serverTx.amount||tx.amount||0),fee:Number(serverTx.fee||tx.fee||0),
+            received:{...cashPiecesReceived},given:{...cashPiecesGiven}};
+          const already=loadLocalCashPiecesAppliedIds().includes(id);
+          const saved=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null');
+          const expected=Number(serverTx.newCash);
+          const alreadyAtExpected=saved&&saved.pieces&&Number.isFinite(expected)&&
+            Math.abs(total(saved.pieces)-expected)<0.005;
+          if(!already && !alreadyAtExpected){
+            applyLocalCashPiecesNow(countedDetail);
+          }else if(id && !already){
+            saveLocalCashPiecesAppliedIds([...loadLocalCashPiecesAppliedIds(),id]);
+          }
+          if(typeof window.loadCashCounterLatestStatus==='function')window.loadCashCounterLatestStatus();
+        }catch(cashErr){
+          // Do not claim a failed Cash Counter update is a missing transaction:
+          // the transaction was already committed to Google Sheets.
+          status.textContent='Transaction saved, but Cash Counter needs review: '+
+            String((cashErr&&cashErr.message)||'denominations not updated');
+          status.className='status err';
+          if(stat){stat.textContent=status.textContent;stat.className='err';}
+        }
+        setTimeout(closeCashPiecesRecorder,500);
+      }).withFailureHandler(err=>{
+        save.disabled=false;setTransactionSaving(false);
+        const msg=(err&&err.message)||'No confirmation';
+        if(stat){stat.textContent='NOT CONFIRMED: '+msg+'. Check Google Sheets for transaction ID '+payload.clientTransactionId+' before retrying. Draft preserved on device.';stat.className='err';}
+        status.textContent='Unconfirmed. Do not submit this transaction again until checked.';status.className='status err';
+      }).addTransactionBySession(getSessionToken(),payload);
+      return;
+    }
+
+    if(tx._walletTransferDraft){
+      const id=offlineActionId('MOVECASH');
+      const payload={
+        amount:Number(tx.amount||0), fromWallet:tx.fromWallet, toWallet:tx.toWallet,
+        received:{...cashPiecesReceived}, given:{...cashPiecesGiven}, clientActionId:id
+      };
+
+      try{applyLocalMoveMoney(payload,id);}catch(e){
+        save.disabled=false; save.textContent='Save Cash Pieces';
+        if(stat){stat.textContent=(e&&e.message)||'Could not save transfer.';stat.className='err';}
+        return;
+      }
+
+      try{
+        window.dispatchEvent(new CustomEvent('gcash-local-cash-pieces',{
+          detail:{transactionId:id,received:{...cashPiecesReceived},given:{...cashPiecesGiven},expectedCashMovement:(tx.toWallet==='Cash on Hand'?Number(tx.amount||0):-Number(tx.amount||0))}
+        }));
+      }catch(e){}
+
+      queueOfflineAction({id:id,method:'addMayaTransferWithCashPiecesBySession',payload:payload});
+      save.disabled=false; save.textContent='Saved';
+      if(stat){stat.textContent=navigator.onLine?'Saved. Syncing transfer and Cash Counter…':'Saved offline. Waiting for manual sync.';stat.className='ok';}
+      setTimeout(closeCashPiecesRecorder,100);
+      return;
+    }
+
+    // Cash In / Cash Out: save exact denominations BEFORE committing wallet/History.
+    // If the local Cash Counter cannot be updated, leave the entire draft unrecorded.
+    const isDraft=!!tx._transactionDraft;
+    const payloadToSave=isDraft?{...(tx._transactionPayload||{})}:null;
+    if(isDraft && !payloadToSave.clientTransactionId){
+      save.disabled=false;
+      if(stat){stat.textContent='Could not save transaction draft.';stat.className='err';}
+      return;
+    }
+    const localPiecesDetail={
+      transactionId:String(tx.id||''), transactionType:String(tx.type||''),
+      amount:Number(tx.amount||tx.total||0),fee:Number(tx.fee||0),
+      received:{...cashPiecesReceived},given:{...cashPiecesGiven},
+      expectedCashMovement:expectedCashMovement(tx)
+    };
+    try{
+      if(typeof applyLocalCashPiecesNow!=='function' || !applyLocalCashPiecesNow(localPiecesDetail)){
+        throw new Error('Cash Counter inventory is unavailable or denominations are insufficient.');
+      }
+    }catch(e){
+      window.gcashCashCounterUpdatePending=false;
+      save.disabled=false;save.textContent='Save Cash Pieces';
+      if(stat){stat.textContent='Nothing recorded. '+((e&&e.message)||'Cash Counter did not update.');stat.className='err';}
+      return;
+    }
+    // ONE RECORD: attach the exact denomination data to the transaction itself.
+    // History, local cache, recovery queue and Google Sheets payload now carry the
+    // same Cash Count instead of relying on a second record to be linked later.
+    tx.cashPieces={received:{...cashPiecesReceived},given:{...cashPiecesGiven}};
+    if(payloadToSave){
+      payloadToSave.cashPieces={received:{...cashPiecesReceived},given:{...cashPiecesGiven}};
+    }
+
+    // Denominations are now durable on this device. Only now save the transaction.
+    if(isDraft){
+      window.gcashCashCounterUpdatePending=true;
+      try{window.dispatchEvent(new CustomEvent('gcash-cash-counter-updating'));}catch(_e){}
+      delete tx._transactionDraft;delete tx._transactionPayload;
+      applyOptimisticTransaction(tx);
+      const q=loadPendingTxQueue();
+      if(!q.some(x=>String(x.clientTransactionId)===String(payloadToSave.clientTransactionId))){
+        q.push(payloadToSave);savePendingTxQueue(q);
+      }
+      amount.value='';cashReceived.value='';txType.value='';
+      pendingPayload=null;selectedTransactionWallet='';resetChargeMode();
+      setTransactionSaving(false);
+      status.textContent='Recorded ✓ Syncing to Google Sheets…';status.className='status ok';
+    }
+    queueCashPieces(piecePayload);
+    window.gcashCashCounterUpdatePending=false;
+    try{sendCashCounterStatusToTracker();}catch(_e){}
+
+    if(isTransactionStillPending(tx.id) || tx._pendingSync){
+      save.textContent='Saved';
+      if(stat){
+        stat.textContent='Transaction and Cash Pieces saved on this phone. Syncing automatically…';
+        stat.className='ok';
+      }
+
+      // Both the transaction and its Cash Pieces now exist locally as one
+      // completed operation. Sync them in the correct parent-then-pieces order.
+      setTimeout(()=>{
+        closeCashPiecesRecorder();
+        processPendingTxQueue();
+        processPendingCashPiecesQueue(piecePayload.transactionId);
+      },120);
+      return;
+    }
+
+    save.textContent='Saving…';
+    if(stat){
+      stat.textContent='Saving Cash Counter pieces…';
+      stat.className='';
+    }
+
+    processPendingCashPiecesQueue(piecePayload.transactionId);
+
+    // Close quickly. The queued record remains safe if the connection is slow.
+    setTimeout(()=>{
+      if(stat){
+        stat.textContent='Cash pieces saved. Syncing automatically…';
+        stat.className='ok';
+      }
+      save.textContent='Saved';
+      setTimeout(closeCashPiecesRecorder,100);
+    },100);
+  });
+
+  function savePendingTransaction(type){
+    if(!pendingPayload) return;
+
+    pendingPayload.type=type;
+    const payloadToSave={...pendingPayload};
+
+    // Do NOT save balances, History, earnings, Cash Counter, or Pending Sync yet.
+    // Cash Pieces are mandatory and are now part of completing the transaction.
+    closeTypeModal();
+
+    const draftTx=makeOptimisticTransaction(payloadToSave);
+    draftTx._transactionDraft=true;
+    draftTx._transactionPayload=payloadToSave;
+
+    cashPiecesPendingTx=draftTx;
+    openCashPiecesRecorder();
+  }
+
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+
+    if(transactionSaving){
+      status.textContent='Please wait. The current transaction is still recording.';
+      status.className='status';
+      return;
+    }
+
+    if(!unlocked){ status.textContent=''; status.className='status err'; return; }
+
+    const enteredAmount=Number(amount.value);
+    const enteredCash=Number(cashReceived.value||0);
+    if(!isFinite(enteredAmount) || enteredAmount<=0){
+      status.textContent='Enter a valid amount.';
+      status.className='status err';
+      return;
+    }
+
+    const clientTransactionId = (window.crypto && crypto.randomUUID)
+      ? crypto.randomUUID()
+      : ('tx-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+
+    pendingPayload={
+      type:'',
+      chargeMode:chargeMode.value,
+      amount:enteredAmount,
+      cashReceived:isFinite(enteredCash)?enteredCash:0,
+      feeLocation:'',
+      walletDestination:'',
+      clientTransactionId
+    };
+    typeModal.classList.add('show');
+    typeModal.style.display='flex';
+    typeModal.setAttribute('aria-hidden','false');
+  });
+
+  confirmCashIn.addEventListener('click',()=>{
+    if(!pendingPayload) return;
+    pendingPayload.type='Cash In';
+    pendingPayload.feeLocation='';
+    pendingPayload.walletDestination='';
+    selectedTransactionWallet='';
+    if(typeChoiceActions) typeChoiceActions.style.display='none';
+    if(cashInWalletStep) cashInWalletStep.classList.add('show');
+  });
+
+  function openFeeLocationStep(type, wallet){
+    if(!pendingPayload) return;
+    selectedTransactionWallet=wallet;
+    pendingPayload.walletDestination=wallet;
+
+    if(cashInWalletStep) cashInWalletStep.classList.remove('show');
+    if(cashOutWalletStep) cashOutWalletStep.classList.remove('show');
+
+    const title=feeLocationStep ? feeLocationStep.querySelector('.fee-location-title') : null;
+    if(title) title.textContent=type==='Cash In' ? 'Where did the Cash In fee go?' : 'Where did the Cash Out fee go?';
+
+    // Cash Out fee can only go to the SAME digital wallet used for
+    // the transaction, or to Cash on Hand.
+    if(feeToGcash) feeToGcash.style.display = wallet==='GCash' ? '' : 'none';
+    if(feeToMaya) feeToMaya.style.display = wallet==='Maya' ? '' : 'none';
+    if(feeToMaribank) feeToMaribank.style.display = wallet==='MariBank' ? '' : 'none';
+    if(feeToCash) feeToCash.style.display = '';
+
+    feeLocationStep.classList.add('show');
+  }
+
+  function chooseCashInWallet(wallet){
+    if(!pendingPayload) return;
+    selectedTransactionWallet=wallet;
+    pendingPayload.walletDestination=wallet;
+    pendingPayload.feeLocation='';
+    openFeeLocationStep('Cash In',wallet);
+  }
+
+  cashInFromGcash.addEventListener('click',()=>chooseCashInWallet('GCash'));
+  cashInFromMaya.addEventListener('click',()=>chooseCashInWallet('Maya'));
+  cashInFromMaribank.addEventListener('click',()=>chooseCashInWallet('MariBank'));
+
+  confirmCashOut.addEventListener('click',()=>{
+    if(!pendingPayload) return;
+    pendingPayload.type='Cash Out';
+    pendingPayload.feeLocation='';
+    pendingPayload.walletDestination='';
+    selectedTransactionWallet='';
+    if(typeChoiceActions) typeChoiceActions.style.display='none';
+    if(cashOutWalletStep) cashOutWalletStep.classList.add('show');
+  });
+
+  cashOutToGcash.addEventListener('click',()=>openFeeLocationStep('Cash Out','GCash'));
+  cashOutToMaya.addEventListener('click',()=>openFeeLocationStep('Cash Out','Maya'));
+
+  function chooseFeeLocation(location){
+    if(!pendingPayload || !selectedTransactionWallet) return;
+    pendingPayload.feeLocation=location;
+    savePendingTransaction(pendingPayload.type);
+  }
+
+  feeToGcash.addEventListener('click',()=>chooseFeeLocation('GCash'));
+  feeToMaya.addEventListener('click',()=>chooseFeeLocation('Maya'));
+  feeToMaribank.addEventListener('click',()=>chooseFeeLocation('MariBank'));
+  feeToCash.addEventListener('click',()=>chooseFeeLocation('Cash on Hand'));
+
+  cancelTypeChoice.addEventListener('click',()=>{
+    pendingPayload=null;
+    closeTypeModal();
+  });
+  typeModal.addEventListener('click',e=>{
+    if(e.target===typeModal){
+      pendingPayload=null;
+      closeTypeModal();
+    }
+  });
+
+
+  historyEl.addEventListener('click', e=>{
+    const btn = e.target.closest && e.target.closest('[data-id]');
+    if(!btn) return;
+
+    pendingDeleteKind = 'transaction';
+    pendingDeleteTxId = String(btn.dataset.id || '');
+    if(!pendingDeleteTxId) return;
+
+    document.getElementById('deleteTxTitle').textContent='Undo this transaction?';
+    document.querySelector('.delete-tx-note').textContent='Wallet balances, earnings, Cash Counter bills and coins, and History totals will all be reversed.';
+    deleteTxModal.classList.add('show');
+    deleteTxModal.setAttribute('aria-hidden','false');
+  });
+
+  function closeDeleteTxModal(){
+    pendingDeleteTxId = '';
+    pendingDeleteKind = 'transaction';
+    deleteTxModal.classList.remove('show');
+    deleteTxModal.setAttribute('aria-hidden','true');
+    deleteTxYes.textContent = 'Yes, Undo';
+  }
+
+  deleteTxNo.addEventListener('click', closeDeleteTxModal);
+
+  deleteTxModal.addEventListener('click', e=>{
+    if(e.target === deleteTxModal) closeDeleteTxModal();
+  });
+
+  function reverseLocalPendingTransactionState(id){
+    id=String(id||'');
+    const tx=history.find(x=>String(x.id||'')===id);
+    if(!tx) return;
+
+    if(capitalData && capitalData.initialized){
+      const reverseDelta=(key,prevKey,newKey)=>{
+        const prev=Number(tx[prevKey]);
+        const next=Number(tx[newKey]);
+        if(isFinite(prev) && isFinite(next)){
+          capitalData[key]=Number(capitalData[key]||0)-(next-prev);
+        }
+      };
+      reverseDelta('cashOnHand','previousCash','newCash');
+      reverseDelta('gcashBalance','previousGcash','newGcash');
+      reverseDelta('mayaBalance','previousMaya','newMaya');
+      reverseDelta('maribankBalance','previousMaribank','newMaribank');
+      reverseDelta('saripayBalance','previousSaripay','newSaripay');
+
+      const fee=Number(tx.fee||0);
+      if(isFinite(fee) && fee){
+        capitalData.grossFees=Math.max(0,Number(capitalData.grossFees||0)-fee);
+        capitalData.netEarnings=Math.max(0,Number(capitalData.netEarnings||0)-fee);
+        capitalData.availableEarnings=Number(capitalData.availableEarnings||0)-fee;
+        capitalData.expectedTotalMoney=Number(capitalData.currentCapital||capitalData.totalCapital||0)+Number(capitalData.availableEarnings||0);
+      }
+      renderCapital(capitalData);
+    }
+  }
+
+  function deleteTransactionLocallyAndQueue(id){
+    id=String(id||'');
+    if(!id) return;
+
+    // Reverse the optimistic wallet/earnings movement first.
+    reverseLocalPendingTransactionState(id);
+
+    // Reverse exact local Cash Counter pieces when this transaction already
+    // recorded denominations on this device. If none were recorded, this is a no-op.
+    try{
+      if(typeof window.reverseLocalCashPiecesForTransaction==='function'){
+        window.reverseLocalCashPiecesForTransaction(id);
+      }
+    }catch(e){}
+
+    // Stop the original transaction and its pieces from being synced later.
+    savePendingTxQueue(loadPendingTxQueue().filter(
+      x=>String(x.clientTransactionId||'')!==id
+    ));
+    removeQueuedCashPieces(id);
+    cashPiecesPromptIds.delete(id);
+
+    history=history.filter(x=>String(x.id||'')!==id);
+    window.__gcashTransactions=history;
+    render();
+    saveLocalTrackerCache();
+
+    // Tell the backend to mark the ID cancelled as soon as internet returns.
+    // This prevents a delayed/retried add from recreating the deleted record.
+    const deleteActionId='DELTX_'+id;
+    const alreadyQueued=loadOfflineActionQueue().some(a=>
+      a.method==='deleteTransactionBySession' && String((a.payload||{}).id||'')===id
+    );
+    if(!alreadyQueued){
+      queueOfflineAction({
+        id:deleteActionId,
+        method:'deleteTransactionBySession',
+        payload:{id:id}
+      });
+    }
+
+    if(typeof window.loadCashCounterLatestStatus==='function'){
+      setTimeout(window.loadCashCounterLatestStatus,100);
+    }
+  }
+
+  deleteTxYes.addEventListener('click', ()=>{
+    const id = pendingDeleteTxId;
+    const kind = pendingDeleteKind;
+    if(!id) return;
+
+    deleteTxYes.disabled = true;
+    deleteTxYes.textContent = kind === 'transaction' ? 'Undoing…' : 'Deleting…';
+
+    // Undo transactions LOCAL-FIRST on every connection state. The complete
+    // one-record transaction is reversed immediately on this device: wallet
+    // balances, fee/earnings, exact Cash Counter pieces and History. The server
+    // reversal is queued and synced in the background, so Undo never waits for
+    // Google Sheets / Apps Script.
+    if(kind === 'transaction'){
+      deleteTransactionLocallyAndQueue(id);
+      deleteTxYes.disabled = false;
+      deleteTxYes.textContent = 'Yes, Undo';
+      closeDeleteTxModal();
+      showSync(navigator.onLine
+        ? 'Transaction undone on this device. Server reversal is waiting for your next manual sync.'
+        : 'Transaction undone on this device. Server reversal is saved locally and waiting for manual sync.', true);
+      return;
+    }
+
+    const runner = google.script.run
+      .withSuccessHandler(data=>{
+        if(kind === 'transfer'){
+          transfers = (data && Array.isArray(data.transfers))
+            ? data.transfers
+            : transfers.filter(x => String(x.id) !== String(id));
+          if(data && Array.isArray(data.expenses)) expenses = data.expenses;
+          if(data && data.capital) renderCapital(data.capital);
+          renderExpenses();
+          render();
+          saveLocalTrackerCache();
+        }else{
+          // The main Apps Script deleteTransactionBySession() now reverses
+          // linked Cash Counter pieces BEFORE it deletes the transaction.
+          // Do not call the separate Cash Counter app here.
+
+          // If this transaction was still waiting for Google Sheets sync,
+          // remove it from the phone queue too so it cannot come back later.
+          const remaining = loadPendingTxQueue().filter(
+            x => String(x.clientTransactionId || '') !== String(id)
+          );
+          savePendingTxQueue(remaining);
+          removeQueuedCashPieces(id);
+
+          // Server confirmed the linked reversal; discard stale on-device counter history.
+          try{
+            const key='gcashCashCounterHistoryV1';
+            const old=JSON.parse(localStorage.getItem(key)||'[]');
+            if(Array.isArray(old)) localStorage.setItem(key,JSON.stringify(old.filter(r=>{
+              const details=(r&&r.details)||{};
+              return String(details.transactionId||'')!==String(id) &&
+                !String((r&&r.note)||'').includes('TX:'+String(id));
+            })));
+          }catch(e){}
+          if(typeof loadHistory==='function' && document.getElementById('historyView')?.classList.contains('mode-open'))loadHistory();
+          history = history.filter(x => String(x.id) !== String(id));
+          window.__gcashTransactions = history;
+          render();
+          loadCapital();
+
+          if(typeof window.loadCashCounterLatestStatus === 'function'){
+            setTimeout(window.loadCashCounterLatestStatus, 250);
+          }
+        }
+
+        deleteTxYes.disabled = false;
+        deleteTxYes.textContent = 'Yes, Delete';
+        closeDeleteTxModal();
+      })
+      .withFailureHandler(err=>{
+        // If connectivity disappeared while deleting a normal transaction,
+        // complete the local delete and safely queue server cancellation.
+        if(kind === 'transaction' && !navigator.onLine){
+          deleteTransactionLocallyAndQueue(id);
+          deleteTxYes.disabled = false;
+          deleteTxYes.textContent = 'Yes, Delete';
+          closeDeleteTxModal();
+          showSync('Deleted on this device. Server deletion will sync when online.', true);
+          return;
+        }
+        deleteTxYes.disabled = false;
+        deleteTxYes.textContent = 'Yes, Delete';
+        alert((err && err.message) || (kind === 'transfer' ? 'Could not delete transfer.' : 'Could not delete transaction.'));
+      });
+
+    if(kind === 'transfer'){
+      runner.deleteSaripayTransferBySession(getSessionToken(), id);
+    }else{
+      runner.deleteTransactionBySession(getSessionToken(), id);
+    }
+  });
+
+  clearBtn.addEventListener('click', () => {
+    if(!unlocked || !history.length) return;
+    if(!confirm('Clear ALL synced transaction history on every device?')) return;
+
+    const pendingIds = loadPendingTxQueue()
+      .map(x => String(x.clientTransactionId || ''))
+      .filter(Boolean);
+
+    google.script.run
+      .withSuccessHandler(() => {
+        savePendingTxQueue([]);
+        savePendingCashPiecesQueue([]);
+        history=[];
+        window.__gcashTransactions = history;
+        render();
+        loadCapital();
+
+        // Cash Counter reversal is handled atomically by the main backend.
+        if(typeof window.loadCashCounterLatestStatus === 'function'){
+          setTimeout(window.loadCashCounterLatestStatus, 250);
+        }
+      })
+      .withFailureHandler(err => alert(
+        (err && err.message) ||
+        'Could not clear history. Nothing was deleted if Cash Counter reversal was unsafe.'
+      ))
+      .clearTransactionsBySession(getSessionToken(), pendingIds);
+  });
+
+  // Restore the account from durable browser storage.
+  sessionStorage.removeItem('cashAppPin');
+  txType.value=''; resetChargeMode(); render(); renderCapital(null); renderExpenses();
+
+  function restoreSignedInState(){
+    unlocked=true;
+    setLockedView(false);
+
+    const restored = loadLocalTrackerCache();
+
+    // Give Safari/Home Screen mode time to paint the cached snapshot first.
+    // Google Sheets sync starts only after the saved records are already visible.
+    setTimeout(()=>{
+      loadAllWithSession('LOCAL_NO_LOGIN');
+    }, restored ? 250 : 0);
+  }
+
+  // No account restoration is needed in no-login mode.
+  restoreSignedInState();
+})();
+</script>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
@@ -6290,8 +9467,8 @@ if(setCashToCountedBtn){
     }}));
 
     showMsg(navigator.onLine
-      ? 'Cash on Hand updated to '+money(counted)+'. Syncing…'
-      : 'Cash on Hand updated locally. Waiting to sync.','ok');
+      ? 'Cash on Hand updated to '+money(counted)+'. Saved locally.'
+      : 'Cash on Hand updated locally. Waiting for manual sync.','ok');
   });
 }
 
@@ -6405,7 +9582,7 @@ $('saveInventoryCorrection').addEventListener('click',()=>{
   }}));
 
   setCashCounterMode('cash');
-  showMsg(navigator.onLine?'Reconciliation saved. Syncing…':'Reconciliation saved offline. Waiting to sync.','ok');
+  showMsg(navigator.onLine?'Reconciliation saved. Saved locally.':'Reconciliation saved offline. Waiting for manual sync.','ok');
 });
 
 window.addEventListener('offline-cashcounter-action-synced',function(e){
@@ -7060,7 +10237,7 @@ $('saveCount').addEventListener('click',()=>{
     id:id,method:'saveCashCount',payload:{pieces:{...pieces}}
   }}));
 
-  showMsg(navigator.onLine?'Cash check saved. Syncing…':'Cash check saved offline. Waiting to sync.','ok');
+  showMsg(navigator.onLine?'Cash check saved. Saved locally.':'Cash check saved offline. Waiting for manual sync.','ok');
   setCashCounterMode('cash');
   setTimeout(sendCashCounterStatusToTracker,0);
 });
@@ -7381,7 +10558,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     const post=key==='maya'?tx.newMaya:key==='maribank'?tx.newMaribank:tx.newGcash;
     if(isFinite(Number(pre))&&isFinite(Number(post)))parts.push(cap+' '+peso(pre)+' → '+peso(post));
     if(det)det.textContent=parts.join(' · ');
-    if(sy)sy.textContent=(tx._pendingSync||tx.pendingSync)?'Saved locally · Syncing…':'SYNCED ✓';
+    if(sy)sy.textContent=(tx._pendingSync||tx.pendingSync)?'Saved locally · Saved locally.':'SYNCED ✓';
     try{localStorage.setItem('gcashLastTransactionFastV1',JSON.stringify(tx));}catch(_e){}
     if(flash!==false){
       const f=document.getElementById('recordedFastFlash');
@@ -7443,7 +10620,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     // Reconcile the card with the same records the History tab displays.
     setInterval(()=>showLatest(false),1000);
   });
-  const sync=document.getElementById('syncStatus'); if(sync)new MutationObserver(()=>{const t=String(sync.textContent||'');const el=document.getElementById('ltfSync');if(el){if(/^synced\.?$/i.test(t.trim()))el.textContent='SYNCED ✓';else if(/sync/i.test(t))el.textContent='Saved locally · Syncing…';}}).observe(sync,{childList:true,subtree:true,characterData:true});
+  const sync=document.getElementById('syncStatus'); if(sync)new MutationObserver(()=>{const t=String(sync.textContent||'');const el=document.getElementById('ltfSync');if(el){if(/^synced\.?$/i.test(t.trim()))el.textContent='SYNCED ✓';else if(/sync/i.test(t))el.textContent='Saved locally · Saved locally.';}}).observe(sync,{childList:true,subtree:true,characterData:true});
 })();
 </script>
 
@@ -7583,7 +10760,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     renderCashCounterInventory(current);renderSummary(current);try{sendCashCounterStatusToTracker()}catch(e){}
     try{if(typeof window.__loadGcashCashPiecesHistory==='function')window.__loadGcashCashPiecesHistory()}catch(e){}
     window.dispatchEvent(new CustomEvent('gcash-queue-offline-action',{detail:{id:id,method:'saveCashCounterChangeMoney',payload:{pieces:{...next},exchange:{received:{...receive},given:{...give},transactionId:id}}}}));
-    $('ccChangeStatus').textContent=navigator.onLine?'Change saved on this device. Syncing in the background…':'Change saved on this device. It will sync when online.';$('ccChangeStatus').style.color='#0f7b45';
+    $('ccChangeStatus').textContent=navigator.onLine?'Change saved on this device. Waiting for manual sync.':'Change saved on this device. Sync it when you are ready.';$('ccChangeStatus').style.color='#0f7b45';
     setTimeout(closeOverlays,500);
   });
   refresh();
@@ -7673,51 +10850,6 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   });
 })();
 </script>
-
-
-<style id="edit-balances-addon-style">
-#editBalancesModal .balance-edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
-#editBalancesModal .balance-edit-field{border:1px solid #d0d5dd;border-radius:14px;padding:10px;background:#fff}
-#editBalancesModal .balance-edit-field label{display:block;font-weight:800;font-size:13px;margin-bottom:6px}
-#editBalancesModal .balance-edit-field input{width:100%;box-sizing:border-box;font-size:18px;padding:9px;border:1px solid #d0d5dd;border-radius:10px}
-#editBalancesModal .balance-total-box{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
-#editBalancesModal .balance-total-box>div{border:1px solid #d0d5dd;border-radius:12px;padding:10px}
-#editBalancesModal .balance-total-box span{display:block;font-size:12px;color:#667085}
-#editBalancesModal .balance-total-box strong{display:block;margin-top:3px;font-size:16px}
-#editBalancesModal .balance-match{font-size:13px;font-weight:800;padding:9px 10px;border-radius:10px;margin:8px 0}
-#editBalancesModal .balance-match.ok{background:#ecfdf3;color:#067647}
-#editBalancesModal .balance-match.bad{background:#fef3f2;color:#b42318}
-#editBalancesModal .edit-warning{font-size:12px;line-height:1.45;background:#fff7ed;border:1px solid #fed7aa;border-radius:12px;padding:10px;margin:10px 0;color:#9a3412}
-</style>
-
-
-    
-
-    <div class="balance-edit-grid">
-      <div class="balance-edit-field"><label for="editCashBalance">Cash on Hand</label><input id="editCashBalance" type="number" min="0" step="0.01" inputmode="decimal"></div>
-      <div class="balance-edit-field"><label for="editGcashBalance">GCash</label><input id="editGcashBalance" type="number" min="0" step="0.01" inputmode="decimal"></div>
-      <div class="balance-edit-field"><label for="editMayaBalance">Maya</label><input id="editMayaBalance" type="number" min="0" step="0.01" inputmode="decimal"></div>
-      <div class="balance-edit-field"><label for="editMaribankBalance">MariBank</label><input id="editMaribankBalance" type="number" min="0" step="0.01" inputmode="decimal"></div>
-    </div>
-
-    <div class="balance-total-box">
-      <div><span>Wallet Total</span><strong id="editWalletTotal">₱0.00</strong></div>
-      <div><span>Expected Total Money</span><strong id="editCurrentCapital">₱0.00</strong></div>
-    </div>
-    <div id="editBalanceMatch" class="balance-match bad">Balances do not match.</div>
-
-    <div class="edit-warning">Cash on Hand editing does NOT change Cash Counter bills or coins. Changes are recorded in Wallet History.</div>
-    <div id="editBalanceStatus" class="status"></div>
-    <div class="capital-modal-actions">
-      <button type="button" id="cancelEditBalanceBtn" class="btn">Cancel</button>
-      <button type="button" id="saveEditBalanceBtn" class="btn primary" disabled>Save Balances</button>
-    </div>
-  </div>
-</div>
-
-
-
-
 <style id="fresh-record-style">
 #freshRecordModal .fresh-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
 #freshRecordModal .fresh-field{border:1px solid #d0d5dd;border-radius:14px;padding:10px}
@@ -7788,6 +10920,79 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
       maribank
     );
   });
+})();
+</script>
+
+
+<script id="manual-sync-mode-addon">
+(function(){
+  const btn=document.getElementById('manualSyncNowBtn');
+  const hint=document.getElementById('manualSyncHint');
+  if(!btn) return;
+
+  function pendingCount(){
+    let n=0;
+    try{n+=loadOfflineActionQueue().length;}catch(e){}
+    try{n+=loadPendingTxQueue().length;}catch(e){}
+    try{n+=loadPendingCashPiecesQueue().length;}catch(e){}
+    return n;
+  }
+  function paint(){
+    const n=pendingCount();
+    btn.textContent=n ? `Sync to Google Sheets (${n})` : 'Sync to Google Sheets';
+    if(hint) hint.textContent=n
+      ? `${n} unsynced record${n===1?'':'s'} saved safely on this device.`
+      : 'All local changes are synced.';
+  }
+  window.gcashRefreshManualSync=paint;
+
+  const oldRender=window.renderPendingSyncPanel;
+  setInterval(paint,1200);
+  setTimeout(paint,200);
+
+  function waitUntilDone(){
+    const n=pendingCount();
+    const busy=(typeof txSyncBusy!=='undefined'&&txSyncBusy) ||
+               (typeof cashPiecesSyncBusy!=='undefined'&&cashPiecesSyncBusy) ||
+               (typeof offlineActionBusy!=='undefined'&&offlineActionBusy);
+    if(n===0 && !busy){
+      MANUAL_SYNC_REQUESTED=false;
+      btn.disabled=false;
+      paint();
+      try{showSync('All synced to Google Sheets.',true);}catch(e){}
+      // Refresh from server only after all local changes have uploaded.
+      try{loadCapital();}catch(e){}
+      try{if(typeof loadHistory==='function')loadHistory();}catch(e){}
+      return;
+    }
+    if(!MANUAL_SYNC_REQUESTED){
+      btn.disabled=false; paint(); return;
+    }
+    setTimeout(waitUntilDone,500);
+  }
+
+  btn.addEventListener('click',()=>{
+    const n=pendingCount();
+    if(!n){
+      try{showSync('All synced.',true);}catch(e){}
+      paint();
+      return;
+    }
+    if(!navigator.onLine){
+      try{showSync('No internet. Your records are safe on this device.');}catch(e){}
+      return;
+    }
+    if(!confirm(`Sync ${n} local record${n===1?'':'s'} to Google Sheets now?`)) return;
+    MANUAL_SYNC_REQUESTED=true;
+    btn.disabled=true;
+    btn.textContent='Syncing…';
+    try{processPendingTxQueue();}catch(e){}
+    try{processPendingCashPiecesQueue();}catch(e){}
+    try{processOfflineActionQueue();}catch(e){}
+    waitUntilDone();
+  });
+
+  window.addEventListener('storage',paint);
 })();
 </script>
 
