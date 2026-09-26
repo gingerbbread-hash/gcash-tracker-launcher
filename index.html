@@ -4787,7 +4787,8 @@ body > .hero{
 #cashCounterNative #editInventoryGrid .edit-piece-middle small{font-size:10px!important;font-weight:800!important;color:#0b5ed7!important;line-height:1.1!important}
 #cashCounterNative #editInventoryGrid .cc-piece-amount{display:block!important;text-align:right!important;font-size:13px!important;overflow-wrap:anywhere}
 </style>
-<style id="cash-in-count-update">.cash-in-four-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.cash-in-four-fields>div{padding:9px;border:1px solid #e4e7ec;border-radius:9px;display:flex;flex-direction:column;gap:4px}.cash-in-four-fields span{font-size:11px;color:#667085}.cash-in-four-fields strong{font-size:14px}</style></head>
+<style id="cash-in-count-update">.cash-in-four-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.cash-in-four-fields>div{padding:9px;border:1px solid #e4e7ec;border-radius:9px;display:flex;flex-direction:column;gap:4px}.cash-in-four-fields span{font-size:11px;color:#667085}.cash-in-four-fields strong{font-size:14px}</style><!-- ONE RECORD SYNC V3: addTransactionBySession is the single atomic server save for transaction + Cash Counter. -->
+</head>
 <body>
 <main class="app">
   <section class="hero" style="position:relative">
@@ -7804,7 +7805,7 @@ body > .hero{
           return;
         }
 
-        showSync(msg + ' Transaction is safe on this device and will retry.');
+        showSync('SYNC ERROR: ' + msg + ' Saved locally and will retry automatically.');
         // Keep the queue intact. Retry quickly without creating duplicates.
         scheduleTxRetry();
       })
@@ -8450,7 +8451,9 @@ body > .hero{
       setTransactionSaving(false);
       status.textContent='Recorded ✓ Saved locally.';status.className='status ok';
     }
-    queueCashPieces(piecePayload);
+    // ONE RECORD: Cash Pieces are already inside payloadToSave and are saved by addTransactionBySession.
+    // Do not create a second Cash Counter sync record.
+    try{ removeQueuedCashPieces(String(tx.id||payloadToSave?.clientTransactionId||'')); }catch(_e){}
     window.gcashCashCounterUpdatePending=false;
     try{sendCashCounterStatusToTracker();}catch(_e){}
 
