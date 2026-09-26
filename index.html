@@ -4791,8 +4791,8 @@ body > .hero{
 <body>
 <main class="app">
   <section class="hero" style="position:relative">
-    <h1 class="cash-app-title"><span class="tracker-title-line">GCash Tracker</span><button id="manualSyncNowBtn" type="button" aria-label="Sync to Google Sheets"
-style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.8);border-radius:9px;background:rgba(255,255,255,.16);color:#fff;padding:7px 11px;font-size:12px;font-weight:900;line-height:1;z-index:10;min-width:58px">Sync</button></h1>
+    <h1 class="cash-app-title"><span class="tracker-title-line">GCash Tracker</span>
+</h1>
     <p>Synced across your phones and computers</p>
     <div class="history-mini">
 
@@ -6125,7 +6125,7 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
   }
 
   function loadCapital(){
-    if(hasUnsyncedLocalWork() && MANUAL_SYNC_REQUESTED!==true){ renderCapital(capitalData); return; }
+    if(hasUnsyncedLocalWork()){ renderCapital(capitalData); return; }
     if(!unlocked) return;
     google.script.run
       .withSuccessHandler(renderCapital)
@@ -6558,7 +6558,7 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
     try{removeQueuedCashPieces(id);}catch(_e){}
     try{if(typeof window.gcashRefreshManualSync==='function')window.gcashRefreshManualSync();}catch(_e){}
     try{if(typeof window.loadCashCounterLatestStatus==='function')window.loadCashCounterLatestStatus();}catch(_e){}
-    mayaTransferStatus.textContent=pendingAdd?'Transfer reversed locally.':'Transfer reversed locally. Google Sheets reversal is waiting for Sync.';
+    mayaTransferStatus.textContent=pendingAdd?'Transfer reversed locally.':'Transfer reversed locally. Google Sheets reversal is syncing automatically.';
     mayaTransferStatus.className='status ok';
   });
 
@@ -6844,7 +6844,7 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
   const LOCAL_CACHE_KEY = 'gcashTrackerAllRecordsV2';
 
   const OFFLINE_ACTION_QUEUE_KEY='gcashTrackerOfflineActionsV1';
-  let MANUAL_SYNC_REQUESTED=false;
+  let MANUAL_SYNC_REQUESTED=true;
   let offlineActionBusy=false;
   let offlineActionRetry=1400;
 
@@ -7172,7 +7172,7 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
       restorePendingTransactions();
       render(); renderExpenses(); renderCapital(capitalData); renderCapitalActivity();
       saveLocalTrackerCache();
-      showSync('Saved locally. Press Sync when ready.',true);
+      showSync('Saved locally. Syncing automatically…',true);
       return;
     }
 
@@ -7600,7 +7600,7 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
   }
 
   function processPendingCashPiecesQueue(transactionId){
-    if(MANUAL_SYNC_REQUESTED!==true) { try{refreshFastSyncStatus();}catch(e){} return; }
+    /* auto-sync enabled */
     if(cashPiecesSyncBusy || !unlocked) return;
 
     const all = loadPendingCashPiecesQueue();
@@ -7783,7 +7783,7 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
   }
 
   function processPendingTxQueue(){
-    if(MANUAL_SYNC_REQUESTED!==true) { refreshFastSyncStatus(); return; }
+    /* auto-sync enabled */
     if(txSyncBusy || !unlocked) return;
     const q = loadPendingTxQueue();
     if(!q.length){
@@ -7794,7 +7794,7 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
       // Reconcile quietly after the app has been idle for a few seconds.
       clearTimeout(window.__gcashIdleCapitalRefresh);
       window.__gcashIdleCapitalRefresh=setTimeout(()=>{
-        if(!loadPendingTxQueue().length && !txSyncBusy){ try{ loadCapital(); }catch(_e){} }
+        if(!hasUnsyncedLocalWork() && !txSyncBusy){ try{ loadCapital(); }catch(_e){} }
       },5000);
       return;
     }
@@ -7850,7 +7850,7 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
           showSync('Synced.', true);
           clearTimeout(window.__gcashIdleCapitalRefresh);
           window.__gcashIdleCapitalRefresh=setTimeout(()=>{
-            if(!loadPendingTxQueue().length && !txSyncBusy){ try{ loadCapital(); }catch(_e){} }
+            if(!hasUnsyncedLocalWork() && !txSyncBusy){ try{ loadCapital(); }catch(_e){} }
           },5000);
         }
       })
@@ -7892,13 +7892,17 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
   }
 
   function kickFastSync(){
-    // Manual-sync mode: opening/focusing/coming online never uploads records.
-    refreshFastSyncStatus();
-    renderPendingSyncPanel();
+    if(!unlocked) return;
+    MANUAL_SYNC_REQUESTED=true;
+    txRetryDelay=1500;
+    cashPiecesRetryDelay=1200;
+    processPendingTxQueue();
+    processPendingCashPiecesQueue();
+    processOfflineActionQueue();
   }
 
-  window.addEventListener('online', kickFastSync);
-  window.addEventListener('focus', kickFastSync);
+  window.addEventListener('online',kickFastSync);
+  window.addEventListener('focus',kickFastSync);
   document.addEventListener('visibilitychange',()=>{
     if(document.visibilityState==='visible') kickFastSync();
   });
@@ -8807,8 +8811,8 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
       deleteTxYes.textContent = 'Yes, Undo';
       closeDeleteTxModal();
       showSync(navigator.onLine
-        ? 'Transaction undone on this device. Server reversal is waiting for your next manual sync.'
-        : 'Transaction undone on this device. Server reversal is saved locally and waiting for manual sync.', true);
+        ? 'Transaction undone on this device. Server reversal is waiting to sync.'
+        : 'Transaction undone on this device. Server reversal is saved locally and waiting to sync.', true);
       return;
     }
 
@@ -10370,7 +10374,7 @@ $('saveCount').addEventListener('click',()=>{
 
 
 function loadHistory(){
-    if(hasUnsyncedLocalWork() && MANUAL_SYNC_REQUESTED!==true){ render(); return; }
+    if(hasUnsyncedLocalWork()){ render(); return; }
   $('historyList').innerHTML='Loading saved history…';
 
   const denomMeta=[
@@ -11049,80 +11053,6 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   });
 })();
 </script>
-
-
-<script id="manual-sync-mode-addon">
-(function(){
-  const btn=document.getElementById('manualSyncNowBtn');
-  const hint=document.getElementById('manualSyncHint');
-  if(!btn) return;
-
-  function pendingCount(){
-    let n=0;
-    try{n+=loadOfflineActionQueue().length;}catch(e){}
-    try{n+=loadPendingTxQueue().length;}catch(e){}
-    try{n+=loadPendingCashPiecesQueue().length;}catch(e){}
-    return n;
-  }
-  function paint(){
-    const n=pendingCount();
-    btn.textContent=n ? `Sync (${n})` : 'Sync';
-    if(hint) hint.textContent=n
-      ? `${n} unsynced record${n===1?'':'s'} saved safely on this device.`
-      : 'All local changes are synced.';
-  }
-  window.gcashRefreshManualSync=paint;
-
-  const oldRender=window.renderPendingSyncPanel;
-  setInterval(paint,1200);
-  setTimeout(paint,200);
-
-  function waitUntilDone(){
-    const n=pendingCount();
-    const busy=(typeof txSyncBusy!=='undefined'&&txSyncBusy) ||
-               (typeof cashPiecesSyncBusy!=='undefined'&&cashPiecesSyncBusy) ||
-               (typeof offlineActionBusy!=='undefined'&&offlineActionBusy);
-    if(n===0 && !busy){
-      MANUAL_SYNC_REQUESTED=false;
-      btn.disabled=false;
-      paint();
-      try{showSync('All synced to Google Sheets.',true);}catch(e){}
-      // Refresh from server only after all local changes have uploaded.
-      try{loadCapital();}catch(e){}
-      try{if(typeof loadHistory==='function')loadHistory();}catch(e){}
-      return;
-    }
-    if(!MANUAL_SYNC_REQUESTED){
-      btn.disabled=false; paint(); return;
-    }
-    setTimeout(waitUntilDone,500);
-  }
-
-  btn.addEventListener('click',()=>{
-    const n=pendingCount();
-    if(!n){
-      try{showSync('All synced.',true);}catch(e){}
-      paint();
-      return;
-    }
-    if(!navigator.onLine){
-      try{showSync('No internet. Your records are safe on this device.');}catch(e){}
-      return;
-    }
-    if(!confirm(`Sync ${n} local record${n===1?'':'s'} to Google Sheets now?`)) return;
-    MANUAL_SYNC_REQUESTED=true;
-    btn.disabled=true;
-    btn.textContent='Syncing…';
-    try{processPendingTxQueue();}catch(e){}
-    try{processPendingCashPiecesQueue();}catch(e){}
-    try{processOfflineActionQueue();}catch(e){}
-    waitUntilDone();
-  });
-
-  window.addEventListener('storage',paint);
-})();
-</script>
-
 <script id="repair-known-move-money-shortage-v1">
 (function(){
   const FLAG='gcashRepairMoveMoney1000_20260926_v1';
