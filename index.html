@@ -11014,13 +11014,13 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
 (function(){
   const $f=id=>document.getElementById(id), modal=$f('freshRecordModal'), btn=$f('startFreshRecordBtn'),
         save=$f('freshSave'), cancel=$f('freshCancel'), status=$f('freshStatus');
+  if(!modal||!btn||!save) return;
   const inputs=['freshCash','freshGcash','freshMaya','freshMaribank'];
   function num(id){const n=Number($f(id).value);return isFinite(n)&&n>=0?n:NaN}
   function fmt(n){try{return money(n)}catch(e){return '₱'+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}}
   function calc(){
     const vals=inputs.map(num), valid=vals.every(Number.isFinite), total=valid?vals.reduce((a,b)=>a+b,0):0;
-    $f('freshTotal').textContent=valid?fmt(total):'Invalid';
-    save.disabled=!valid;
+    $f('freshTotal').textContent=valid?fmt(total):'Invalid'; save.disabled=!valid;
     return {valid,total,vals};
   }
   btn.addEventListener('click',()=>{status.textContent='';inputs.forEach(id=>$f(id).value='0');calc();modal.style.display='flex';modal.classList.add('show');modal.setAttribute('aria-hidden','false');});
@@ -11028,78 +11028,62 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   function close(){modal.style.display='none';modal.classList.remove('show');modal.setAttribute('aria-hidden','true');status.textContent=''}
   cancel.addEventListener('click',close);
   modal.addEventListener('click',e=>{if(e.target===modal)close()});
+
+  function clearBrokenLocalState(){
+    const keys=[
+      'gcash_tracker_pending_tx_v1','gcash_tracker_pending_cash_pieces_v1',
+      'gcashTrackerOfflineActionsV1','gcashTrackerLocalCacheV1',
+      'gcashCashCounterHistoryV1','gcashCashPiecesAppliedV1',
+      'gcashRepairMoveMoney1000_20260926_v1'
+    ];
+    keys.forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
+  }
+
   save.addEventListener('click',()=>{
     const s=calc(); if(!s.valid)return;
     const [cash,gcash,maya,maribank]=s.vals;
-    if(!confirm('START A FRESH RECORD?\\n\\nCash on Hand: '+fmt(cash)+'\\nGCash: '+fmt(gcash)+'\\nMaya: '+fmt(maya)+'\\nMariBank: '+fmt(maribank)+'\\n\\nNew Starting Capital: '+fmt(s.total)+'\\n\\nOld records will stay archived. New earnings and activity will start from zero.')) return;
-    save.disabled=true; status.textContent='Starting fresh record…'; status.className='status';
-    google.script.run.withSuccessHandler(data=>{
-      save.disabled=false;
-      if(data&&data.capital&&typeof renderCapital==='function')renderCapital(data.capital);
-      if(typeof loadData==='function')loadData();
-      else location.reload();
-      status.textContent='Fresh record started.';status.className='status ok';
-      setTimeout(close,500);
-    }).withFailureHandler(err=>{
-      save.disabled=false;status.textContent=(err&&err.message)||'Could not start fresh record.';status.className='status err';
-    }).setCapitalBySession(
-      (typeof getSessionToken==='function'?getSessionToken():''),
-      cash,
-      gcash,
-      0,
-      maya,
-      maribank
-    );
+    if(!confirm('START A FRESH RECORD?\n\nThis is recovery mode. Unsynced local records on this device will be discarded so they cannot damage the new record.\n\nCash on Hand: '+fmt(cash)+'\nGCash: '+fmt(gcash)+'\nMaya: '+fmt(maya)+'\nMariBank: '+fmt(maribank)+'\n\nNew Starting Capital: '+fmt(s.total))) return;
+
+    save.disabled=true; status.textContent='Starting clean record…'; status.className='status';
+
+    // Call the stable backend baseline function first. Only clear local broken state after server success.
+    google.script.run
+      .withSuccessHandler(data=>{
+        clearBrokenLocalState();
+
+        // Build a clean local baseline immediately.
+        try{
+          history=[]; expenses=[]; transfers=[]; capitalMovements=[];
+          window.__gcashTransactions=history;
+          capitalData=(data&&data.cashOnHand!==undefined)?data:{
+            cashOnHand:cash,gcashBalance:gcash,mayaBalance:maya,maribankBalance:maribank,
+            saripayBalance:0,currentCapital:s.total,availableEarnings:0,withdrawnEarnings:0,
+            expectedTotalMoney:s.total,cashOutAvailable:cash
+          };
+          render(); renderExpenses(); renderCapital(capitalData); renderCapitalActivity();
+          saveLocalTrackerCache();
+        }catch(e){}
+
+        // Cash Counter is intentionally not invented. User can enter the actual bills/coins.
+        try{
+          localStorage.removeItem('gcashCashCounterCurrentV1');
+          if(typeof window.loadCashCounterLatestStatus==='function') setTimeout(window.loadCashCounterLatestStatus,150);
+        }catch(e){}
+
+        status.textContent='Fresh record started.'; status.className='status ok';
+        setTimeout(()=>location.reload(),450);
+      })
+      .withFailureHandler(err=>{
+        save.disabled=false;
+        status.textContent=(err&&err.message)||'Could not start fresh record.';
+        status.className='status err';
+      })
+      .setCapitalBySession(
+        (typeof getSessionToken==='function'?getSessionToken():''),
+        cash,gcash,0,maya,maribank
+      );
   });
 })();
 </script>
-<script id="repair-known-move-money-shortage-v1">
-(function(){
-  const FLAG='gcashRepairMoveMoney1000_20260926_v1';
-  if(localStorage.getItem(FLAG)==='done') return;
-
-  function tryRepair(){
-    try{
-      const s=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null');
-      if(!s||!s.pieces) return false;
-      const tracker=(typeof capitalData!=='undefined'&&capitalData)?Number(capitalData.cashOnHand||0):NaN;
-      const physical=typeof cashCounterPiecesTotal==='function'?cashCounterPiecesTotal(s.pieces):NaN;
-      if(!Number.isFinite(tracker)||!Number.isFinite(physical)) return false;
-
-      // Repair only the exact known state: Cash Counter is ₱1,000 below Cash on Hand.
-      if(Math.abs((tracker-physical)-1000)>0.01) return false;
-
-      const pieces={...s.pieces};
-      // Existing Cash Counter denomination key for ₱1,000.
-      const thousandKey=(typeof D!=='undefined'&&Array.isArray(D))
-        ? ((D.find(x=>Number(x[1])===1000)||[])[0]||'1000')
-        : '1000';
-      pieces[thousandKey]=Number(pieces[thousandKey]||0)+1;
-      const newPhysical=typeof cashCounterPiecesTotal==='function'
-        ? cashCounterPiecesTotal(pieces) : physical+1000;
-
-      const fixed={...s,pieces,physicalCash:newPhysical,physicalTotal:newPhysical,
-        trackerCashOnHand:tracker,difference:newPhysical-tracker,
-        status:Math.abs(newPhysical-tracker)<=0.01?'MATCHED':'REVIEW',_localPending:true};
-      localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(fixed));
-      localStorage.setItem(FLAG,'done');
-
-      if(typeof current!=='undefined') current=fixed;
-      try{renderCashCounterInventory(fixed);}catch(_e){}
-      try{renderSummary(fixed);}catch(_e){}
-      try{sendCashCounterStatusToTracker();}catch(_e){}
-      try{if(typeof window.loadCashCounterLatestStatus==='function')window.loadCashCounterLatestStatus();}catch(_e){}
-      return true;
-    }catch(e){return false;}
-  }
-
-  let tries=0;
-  const timer=setInterval(()=>{
-    tries++;
-    if(tryRepair()||tries>20) clearInterval(timer);
-  },250);
-})();
-</script>
-
 </body>
 </html>
