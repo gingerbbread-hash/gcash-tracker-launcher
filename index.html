@@ -7586,9 +7586,6 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
 
   function processPendingCashPiecesQueue(transactionId){
     if(MANUAL_SYNC_REQUESTED!==true) { try{refreshFastSyncStatus();}catch(e){} return; }
-    // Legacy pending records are preserved for manual reconciliation; never replay automatically.
-    return;
-
     if(cashPiecesSyncBusy || !unlocked) return;
 
     const all = loadPendingCashPiecesQueue();
@@ -7618,6 +7615,9 @@ style="position:absolute;right:12px;top:10px;border:1px solid rgba(255,255,255,.
         savePendingCashPiecesQueue(latest);
         cashPiecesSyncBusy = false;
         cashPiecesRetryDelay = 1200;
+        if(MANUAL_SYNC_REQUESTED===true && loadPendingCashPiecesQueue().length){
+          setTimeout(()=>processPendingCashPiecesQueue(),40);
+        }
 
         if(typeof window.loadCashCounterLatestStatus === 'function'){
           setTimeout(window.loadCashCounterLatestStatus, 100);
