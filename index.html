@@ -4787,7 +4787,8 @@ body > .hero{
 #cashCounterNative #editInventoryGrid .edit-piece-middle small{font-size:10px!important;font-weight:800!important;color:#0b5ed7!important;line-height:1.1!important}
 #cashCounterNative #editInventoryGrid .cc-piece-amount{display:block!important;text-align:right!important;font-size:13px!important;overflow-wrap:anywhere}
 </style>
-<style id="cash-in-count-update">.cash-in-four-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.cash-in-four-fields>div{padding:9px;border:1px solid #e4e7ec;border-radius:9px;display:flex;flex-direction:column;gap:4px}.cash-in-four-fields span{font-size:11px;color:#667085}.cash-in-four-fields strong{font-size:14px}</style></head>
+<style id="cash-in-count-update">.cash-in-four-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.cash-in-four-fields>div{padding:9px;border:1px solid #e4e7ec;border-radius:9px;display:flex;flex-direction:column;gap:4px}.cash-in-four-fields span{font-size:11px;color:#667085}.cash-in-four-fields strong{font-size:14px}</style><style>body{padding-bottom:170px!important}</style>
+</head>
 <body>
 <main class="app">
   <section class="hero">
@@ -5140,9 +5141,7 @@ body > .hero{
     <div class="small-note" style="margin-top:7px">The calculator works without signing in. Sign in to save or view your records.</div>
   </div>
   <div id="syncStatus" class="sync"></div>
-  <button id="manualSyncNowBtn" type="button" class="btn btn-primary" style="width:100%;margin:8px 0 6px;font-weight:900">Sync to Google Sheets</button>
-  <div id="manualSyncHint" class="small-note" style="margin-bottom:7px;text-align:center">Daily records stay on this device until you tap Sync.</div>
-  <button id="pendingSyncBtn" type="button" class="pending-sync-btn" style="display:none">Pending Sync</button>
+<button id="pendingSyncBtn" type="button" class="pending-sync-btn" style="display:none">Pending Sync</button>
   <div id="pendingSyncModal" class="pending-sync-modal" aria-hidden="true">
     <div class="pending-sync-card">
       <div class="pending-sync-head"><strong>Pending Sync</strong><button id="pendingSyncClose" type="button">Close</button></div>
@@ -10927,7 +10926,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
 <script id="manual-sync-mode-addon">
 (function(){
   const btn=document.getElementById('manualSyncNowBtn');
-  const hint=document.getElementById('manualSyncHint');
+  const hint=document.getElementById('manualSyncFixedStatus') || document.getElementById('manualSyncHint');
   if(!btn) return;
 
   function pendingCount(){
@@ -10995,6 +10994,12 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   window.addEventListener('storage',paint);
 })();
 </script>
+
+
+<div id="manualSyncFixedBar" style="position:fixed;left:12px;right:12px;bottom:86px;z-index:999999;background:#ffffff;border:1px solid #cfe0f5;border-radius:18px;padding:10px 12px;box-shadow:0 6px 24px rgba(0,0,0,.14)">
+  <div id="manualSyncFixedStatus" style="font-size:12px;font-weight:800;color:#64748b;text-align:center;margin-bottom:7px">Checking local records…</div>
+  <button id="manualSyncNowBtn" type="button" style="display:block;width:100%;min-height:50px;border:0;border-radius:14px;background:#1463df;color:#fff;font-size:16px;font-weight:900">Sync to Google Sheets</button>
+</div>
 
 </body>
 </html>
