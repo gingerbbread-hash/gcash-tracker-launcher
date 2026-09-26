@@ -7808,7 +7808,7 @@ body > .hero{
         // Keep the queue intact. Retry quickly without creating duplicates.
         scheduleTxRetry();
       })
-      .addTransactionWithCashPiecesBySession(getSessionToken(), payload);
+      .addTransactionBySession(getSessionToken(), payload);
   }
 
   function restorePendingTransactions(){
