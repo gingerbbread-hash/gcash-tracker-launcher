@@ -4787,13 +4787,11 @@ body > .hero{
 #cashCounterNative #editInventoryGrid .edit-piece-middle small{font-size:10px!important;font-weight:800!important;color:#0b5ed7!important;line-height:1.1!important}
 #cashCounterNative #editInventoryGrid .cc-piece-amount{display:block!important;text-align:right!important;font-size:13px!important;overflow-wrap:anywhere}
 </style>
-<style id="cash-in-count-update">.cash-in-four-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.cash-in-four-fields>div{padding:9px;border:1px solid #e4e7ec;border-radius:9px;display:flex;flex-direction:column;gap:4px}.cash-in-four-fields span{font-size:11px;color:#667085}.cash-in-four-fields strong{font-size:14px}</style><!-- ONE RECORD SYNC V4: exposes the real server sync error on each pending transaction. -->
-</head>
+<style id="cash-in-count-update">.cash-in-four-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}.cash-in-four-fields>div{padding:9px;border:1px solid #e4e7ec;border-radius:9px;display:flex;flex-direction:column;gap:4px}.cash-in-four-fields span{font-size:11px;color:#667085}.cash-in-four-fields strong{font-size:14px}</style></head>
 <body>
 <main class="app">
-  <section class="hero" style="position:relative">
-    <h1 class="cash-app-title"><span class="tracker-title-line">GCash Tracker</span>
-</h1>
+  <section class="hero">
+    <h1 class="cash-app-title"><span class="tracker-title-line">GCash Tracker</span></h1>
     <p>Synced across your phones and computers</p>
     <div class="history-mini">
 
@@ -5071,7 +5069,7 @@ body > .hero{
         <strong>Move Money</strong>
         <small>Cash · GCash · Maya · MariBank</small>
       </button>
-</div>
+    </div>
 
     <div class="current-capital-focus">
       <span>Current Capital</span>
@@ -5093,7 +5091,6 @@ body > .hero{
       <button type="button" id="withdrawCapitalActionBtn" class="capital-action-btn withdraw-capital">Withdraw Capital</button>
       <button type="button" id="withdrawEarningsActionBtn" class="capital-action-btn withdraw-earnings">Withdraw Earnings</button>
     </div>
-    <button type="button" id="startFreshRecordBtn" class="btn btn-secondary" style="width:100%;margin-top:10px;font-weight:900">Start Fresh Record</button>
 
     <button type="button" id="capitalActivityToggle" class="expense-history-toggle">Wallet History</button>
     <div id="capitalActivitySection" class="expense-history-section" style="display:none">
@@ -5142,7 +5139,7 @@ body > .hero{
     <div class="small-note" style="margin-top:7px">The calculator works without signing in. Sign in to save or view your records.</div>
   </div>
   <div id="syncStatus" class="sync"></div>
-<button id="pendingSyncBtn" type="button" class="pending-sync-btn" style="display:none">Pending Sync</button>
+  <button id="pendingSyncBtn" type="button" class="pending-sync-btn" style="display:none">Pending Sync</button>
   <div id="pendingSyncModal" class="pending-sync-modal" aria-hidden="true">
     <div class="pending-sync-card">
       <div class="pending-sync-head"><strong>Pending Sync</strong><button id="pendingSyncClose" type="button">Close</button></div>
@@ -5470,16 +5467,6 @@ body > .hero{
 
 <script>
 (function(){
-  // Dual-host transport:
-  // - Apps Script Web App: keep the native google.script.run connection.
-  // - GitHub/static hosting: install the existing JSONP bridge below.
-  const hasNativeAppsScriptRun = !!(window.google && window.google.script && window.google.script.run);
-  if(hasNativeAppsScriptRun){
-    window.GCASH_HOST_MODE = 'APPS_SCRIPT';
-    return;
-  }
-
-  window.GCASH_HOST_MODE = 'EXTERNAL';
   const API_URL = 'https://script.google.com/macros/s/AKfycbzHZBbsTHU5rRMrO4iNCizaQHd1SqVMb1NgWFSRvw8UHf_zdJTLJEQHYZTouUfvpknouw/exec';
   const DEVICE_KEY = 'gcashGithubDeviceTokenV1';
   let deviceToken = '';
@@ -5753,72 +5740,6 @@ body > .hero{
   let transactionSaving = false;
   const recordTransactionBtn = form ? form.querySelector('.action-record') : null;
 
-  // SERVER BALANCE LOCK: normal transactions are allowed only when the
-  // authoritative Cash Counter matches authoritative Cash on Hand.
-  let serverBalanceState = 'CHECKING';
-  let serverBalanceMessage = 'Checking Cash Counter balance…';
-  let serverBalanceCheckBusy = false;
-
-  function applyServerBalanceLock(result){
-    // V27: getCashCounterLatestStatusBySession() can return a valid
-    // {status:'MATCHED', difference:0, ...} object without an `available`
-    // property. Treat the authoritative status itself as the source of truth.
-    const hasResult = !!result;
-    const statusValue = hasResult ? String(result.status || '').toUpperCase() : '';
-    const differenceValue = hasResult ? Number(result.difference || 0) : NaN;
-
-    if(hasResult && statusValue === 'MATCHED' && isFinite(differenceValue) && Math.abs(differenceValue) <= 0.01){
-      serverBalanceState = 'MATCHED';
-      serverBalanceMessage = '';
-    }else if(hasResult && (statusValue === 'SHORT' || statusValue === 'OVER' || statusValue === 'MISMATCH')){
-      serverBalanceState = statusValue;
-      serverBalanceMessage = 'Reconcile Cash Counter first. Cash Counter and Cash on Hand do not match.';
-    }else{
-      serverBalanceState = 'UNKNOWN';
-      serverBalanceMessage = 'Cash Counter balance could not be verified.';
-    }
-
-    if(recordTransactionBtn){
-      recordTransactionBtn.disabled = transactionSaving || serverBalanceState !== 'MATCHED';
-      recordTransactionBtn.textContent = transactionSaving ? 'Recording…' : (serverBalanceState === 'MATCHED' ? 'Record Transaction' : 'Checking Balance…');
-      recordTransactionBtn.style.opacity = recordTransactionBtn.disabled ? '.65' : '';
-      recordTransactionBtn.style.cursor = recordTransactionBtn.disabled ? 'not-allowed' : '';
-    }
-
-    // V28: when the authoritative server state is MATCHED, the transaction
-    // form must have no balance warning/status at all.
-    if(serverBalanceState === 'MATCHED' && status){
-      status.textContent='';
-      status.className='status';
-      status.style.display='none';
-    }else if(status){
-      status.style.display='';
-    }
-  }
-
-  function verifyAuthoritativeBalance(options){
-    options = options || {};
-    if(!unlocked || serverBalanceCheckBusy) return;
-    serverBalanceCheckBusy = true;
-    google.script.run
-      .withSuccessHandler(result=>{
-        serverBalanceCheckBusy = false;
-        applyServerBalanceLock(result);
-        if(options.showSuccess && serverBalanceState === 'MATCHED') showSync('SYNCED ✓ Server balance verified.', true);
-        if(serverBalanceState !== 'MATCHED' && options.showError !== false){
-          showSync('BALANCE LOCK: ' + serverBalanceMessage);
-        }
-      })
-      .withFailureHandler(()=>{
-        serverBalanceCheckBusy = false;
-        serverBalanceState = 'UNKNOWN';
-        serverBalanceMessage = 'Server balance verification failed. Try again when connected.';
-        applyServerBalanceLock(null);
-        if(options.showError !== false) showSync('BALANCE CHECK ERROR: Server balance could not be verified.');
-      })
-      .getCashCounterLatestStatusBySession(getSessionToken());
-  }
-
   let history = [];
   window.__gcashTransactions = history;
   let selectedPeriod = 'today';
@@ -6007,7 +5928,7 @@ body > .hero{
   function ccTransactionCountHtml(tx){
     const record=ccLinkedRecord(tx);
     if(!record){
-      return `<div class="cc-hist-pieces"><div class="cc-hist-side"><strong>Money Count · Not available for this older record</strong><div>This older transaction did not save bill-and-coin details. New records keep Money Count permanently inside the transaction.</div></div></div>`;
+      return `<div class="cc-hist-pieces"><div class="cc-hist-side"><strong>Cash Count · Needs attention</strong><div>This older transaction has no saved bill-and-coin details. New transactions save the Cash Count inside the transaction automatically.</div></div></div>`;
     }
     const d=record.details||{};
     const received=ccPieceLines(d.received);
@@ -6017,12 +5938,12 @@ body > .hero{
       return sum+(Number(d.received&&d.received[key]||0)-Number((d.given||d.change)&& (d.given||d.change)[key]||0))*value;
     },0);
     const pending=!!d.localPending;
-    return `<div class="cc-hist-pieces"><div class="cc-hist-side"><strong>Money Count · ${pending?'Saved locally':'Recorded'}</strong>
+    return `<div class="cc-hist-pieces"><div class="cc-hist-side"><strong>Cash Count · ${pending?'Saved on device':'Recorded'}</strong>
       ${received?`<div class="cc-hist-side cc-hist-in"><strong>Money received</strong><div>${received}</div></div>`:''}
       ${given?`<div class="cc-hist-side cc-hist-out"><strong>Money given</strong><div>${given}</div></div>`:''}
       ${!received&&!given?'<div>No denominations saved in this record.</div>':''}
       <div class="cc-hist-zero">Net Cash Counter movement: ${values>=0?'+':'−'}${money(Math.abs(values))}</div>
-      ${pending?'<div class="cc-count-pending">Money Count is saved with this transaction and is waiting for Sync.</div>':''}
+      ${pending?'<div class="cc-count-pending">Cash Count sync confirmation pending.</div>':''}
     </div></div>`;
   }
   function ccExchangeCard(r){
@@ -6063,7 +5984,7 @@ body > .hero{
           <div class="history-tx-kind">
             <span class="badge ${tx.type==='Cash In'?'badge-cashin':'badge-cashout'}">${escapeHtml(tx.type)}</span>
             <span class="history-wallet-pill">${escapeHtml(transactionWalletLabel(tx))}</span>
-            ${tx._pendingSync ? '<span class="history-sync-pill">'+(tx._syncError ? 'SYNC ERROR' : 'SYNCING…')+'</span>' : ''}
+            ${tx._pendingSync ? '<span class="history-sync-pill">SYNCING…</span>' : ''}
           </div>
           ${tx.type==='Cash In'?'':`<div class="history-tx-fee">Fee earned ${money(tx.fee)}</div>`}
         </div>
@@ -6192,7 +6113,6 @@ body > .hero{
   }
 
   function loadCapital(){
-    if(hasUnsyncedLocalWork()){ renderCapital(capitalData); return; }
     if(!unlocked) return;
     google.script.run
       .withSuccessHandler(renderCapital)
@@ -6289,7 +6209,6 @@ body > .hero{
 
   function capitalActionLabel(type){
     if(type==='ADD_CAPITAL') return 'Add Capital';
-    if(type==='BALANCE_ADJUSTMENT') return 'Balance Adjustment';
     if(type==='WITHDRAW_CAPITAL') return 'Withdraw Capital';
     return 'Withdraw Earnings';
   }
@@ -6427,7 +6346,7 @@ body > .hero{
 
     queueOfflineAction({id:id,method:'addCapitalMovementBySession',payload:payload});
     saveCapitalActionBtn.disabled=false;
-    capitalActionStatus.textContent=navigator.onLine?'Saved. Saved locally.':'Saved offline. Waiting for manual sync.';
+    capitalActionStatus.textContent=navigator.onLine?'Saved. Syncing…':'Saved offline. Waiting to sync.';
     capitalActionStatus.className='status ok';
     closeCapitalAction();
   });
@@ -6548,86 +6467,11 @@ body > .hero{
     const payload={amount,fromWallet,toWallet,clientActionId:id};
     try{applyLocalMoveMoney(payload,id);}catch(e){mayaTransferStatus.textContent=(e&&e.message)||'Could not transfer funds.';mayaTransferStatus.className='status err';return;}
     queueOfflineAction({id:id,method:'addMayaTransferBySession',payload:payload});
-    mayaTransferStatus.textContent=navigator.onLine?'Saved. Saved locally.':'Saved offline. Waiting for manual sync.';
+    mayaTransferStatus.textContent=navigator.onLine?'Saved. Syncing…':'Saved offline. Waiting to sync.';
     mayaTransferStatus.className='status ok';
     cancelMayaTransferBtn.click();
   });
-  mayaTransferHistoryList.addEventListener('click',e=>{
-    const b=e.target.closest('[data-remove-maya-transfer]');
-    if(!b)return;
-    const id=String(b.getAttribute('data-remove-maya-transfer')||'');
-    const t=mayaTransfers.find(x=>String(x.id||'')===id);
-    if(!t)return;
-    if(!confirm('Reverse this wallet transfer? Linked Cash Counter pieces will also be reversed.'))return;
-
-    let q=loadOfflineActionQueue();
-    const pendingAdd=q.find(a=>String(a.id||'')===id &&
-      (a.method==='addMayaTransferBySession'||a.method==='addMayaTransferWithCashPiecesBySession'));
-    const transferPayload=(pendingAdd&&pendingAdd.payload)||{};
-    const touchesCash=t.fromWallet==='Cash on Hand'||t.toWallet==='Cash on Hand';
-
-    if(touchesCash){
-      let reversed=false;
-      if(typeof window.reverseLocalCashPiecesForTransaction==='function'){
-        reversed=window.reverseLocalCashPiecesForTransaction(id)===true;
-      }
-      // Fallback: use the exact denomination payload stored with Move Money.
-      if(!reversed && transferPayload && (transferPayload.received||transferPayload.given)){
-        const d={
-          transactionId:id,
-          transactionType:'Move Money',
-          received:{...(transferPayload.given||{})},
-          given:{...(transferPayload.received||{})}
-        };
-        if(typeof applyLocalCashPiecesNow==='function'){
-          reversed=applyLocalCashPiecesNow(d)===true;
-          // This is a reversal, not a new business transaction. Remove the temporary
-          // reversal history row immediately so no duplicate record is created.
-          try{
-            const key='gcashCashCounterHistoryV1';
-            let rows=JSON.parse(localStorage.getItem(key)||'[]');
-            if(Array.isArray(rows)){
-              rows=rows.filter(r=>String((r&&r.id)||'')!=='LOCAL_PIECES_'+id &&
-                String(((r&&r.details)||{}).transactionId||'')!==id);
-              localStorage.setItem(key,JSON.stringify(rows));
-            }
-          }catch(_e){}
-        }
-      }
-      if(!reversed){
-        alert('Cash Counter could not find the exact bills/coins for this transfer. Nothing was reversed.');
-        return;
-      }
-    }
-
-    const amount=Number(t.amount||0);
-    const key=w=>w==='GCash'?'gcashBalance':w==='Maya'?'mayaBalance':w==='MariBank'?'maribankBalance':'cashOnHand';
-    const c={...(capitalData||{})};
-    c[key(t.fromWallet)]=Number(c[key(t.fromWallet)]||0)+amount;
-    c[key(t.toWallet)]=Number(c[key(t.toWallet)]||0)-amount;
-    capitalData=c; renderCapital(c);
-
-    mayaTransfers=mayaTransfers.filter(x=>String(x.id||'')!==id);
-    renderMayaTransfers(); renderCapitalActivity(); saveLocalTrackerCache();
-
-    if(pendingAdd){
-      // Never reached Google Sheets: cancel the ADD. No DELETE is queued.
-      q=q.filter(a=>String(a.id||'')!==id);
-      saveOfflineActionQueue(q);
-    }else{
-      // It may already exist on Google Sheets. Queue one idempotent server reversal.
-      if(!q.some(a=>a.method==='deleteMayaTransferBySession' &&
-                    String((a.payload||{}).id||'')===id)){
-        q.push({id:'DELMOVE_'+id,method:'deleteMayaTransferBySession',payload:{id:id},queuedAt:Date.now()});
-        saveOfflineActionQueue(q);
-      }
-    }
-    try{removeQueuedCashPieces(id);}catch(_e){}
-    try{if(typeof window.gcashRefreshManualSync==='function')window.gcashRefreshManualSync();}catch(_e){}
-    try{if(typeof window.loadCashCounterLatestStatus==='function')window.loadCashCounterLatestStatus();}catch(_e){}
-    mayaTransferStatus.textContent=pendingAdd?'Transfer reversed locally.':'Transfer reversed locally. Google Sheets reversal is syncing automatically.';
-    mayaTransferStatus.className='status ok';
-  });
+  mayaTransferHistoryList.addEventListener('click',e=>{const b=e.target.closest('[data-remove-maya-transfer]');if(!b)return;const id=b.getAttribute('data-remove-maya-transfer');if(!confirm('Reverse this wallet transfer? Linked Cash Counter pieces will also be reversed.'))return;google.script.run.withSuccessHandler(d=>{mayaTransfers=(d&&d.transfers)||mayaTransfers.filter(x=>String(x.id)!==String(id));if(d&&d.capital)renderCapital(d.capital);renderMayaTransfers();renderCapitalActivity();saveLocalTrackerCache();if(typeof window.loadCashCounterLatestStatus==='function')setTimeout(window.loadCashCounterLatestStatus,100);}).withFailureHandler(e=>alert((e&&e.message)||'Could not reverse transfer.')).deleteMayaTransferBySession(getSessionToken(),id);});
 
   function updateSaripayTransferPreview(){
     const amount = Number(saripayTransferAmount.value || 0);
@@ -6911,7 +6755,6 @@ body > .hero{
   const LOCAL_CACHE_KEY = 'gcashTrackerAllRecordsV2';
 
   const OFFLINE_ACTION_QUEUE_KEY='gcashTrackerOfflineActionsV1';
-  let MANUAL_SYNC_REQUESTED=true;
   let offlineActionBusy=false;
   let offlineActionRetry=1400;
 
@@ -6936,7 +6779,7 @@ body > .hero{
     const q=loadOfflineActionQueue();
     q.push({...action,queuedAt:Date.now()});
     saveOfflineActionQueue(q);
-    showSync('Saved locally. Sync when ready.', true);
+    setTimeout(processOfflineActionQueue,0);
   }
 
   window.addEventListener('gcash-queue-offline-action',function(e){
@@ -7002,10 +6845,6 @@ body > .hero{
       if(data&&data.movement) replacePendingById(capitalMovements,a.id,data.movement);
       if(data&&data.capital) renderCapital(data.capital);
       renderCapitalActivity(); saveLocalTrackerCache();
-    }else if(a.method==='deleteMayaTransferBySession'){
-      // Local wallet and Cash Counter were already reversed immediately.
-      // Server success only confirms Google Sheets caught up.
-      saveLocalTrackerCache();
     }else if(a.method==='setCashOnHandToCountedCashBySession'){
       if(data&&data.movement) replacePendingById(capitalMovements,a.id,data.movement);
       if(data&&data.capital) renderCapital(data.capital);
@@ -7028,7 +6867,9 @@ body > .hero{
   }
 
   function processOfflineActionQueue(){
-    if(MANUAL_SYNC_REQUESTED!==true){ renderPendingSyncPanel(); return; }
+    // Legacy pending records are preserved for manual reconciliation; never replay automatically.
+    return;
+
     if(offlineActionBusy||!navigator.onLine) { renderPendingSyncPanel(); return; }
     const q=loadOfflineActionQueue();
     if(!q.length){offlineActionRetry=1400;renderPendingSyncPanel();return;}
@@ -7044,11 +6885,7 @@ body > .hero{
         offlineActionBusy=false;
         offlineActionRetry=1400;
         handleOfflineActionSuccess(a,data);
-        setTransactionSaving(false);
-        if(a.method==='saveCashCount'||a.method==='saveManualCashCounterCorrection'||a.method==='saveCashCounterChangeMoney'){
-          setTimeout(()=>verifyAuthoritativeBalance({showSuccess:true,showError:true}),100);
-        }
-        if(MANUAL_SYNC_REQUESTED) setTimeout(processOfflineActionQueue,0);
+        setTimeout(processOfflineActionQueue,0);
       })
       .withFailureHandler(err=>{
         offlineActionBusy=false;
@@ -7071,15 +6908,11 @@ body > .hero{
         runner.saveCashCounterChangeMoney(a.payload.pieces,a.id,a.payload.exchange||null);
       }else if(a.method==='deleteTransactionBySession'){
         runner.deleteTransactionBySession(getSessionToken(),a.payload.id);
-      }else if(a.method==='deleteMayaTransferBySession'){
-        runner.deleteMayaTransferBySession(getSessionToken(),a.payload.id);
-      }else if(a.method==='setCashOnHandToCountedCashBySession'){
-        runner.setCashOnHandToCountedCashBySession(getSessionToken(),a.payload);
       }else{
         const latest=loadOfflineActionQueue();
         latest.shift(); saveOfflineActionQueue(latest);
         offlineActionBusy=false;
-        if(MANUAL_SYNC_REQUESTED) setTimeout(processOfflineActionQueue,0);
+        setTimeout(processOfflineActionQueue,0);
       }
     }catch(e){
       offlineActionBusy=false;
@@ -7144,11 +6977,7 @@ body > .hero{
       previousMaribank:Number((capitalData&&capitalData.maribankBalance)||0),
       newMaribank:Number(c.maribankBalance||0),
       previousCash:Number((capitalData&&capitalData.cashOnHand)||0),
-      newCash:Number(c.cashOnHand||0),
-      cashPieces:{
-        received:{...(payload.received||{})},
-        given:{...(payload.given||{})}
-      }
+      newCash:Number(c.cashOnHand||0)
     };
     mayaTransfers.unshift(t);
     renderCapital(c); renderMayaTransfers(); renderCapitalActivity(); saveLocalTrackerCache();
@@ -7203,68 +7032,41 @@ body > .hero{
       renderCapital(capitalData);
       renderCapitalActivity();
       setLockedView(false);
-      showSync('Saved records loaded. Saved locally.');
+      showSync('Saved records loaded. Syncing…');
       return true;
     }catch(e){
       return false;
     }
   }
 
-
-  function mergePermanentCashCount(localRows,serverRows){
-    const localMap=new Map();
-    (Array.isArray(localRows)?localRows:[]).forEach(x=>{
-      if(x&&x.id&&x.cashPieces) localMap.set(String(x.id),x.cashPieces);
-    });
-    return (Array.isArray(serverRows)?serverRows:[]).map(x=>{
-      if(!x||!x.id) return x;
-      const saved=localMap.get(String(x.id));
-      if(saved && !x.cashPieces) return {...x,cashPieces:saved};
-      return x;
-    });
-  }
-
-
-  function hasUnsyncedLocalWork(){
-    try{
-      return loadPendingTxQueue().length>0 ||
-             loadOfflineActionQueue().length>0;
-    }catch(e){ return true; }
-  }
-
   function loadAllWithSession(token){
     unlocked=true;
     setLockedView(false);
+    showSync('Syncing your records…');
 
-    // LOCAL-FIRST: if there is unsynced work, do not fetch stale Google Sheets
-    // data because it would erase the local transaction and roll balances backward.
-    if(hasUnsyncedLocalWork()){
-      restorePendingTransactions();
-      render(); renderExpenses(); renderCapital(capitalData); renderCapitalActivity();
-      saveLocalTrackerCache();
-      showSync('Saved locally. Syncing automatically…',true);
-      return;
-    }
-
-    showSync('Loading synced records…');
     google.script.run
       .withSuccessHandler(data=>{
-        history=mergePermanentCashCount(history,(data&&data.transactions)||[]);
-        window.__gcashTransactions=history;
-        expenses=(data&&data.expenses)||[];
-        transfers=(data&&data.transfers)||[];
-        capitalMovements=(data&&data.capitalMovements)||[];
-        capitalData=(data&&data.capital)||null;
+        history=(data && data.transactions)||[];
+        window.__gcashTransactions = history;
+        expenses=(data && data.expenses)||[];
+        transfers=(data && data.transfers)||[];
+        capitalMovements=(data && data.capitalMovements)||[];
+        capitalData=(data && data.capital)||null;
         unlocked=true;
-        render(); renderExpenses(); renderCapital(capitalData); renderCapitalActivity();
+        render();
+        renderExpenses();
+        renderCapital(capitalData);
+        renderCapitalActivity();
         saveLocalTrackerCache();
         setLockedView(false);
         showSync('Synced.',true);
+        setTimeout(restorePendingTransactions, 0);
       })
       .withFailureHandler(err=>{
         unlocked=true;
+        const msg = (err && err.message) || 'Could not sync records.';
         setLockedView(false);
-        showSync(((err&&err.message)||'Could not load Google Sheets.')+' Saved local records remain available.');
+        showSync(msg + ' Saved records remain available.');
       })
       .getAppDataBySession('LOCAL_NO_LOGIN');
   }
@@ -7419,7 +7221,7 @@ body > .hero{
     google.script.run
       .withSuccessHandler(data=>{
         claimLegacyBtn.disabled=false;
-        history=mergePermanentCashCount(history,(data && data.transactions)||[]);
+        history=(data && data.transactions)||[];
         window.__gcashTransactions = history;
         expenses=(data && data.expenses)||[];
         capitalMovements=(data && data.capitalMovements)||[];
@@ -7600,7 +7402,7 @@ body > .hero{
   const CASH_PIECES_QUEUE_KEY = 'gcash_tracker_pending_cash_pieces_v1';
   let txSyncBusy = false;
   let cashPiecesSyncBusy = false;
-  let txRetryDelay = 500;
+  let txRetryDelay = 1500;
   let cashPiecesRetryDelay = 1200;
   const cashPiecesPromptIds = new Set();
 
@@ -7670,10 +7472,70 @@ body > .hero{
   }
 
   function processPendingCashPiecesQueue(transactionId){
-    // ONE RECORD mode. Never send Money Count separately.
-    // It is committed together with its transaction.
-    refreshFastSyncStatus();
-    renderPendingSyncPanel();
+    // Legacy pending records are preserved for manual reconciliation; never replay automatically.
+    return;
+
+    if(cashPiecesSyncBusy || !unlocked) return;
+
+    const all = loadPendingCashPiecesQueue();
+    if(!all.length) return;
+
+    let idx = 0;
+    if(transactionId){
+      idx = all.findIndex(
+        x => String(x.transactionId || '') === String(transactionId || '')
+      );
+      if(idx < 0) return;
+    }
+
+    const payload = all[idx];
+
+    // The backend can only save denominations after the parent transaction
+    // already exists in Google Sheets.
+    if(isTransactionStillPending(payload.transactionId)) return;
+
+    cashPiecesSyncBusy = true;
+
+    google.script.run
+      .withSuccessHandler(result=>{
+        const latest = loadPendingCashPiecesQueue().filter(
+          x => String(x.transactionId || '') !== String(payload.transactionId || '')
+        );
+        savePendingCashPiecesQueue(latest);
+        cashPiecesSyncBusy = false;
+        cashPiecesRetryDelay = 1200;
+
+        if(typeof window.loadCashCounterLatestStatus === 'function'){
+          setTimeout(window.loadCashCounterLatestStatus, 100);
+        }
+
+        // Continue with another queued Cash Pieces record if there is one.
+        setTimeout(()=>processPendingCashPiecesQueue(), 50);
+      })
+      .withFailureHandler(err=>{
+        cashPiecesSyncBusy = false;
+
+        const msg = String((err && err.message) || '');
+        // If the transaction is not on the server yet, keep the Cash Pieces safely queued.
+        if(
+          msg.toLowerCase().includes('transaction not found') ||
+          msg.toLowerCase().includes('not found')
+        ){
+          scheduleCashPiecesRetry(payload.transactionId);
+          return;
+        }
+
+        // Keep it queued and retry quickly with a gentle backoff.
+        scheduleCashPiecesRetry(payload.transactionId);
+      })
+      .recordTransactionCashPiecesBySession(
+        getSessionToken(),
+        {
+          transactionId:String(payload.transactionId || ''),
+          received:{...(payload.received || {})},
+          given:{...(payload.given || {})}
+        }
+      );
   }
 
   function loadPendingTxQueue(){
@@ -7753,10 +7615,6 @@ body > .hero{
       previousMaya: beforeMaya, newMaya: afterMaya,
       previousMaribank: beforeMaribank, newMaribank: afterMaribank,
       previousSaripay: beforeSaripay, newSaripay: afterSaripay,
-      cashPieces: payload.cashPieces ? {
-        received:{...(payload.cashPieces.received||{})},
-        given:{...(payload.cashPieces.given||payload.cashPieces.change||{})}
-      } : null,
       _pendingSync: true
     };
   }
@@ -7791,187 +7649,28 @@ body > .hero{
     try{ window.dispatchEvent(new CustomEvent('gcash-local-transaction-recorded',{detail:{...tx}})); }catch(_e){}
   }
 
-
-  function finishPendingTransactionFromServer_(payload, serverTx, committedBalance){
-    if(!payload || !serverTx) return false;
-    if(committedBalance && committedBalance.available !== false &&
-       committedBalance.status === 'MATCHED' &&
-       Math.abs(Number(committedBalance.difference||0)) <= 0.01){
-      try{ applyServerBalanceLock(committedBalance); }catch(_e){}
-    }
-
-    const id=String(payload.clientTransactionId||serverTx.id||'');
-    const idx=history.findIndex(x=>String(x.id||'')===String(serverTx.id||id));
-    const localTx=idx>=0?history[idx]:history.find(x=>String(x.id||'')===id);
-    if(localTx && localTx.cashPieces && !serverTx.cashPieces) serverTx.cashPieces=localTx.cashPieces;
-    serverTx._pendingSync=false;
-    delete serverTx._syncError;
-
-    if(idx>=0) history[idx]=serverTx;
-    else {
-      const byClient=history.findIndex(x=>String(x.id||'')===id);
-      if(byClient>=0) history[byClient]=serverTx; else history.unshift(serverTx);
-    }
-    window.__gcashTransactions=history;
-
-    const remaining=loadPendingTxQueue().filter(x=>String(x.clientTransactionId||'')!==id);
-    savePendingTxQueue(remaining);
-    try{removeQueuedCashPieces(id);}catch(_e){}
-    txSyncBusy=false;
-    txRetryDelay=500;
-    render();
-    saveLocalTrackerCache();
-    showSync('SYNCED ✓ Server confirmed transaction.',true);
-    try{ window.dispatchEvent(new Event('storage')); }catch(_e){}
-    return true;
-  }
-
-  function rescuePendingTransactionAck_(payload){
-    if(!payload || !payload.clientTransactionId || !window.google || !google.script || !google.script.run) return;
-    const id=String(payload.clientTransactionId);
-    google.script.run
-      .withSuccessHandler(res=>{
-        if(!res || !res.found || !res.transaction) return;
-        const bal=res.cashCounter;
-        if(bal && bal.status && bal.status!=='MATCHED') return;
-        finishPendingTransactionFromServer_(payload,res.transaction,bal||{
-          available:true,
-          physicalCash:Number(res.transaction.newCash||0),
-          trackerCashOnHand:Number(res.transaction.newCash||0),
-          difference:0,status:'MATCHED'
-        });
-      })
-      .withFailureHandler(()=>{})
-      .getTransactionSyncStatusBySession(getSessionToken(),id);
-  }
-
-
-  function repairStalePendingFromServerHistory_(){
-    // Recovery must be allowed even while the old sync request is stuck busy.
-    if(!unlocked || !window.google || !google.script || !google.script.run) return;
-    const q=loadPendingTxQueue();
-    if(!q.length) return;
-
-    google.script.run
-      .withSuccessHandler(serverHistory=>{
-        const serverList=Array.isArray(serverHistory)?serverHistory:[];
-        if(!serverList.length) return;
-
-        google.script.run
-          .withSuccessHandler(balance=>{
-            if(!balance || balance.available===false ||
-               String(balance.status||'').toUpperCase()!=='MATCHED' ||
-               Math.abs(Number(balance.difference||0))>0.01) return;
-
-            let changed=false;
-            const keep=[];
-            q.forEach(payload=>{
-              const id=String(payload&&payload.clientTransactionId||'');
-              if(!id){ keep.push(payload); return; }
-              const serverTx=serverList.find(t=>String(t&&t.id||'')===id);
-              if(!serverTx){ keep.push(payload); return; }
-
-              const localTx=history.find(t=>String(t&&t.id||'')===id);
-              if(localTx && localTx.cashPieces && !serverTx.cashPieces){
-                serverTx.cashPieces=localTx.cashPieces;
-              }
-              serverTx._pendingSync=false;
-              delete serverTx._syncError;
-
-              const idx=history.findIndex(t=>String(t&&t.id||'')===id);
-              if(idx>=0) history[idx]=serverTx;
-              else history.unshift(serverTx);
-
-              try{removeQueuedCashPieces(id);}catch(_e){}
-              changed=true;
-            });
-
-            if(!changed) return;
-            savePendingTxQueue(keep);
-            window.__gcashTransactions=history;
-            // Release a browser request that is still marked busy even though
-            // the exact transaction is already confirmed in server History.
-            txSyncBusy=false;
-            txRetryDelay=500;
-            try{clearTimeout(window.__gcashAckRescueTimer);}catch(_e){}
-            try{applyServerBalanceLock(balance);}catch(_e){}
-            render();
-            saveLocalTrackerCache();
-            showSync('SYNCED ✓ Server record confirmed.',true);
-            try{window.dispatchEvent(new Event('storage'));}catch(_e){}
-          })
-          .withFailureHandler(()=>{})
-          .getCashCounterLatestStatusBySession(getSessionToken());
-      })
-      .withFailureHandler(()=>{})
-      .getTransactionsBySession(getSessionToken());
-  }
-
   function processPendingTxQueue(){
-    /* auto-sync enabled */
     if(txSyncBusy || !unlocked) return;
     const q = loadPendingTxQueue();
     if(!q.length){
-      // Money Count is part of the parent transaction now.
+      // A Cash Pieces record may already be waiting for its parent transaction.
+      setTimeout(()=>processPendingCashPiecesQueue(), 0);
       refreshFastSyncStatus();
       // Do not block the customer flow with a full Google Sheets reload.
       // Reconcile quietly after the app has been idle for a few seconds.
       clearTimeout(window.__gcashIdleCapitalRefresh);
       window.__gcashIdleCapitalRefresh=setTimeout(()=>{
-        if(!hasUnsyncedLocalWork() && !txSyncBusy){ try{ loadCapital(); }catch(_e){} }
+        if(!loadPendingTxQueue().length && !txSyncBusy){ try{ loadCapital(); }catch(_e){} }
       },5000);
       return;
     }
 
     txSyncBusy = true;
     const payload = q[0];
-    const localForSync=history.find(x=>String(x.id||'')===String(payload.clientTransactionId||''));
-    if(localForSync&&localForSync.cashPieces&&!payload.cashPieces){
-      payload.cashPieces={
-        received:{...(localForSync.cashPieces.received||{})},
-        given:{...(localForSync.cashPieces.given||localForSync.cashPieces.change||{})}
-      };
-      q[0]=payload; savePendingTxQueue(q);
-    }
     showSync(`Syncing ${q.length} transaction${q.length===1?'':'s'}…`);
-
-    // If Apps Script saved the transaction but the browser lost the success
-    // callback, confirm the exact transaction ID and clear the stale queue.
-    clearTimeout(window.__gcashAckRescueTimer);
-    window.__gcashAckRescueTimer=setTimeout(()=>rescuePendingTransactionAck_(payload),1200);
 
     google.script.run
       .withSuccessHandler(serverTx=>{
-        // addTransactionBySession only returns after the server has validated
-        // Cash Counter movement, written the transaction + pieces + inventory,
-        // and SpreadsheetApp.flush() has completed. Therefore a successful
-        // server transaction response is already the authoritative commit.
-        // Older Code.gs versions do not echo a cashCounter object, so do not
-        // leave a successfully committed transaction stuck in the local queue.
-        let committedBalance = serverTx && serverTx.cashCounter;
-        if(committedBalance && (committedBalance.status !== 'MATCHED' || Math.abs(Number(committedBalance.difference||0)) > 0.01)){
-          txSyncBusy = false;
-          serverBalanceState = String(committedBalance.status || 'UNKNOWN');
-          serverBalanceMessage = 'Server reported a Cash Counter mismatch.';
-          applyServerBalanceLock(committedBalance);
-          const failedId=String(payload.clientTransactionId||'');
-          const failedTx=history.find(x=>String(x.id||'')===failedId);
-          if(failedTx){ failedTx._syncError='Server balance verification failed.'; failedTx._pendingSync=true; }
-          render(); saveLocalTrackerCache();
-          showSync('SYNC ERROR: Server balance was not verified. Next transaction is blocked.');
-          verifyAuthoritativeBalance({showError:true});
-          return;
-        }
-        if(!committedBalance){
-          committedBalance={
-            available:true,
-            physicalCash:Number(serverTx && serverTx.newCash || 0),
-            trackerCashOnHand:Number(serverTx && serverTx.newCash || 0),
-            difference:0,
-            status:'MATCHED'
-          };
-        }
-        applyServerBalanceLock(committedBalance);
         const idx = history.findIndex(x => String(x.id) === String(serverTx.id));
         // Preserve locally recorded Cash Count even when an older Apps Script
         // response does not echo the cashPieces field back to the browser.
@@ -7985,9 +7684,8 @@ body > .hero{
 
         q.shift();
         savePendingTxQueue(q);
-        try{removeQueuedCashPieces(serverTx.id);}catch(_e){}
         txSyncBusy = false;
-        txRetryDelay = 500;
+        txRetryDelay = 1500;
 
         const syncedDate = dateKey(serverTx);
         if(syncedDate){
@@ -7999,34 +7697,24 @@ body > .hero{
         render();
         saveLocalTrackerCache();
 
-        // Money Count was committed with the transaction under the same ID.
+        // If Cash Pieces were already entered while this transaction was syncing,
+        // send them now that the parent transaction exists in Google Sheets.
         cashPiecesPromptIds.delete(String(serverTx.id||''));
+        setTimeout(()=>processPendingCashPiecesQueue(serverTx.id), 20);
 
         if(q.length){
-          setTimeout(processPendingTxQueue, 0);
+          setTimeout(processPendingTxQueue, 50);
         }else{
-          // The transaction endpoint has already flushed and read back the
-          // authoritative Cash Inventory and Cash on Hand. A MATCHED
-          // committedBalance is therefore the final server verification.
-          showSync('SYNCED ✓ Server balance verified.', true);
-          // Keep a quiet follow-up check for later server changes, but do not
-          // leave the Last Transaction card stuck on Verifying if another
-          // balance check is already in progress.
-          setTimeout(()=>verifyAuthoritativeBalance({showSuccess:false,showError:true}), 5000);
+          showSync('Synced.', true);
           clearTimeout(window.__gcashIdleCapitalRefresh);
           window.__gcashIdleCapitalRefresh=setTimeout(()=>{
-            if(!hasUnsyncedLocalWork() && !txSyncBusy){ try{ loadCapital(); }catch(_e){} }
+            if(!loadPendingTxQueue().length && !txSyncBusy){ try{ loadCapital(); }catch(_e){} }
           },5000);
         }
       })
       .withFailureHandler(err=>{
         txSyncBusy = false;
         const msg=(err && err.message) || 'Google Sheets sync delayed.';
-        // Make the real failure visible on the transaction itself.
-        const failedId=String(payload.clientTransactionId||'');
-        const failedTx=history.find(x=>String(x.id||'')===failedId);
-        if(failedTx){ failedTx._syncError=msg; failedTx._pendingSync=true; }
-        render(); saveLocalTrackerCache();
 
         if(msg.toLowerCase().includes('cancelled before sync')){
           const remaining = loadPendingTxQueue().filter(
@@ -8034,11 +7722,11 @@ body > .hero{
           );
           savePendingTxQueue(remaining);
           showSync('Deleted transaction will not sync.', true);
-          setTimeout(processPendingTxQueue, 0);
+          setTimeout(processPendingTxQueue, 50);
           return;
         }
 
-        showSync('SYNC ERROR: ' + msg + ' Saved locally and will retry automatically.');
+        showSync(msg + ' Transaction is safe on this device and will retry.');
         // Keep the queue intact. Retry quickly without creating duplicates.
         scheduleTxRetry();
       })
@@ -8052,73 +7740,35 @@ body > .hero{
       const id=String(payload.clientTransactionId||'');
       if(!id || history.some(x=>String(x.id)===id)) return;
       const tx=makeOptimisticTransaction(payload);
-      applyOptimisticTransaction(tx);
-    });
+      history.unshift(tx);
     window.__gcashTransactions = history;
+    });
     render();
-    saveLocalTrackerCache();
-    refreshFastSyncStatus();
-    renderPendingSyncPanel();
+    setTimeout(processPendingTxQueue, 300);
+    setTimeout(processPendingCashPiecesQueue, 700);
   }
 
   function kickFastSync(){
     if(!unlocked) return;
-    // V23: first repair stale pending flags from authoritative server History.
-    // This check does not resend or modify a transaction.
-    try{ repairStalePendingFromServerHistory_(); }catch(_e){}
-    try{
-      const pendingNow=loadPendingTxQueue();
-      if(pendingNow.length) rescuePendingTransactionAck_(pendingNow[0]);
-    }catch(_e){}
-    MANUAL_SYNC_REQUESTED=true;
-    txRetryDelay=1500;
-    cashPiecesRetryDelay=1200;
-    // Do not immediately resend a stale transaction on app focus/open.
-    // Recovery checks server History first. Normal new records still call
-    // processPendingTxQueue() immediately from the Money Count save flow.
-    setTimeout(()=>{
-      try{
-        if(loadPendingTxQueue().length && !txSyncBusy) processPendingTxQueue();
-      }catch(_e){}
-    },2500);
+    txRetryDelay = 1500;
+    cashPiecesRetryDelay = 1200;
+    processPendingTxQueue();
     processPendingCashPiecesQueue();
-    processOfflineActionQueue();
   }
 
-  window.addEventListener('online',kickFastSync);
-  window.addEventListener('focus',kickFastSync);
+  window.addEventListener('online', kickFastSync);
+  window.addEventListener('focus', kickFastSync);
   document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='visible'){
-      kickFastSync();
-      setTimeout(()=>verifyAuthoritativeBalance({showError:true}),300);
-    }
+    if(document.visibilityState==='visible') kickFastSync();
   });
-
-  // Detect delayed/stale server changes instead of silently accepting them.
-  setTimeout(()=>verifyAuthoritativeBalance({showError:true}),500);
-  setInterval(()=>{
-    if(document.visibilityState === 'visible' && !txSyncBusy && !hasUnsyncedLocalWork()){
-      verifyAuthoritativeBalance({showError:true});
-    }
-  },15000);
-
-  function hasPendingCashCounterWrite(){
-    try{
-      const q=loadOfflineActionQueue();
-      return q.some(a=>a && (a.method==='saveCashCount' || a.method==='saveManualCashCounterCorrection' || a.method==='saveCashCounterChangeMoney'));
-    }catch(e){ return true; }
-  }
 
   function setTransactionSaving(on){
     transactionSaving = !!on;
-    const pendingCashWrite = hasPendingCashCounterWrite();
     if(recordTransactionBtn){
-      recordTransactionBtn.disabled = transactionSaving || serverBalanceState !== 'MATCHED' || pendingCashWrite;
-      recordTransactionBtn.textContent = transactionSaving ? 'Recording…' :
-        (pendingCashWrite ? 'Sync Cash Counter First' :
-        (serverBalanceState === 'MATCHED' ? 'Record Transaction' : 'Reconcile Cash Counter First'));
-      recordTransactionBtn.style.opacity = recordTransactionBtn.disabled ? '.65' : '';
-      recordTransactionBtn.style.cursor = recordTransactionBtn.disabled ? 'not-allowed' : '';
+      recordTransactionBtn.disabled = transactionSaving;
+      recordTransactionBtn.textContent = transactionSaving ? 'Recording…' : 'Record Transaction';
+      recordTransactionBtn.style.opacity = transactionSaving ? '.65' : '';
+      recordTransactionBtn.style.cursor = transactionSaving ? 'not-allowed' : '';
     }
   }
 
@@ -8562,9 +8212,9 @@ body > .hero{
     }
     save.disabled=true;
 
-    // V25 PROPER ATOMIC FLOW: transaction is written to Sheets before any local wallet or
+    // ONLINE-ONLY: transaction is written to Sheets before any local wallet or
     // Cash Counter mutation. Never queue/replay an ambiguous transaction.
-    if(tx._transactionDraft){
+    if(false && tx._transactionDraft){
       if(!navigator.onLine){
         save.disabled=false;
         if(stat){stat.textContent='Internet required. Nothing recorded.';stat.className='err';}
@@ -8592,23 +8242,7 @@ body > .hero{
       if(stat){stat.textContent='Waiting for Google Sheets confirmation…';stat.className='';}
       setTransactionSaving(true);
       payload.cashPieces={received:{...cashPiecesReceived},given:{...cashPiecesGiven},fee:Number(tx.fee||0)};
-      const commitAtomicDraft = ()=>{
       google.script.run.withSuccessHandler(serverTx=>{
-        const cc=serverTx&&serverTx.cashCounter;
-        const pieces=serverTx&&serverTx.cashPieces;
-        const responseValid=!!(
-          serverTx && String(serverTx.id||'')===String(payload.clientTransactionId) &&
-          pieces && pieces.received && pieces.given &&
-          cc && String(cc.status||'').toUpperCase()==='MATCHED' &&
-          Math.abs(Number(cc.difference||0))<=0.01
-        );
-        if(!responseValid){
-          save.disabled=false;setTransactionSaving(false);
-          if(stat){stat.textContent='Server response was incomplete. Transaction ID will be checked before any retry.';stat.className='err';}
-          status.textContent='Checking transaction ID before retry…';status.className='status';
-          rescuePendingTransactionAck_(payload);
-          return;
-        }
         try{
           const old=JSON.parse(localStorage.getItem(unresolvedKey)||'[]');
           localStorage.setItem(unresolvedKey,JSON.stringify(old.filter(x=>x.payload&&x.payload.clientTransactionId!==payload.clientTransactionId)));
@@ -8621,61 +8255,43 @@ body > .hero{
         amount.value='';cashReceived.value='';txType.value='';pendingPayload=null;selectedTransactionWallet='';resetChargeMode();
         delete tx._transactionDraft;delete tx._transactionPayload;
         save.disabled=false;setTransactionSaving(false);
-        if(stat){stat.textContent='SYNCED ✓ Transaction, Money Count and Cash Counter saved together.';stat.className='ok';}
-        status.textContent='SYNCED ✓';status.className='status ok';
-        // V34: the server has already committed and verified the exact Cash
-        // Inventory. Refresh from that authoritative result. Do not apply the
-        // denomination movement a second time in localStorage.
+        if(stat){stat.textContent='Transaction and Cash Count saved together in Google Sheets.';stat.className='ok';}
+        status.textContent='Saved in Google Sheets.';status.className='status ok';
+        // The online-first path previously saved History and the wallet but
+        // never applied the counted denominations to the local Cash Counter.
+        // Use the SAME transaction ID for idempotency, and retain the local
+        // inventory until the server's inventory catches up.
         try{
-          if(serverTx.cashCounter){
-            try{applyServerBalanceLock(serverTx.cashCounter);}catch(_e){}
+          const id=String(serverTx.id||payload.clientTransactionId||'');
+          const countedDetail={transactionId:id,transactionType:String(serverTx.type||tx.type||''),
+            amount:Number(serverTx.amount||tx.amount||0),fee:Number(serverTx.fee||tx.fee||0),
+            received:{...cashPiecesReceived},given:{...cashPiecesGiven}};
+          const already=loadLocalCashPiecesAppliedIds().includes(id);
+          const saved=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null');
+          const expected=Number(serverTx.newCash);
+          const alreadyAtExpected=saved&&saved.pieces&&Number.isFinite(expected)&&
+            Math.abs(total(saved.pieces)-expected)<0.005;
+          if(!already && !alreadyAtExpected){
+            applyLocalCashPiecesNow(countedDetail);
+          }else if(id && !already){
+            saveLocalCashPiecesAppliedIds([...loadLocalCashPiecesAppliedIds(),id]);
           }
-          if(typeof window.loadCashCounterLatestStatus==='function') window.loadCashCounterLatestStatus();
-          try{if(typeof loadCashCounter==='function') loadCashCounter();}catch(_e){}
-        }catch(_e){}
+          if(typeof window.loadCashCounterLatestStatus==='function')window.loadCashCounterLatestStatus();
+        }catch(cashErr){
+          // Do not claim a failed Cash Counter update is a missing transaction:
+          // the transaction was already committed to Google Sheets.
+          status.textContent='Transaction saved, but Cash Counter needs review: '+
+            String((cashErr&&cashErr.message)||'denominations not updated');
+          status.className='status err';
+          if(stat){stat.textContent=status.textContent;stat.className='err';}
+        }
         setTimeout(closeCashPiecesRecorder,500);
       }).withFailureHandler(err=>{
         save.disabled=false;setTransactionSaving(false);
         const msg=(err&&err.message)||'No confirmation';
-        if(stat){stat.textContent='Confirmation interrupted: '+msg+'. Checking the same transaction ID automatically…';stat.className='err';}
-        status.textContent='Checking transaction ID…';status.className='status';
-        rescuePendingTransactionAck_(payload);
+        if(stat){stat.textContent='NOT CONFIRMED: '+msg+'. Check Google Sheets for transaction ID '+payload.clientTransactionId+' before retrying. Draft preserved on device.';stat.className='err';}
+        status.textContent='Unconfirmed. Do not submit this transaction again until checked.';status.className='status err';
       }).addTransactionBySession(getSessionToken(),payload);
-      };
-
-      // V38.2: verify deployment through getCashCounter(), an API route already
-      // proven to work from the GitHub launcher. The response carries the backend
-      // version plus the live balance state. No separate version-only RPC is used.
-      google.script.run
-        .withSuccessHandler(check=>{
-          const versionOK=!!(
-            check &&
-            String(check.backendVersion||'')==='v38.2-money-count-live-handshake' &&
-            check.atomicTransactionCashPieces===true &&
-            check.singleCommitMoneyCount===true
-          );
-          if(!versionOK){
-            save.disabled=false;setTransactionSaving(false);
-            if(stat){stat.textContent='STOPPED: Index and Code versions do not match V38.2. Nothing was sent.';stat.className='err';}
-            status.textContent='Backend update required. Nothing recorded.';status.className='status err';
-            return;
-          }
-          const physical=Number(check.physicalCash!==undefined?check.physicalCash:check.physicalTotal);
-          const tracker=Number(check.trackerCashOnHand);
-          if(!isFinite(physical) || !isFinite(tracker) || Math.abs(physical-tracker)>0.01){
-            save.disabled=false;setTransactionSaving(false);
-            if(stat){stat.textContent='STOPPED: Cash Counter must match Cash on Hand before saving. Nothing was sent.';stat.className='err';}
-            status.textContent='Balance lock stopped the transaction. Nothing recorded.';status.className='status err';
-            return;
-          }
-          commitAtomicDraft();
-        })
-        .withFailureHandler(err=>{
-          save.disabled=false;setTransactionSaving(false);
-          if(stat){stat.textContent='Could not verify the live Cash Counter connection. Nothing was sent.';stat.className='err';}
-          status.textContent='Nothing recorded.';status.className='status err';
-        })
-        .getCashCounter();
       return;
     }
 
@@ -8700,7 +8316,7 @@ body > .hero{
 
       queueOfflineAction({id:id,method:'addMayaTransferWithCashPiecesBySession',payload:payload});
       save.disabled=false; save.textContent='Saved';
-      if(stat){stat.textContent=navigator.onLine?'Saved locally with Money Count.':'Saved offline. Waiting for manual sync.';stat.className='ok';}
+      if(stat){stat.textContent=navigator.onLine?'Saved. Syncing transfer and Cash Counter…':'Saved offline. Waiting to sync.';stat.className='ok';}
       setTimeout(closeCashPiecesRecorder,100);
       return;
     }
@@ -8751,27 +8367,26 @@ body > .hero{
       amount.value='';cashReceived.value='';txType.value='';
       pendingPayload=null;selectedTransactionWallet='';resetChargeMode();
       setTransactionSaving(false);
-      status.textContent='Recorded ✓ Saved locally.';status.className='status ok';
+      status.textContent='Recorded ✓ Syncing to Google Sheets…';status.className='status ok';
     }
-    // ONE RECORD: Cash Pieces are already inside payloadToSave and are saved by addTransactionBySession.
-    // Do not create a second Cash Counter sync record.
-    try{ removeQueuedCashPieces(String(tx.id||payloadToSave?.clientTransactionId||'')); }catch(_e){}
+    queueCashPieces(piecePayload);
     window.gcashCashCounterUpdatePending=false;
     try{sendCashCounterStatusToTracker();}catch(_e){}
 
     if(isTransactionStillPending(tx.id) || tx._pendingSync){
       save.textContent='Saved';
       if(stat){
-        stat.textContent='Transaction and Money Count saved on this phone.';
+        stat.textContent='Transaction and Cash Pieces saved on this phone. Syncing automatically…';
         stat.className='ok';
       }
 
       // Both the transaction and its Cash Pieces now exist locally as one
       // completed operation. Sync them in the correct parent-then-pieces order.
-      closeCashPiecesRecorder();
-      // V17 FAST SYNC: start the single authoritative server commit immediately.
-      // Transaction + Money Count + Cash Counter remain one protected operation.
-      processPendingTxQueue();
+      setTimeout(()=>{
+        closeCashPiecesRecorder();
+        processPendingTxQueue();
+        processPendingCashPiecesQueue(piecePayload.transactionId);
+      },120);
       return;
     }
 
@@ -8786,7 +8401,7 @@ body > .hero{
     // Close quickly. The queued record remains safe if the connection is slow.
     setTimeout(()=>{
       if(stat){
-        stat.textContent='Money Count saved locally.';
+        stat.textContent='Cash pieces saved. Syncing automatically…';
         stat.className='ok';
       }
       save.textContent='Saved';
@@ -8822,22 +8437,6 @@ body > .hero{
     }
 
     if(!unlocked){ status.textContent=''; status.className='status err'; return; }
-
-    if(serverBalanceState !== 'MATCHED'){
-      status.textContent = serverBalanceMessage || 'Reconcile Cash Counter first.';
-      status.className = 'status err';
-      verifyAuthoritativeBalance({showError:true});
-      return;
-    }
-
-    if(hasPendingCashCounterWrite()){
-      status.textContent='Cash Counter has a pending save. Wait for it to sync before recording a transaction.';
-      status.className='status err';
-      MANUAL_SYNC_REQUESTED=true;
-      processOfflineActionQueue();
-      setTransactionSaving(false);
-      return;
-    }
 
     const enteredAmount=Number(amount.value);
     const enteredCash=Number(cashReceived.value||0);
@@ -9056,13 +8655,22 @@ body > .hero{
     deleteTxYes.disabled = true;
     deleteTxYes.textContent = kind === 'transaction' ? 'Undoing…' : 'Deleting…';
 
-    // ONE RECORD UNDO: synced transactions are reversed on the server first.
-    // The UI is changed only after the server confirms wallet + fee + exact
-    // Cash Counter denominations were reversed together.
-    if(kind === 'transaction' && !navigator.onLine){
+    // Undo transactions LOCAL-FIRST on every connection state. The complete
+    // one-record transaction is reversed immediately on this device: wallet
+    // balances, fee/earnings, exact Cash Counter pieces and History. The server
+    // reversal is queued and synced in the background, so Undo never waits for
+    // Google Sheets / Apps Script.
+    if(kind === 'transaction'){
+      deleteTransactionLocallyAndQueue(id);
       deleteTxYes.disabled = false;
       deleteTxYes.textContent = 'Yes, Undo';
-      alert('Connect to the internet before Undo. This protects the one-record reversal.');
+      closeDeleteTxModal();
+      showSync(navigator.onLine
+        ? 'Transaction undone on this device. Server reversal is syncing in the background.'
+        : 'Transaction undone on this device. Server reversal will sync when online.', true);
+      if(navigator.onLine){
+        try{ setTimeout(flushOfflineActions, 0); }catch(e){}
+      }
       return;
     }
 
@@ -9104,23 +8712,11 @@ body > .hero{
           history = history.filter(x => String(x.id) !== String(id));
           window.__gcashTransactions = history;
           render();
-
-          // V7 INSTANT UNDO REFRESH:
-          // The server has already reversed the transaction and its exact Money Count.
-          // Immediately fetch BOTH authoritative wallet balances and Cash Counter inventory
-          // so the user does not need to close/reopen the app to see BALANCES OK.
           loadCapital();
-          try{
-            // Cash Counter's load() performs a real getCashCounter() server fetch.
-            // loadCashCounterLatestStatus() is local-only and was the reason the old
-            // Cash Counter could remain visible after a successful server Undo.
-            setTimeout(function(){
-              try{ if(typeof load==='function') load(); }
-              catch(_e){
-                if(typeof window.loadCashCounterLatestStatus==='function') window.loadCashCounterLatestStatus();
-              }
-            }, 80);
-          }catch(_e){}
+
+          if(typeof window.loadCashCounterLatestStatus === 'function'){
+            setTimeout(window.loadCashCounterLatestStatus, 250);
+          }
         }
 
         deleteTxYes.disabled = false;
@@ -9456,37 +9052,17 @@ document.addEventListener('DOMContentLoaded', function(){
     if(!card||!value||!note) return;
 
     lastStatus=d;
-
-    // V29: use the Cash on Hand returned by the SAME server request as the
-    // Cash Counter. Never compare server Cash Counter against a device-local
-    // wallet/cache value.
-    const serverCash=Number(d.trackerCashOnHand);
-    const authoritativeCash=isFinite(serverCash) ? serverCash : homeCash;
-    if(authoritativeCash===null || !isFinite(authoritativeCash)) return;
-    const diff=physical-authoritativeCash;
+    const diff=physical-homeCash;
     card.classList.remove('warn','matched');
 
     if(Math.abs(diff)<=0.01){
       card.classList.add('matched');
       value.textContent='BALANCES OK';
-      note.textContent='Cash Counter '+money(physical)+' matches Cash on Hand '+money(authoritativeCash)+'.';
-
-      // V15: The same balance result painted on Home is the final source for
-      // the Last Transaction status. If there is no Cash Counter update still
-      // pending and no unsynced transaction work, BALANCES OK completes the
-      // verification instead of leaving the card stuck on “Verifying…”.
-      try{
-        const ltf=document.getElementById('ltfSync');
-        const pendingTx=(typeof loadPendingTxQueue==='function' && loadPendingTxQueue().length>0);
-        const pendingOffline=(typeof loadOfflineActionQueue==='function' && loadOfflineActionQueue().length>0);
-        if(ltf && !window.gcashCashCounterUpdatePending && !pendingTx && !pendingOffline){
-          ltf.textContent='SYNCED ✓';
-        }
-      }catch(_e){}
+      note.textContent='Cash Counter '+money(physical)+' matches Cash on Hand '+money(homeCash)+'.';
     }else{
       card.classList.add('warn');
       value.textContent=diff<0?'SHORT':'OVER';
-      note.textContent='Cash Counter '+money(physical)+' · Cash on Hand '+money(authoritativeCash)+
+      note.textContent='Cash Counter '+money(physical)+' · Cash on Hand '+money(homeCash)+
         ' · Difference '+(diff<0?'-':'+')+money(Math.abs(diff));
     }
   }
@@ -9506,62 +9082,14 @@ document.addEventListener('DOMContentLoaded', function(){
       paintUpdating();
       return;
     }
-
-    // V29 CROSS-DEVICE FIX:
-    // Home always asks the server for Cash Inventory + Cash on Hand together.
-    // localStorage is never the authority for the Home balance decision.
+    // Local-only check. Never wait for Apps Script / Google Sheets.
     try{
-      if(window.google && google.script && google.script.run){
-        google.script.run
-          .withSuccessHandler(function(result){
-            if(!result) return;
-
-            // V30: getCashCounter() is the same server endpoint already used
-            // by the Cash Counter page and works through both Apps Script and
-            // the GitHub JSONP bridge. Normalize its authoritative response
-            // for the Home balance lock.
-            const physical = Number(
-              result.physicalCash !== undefined ? result.physicalCash : result.physicalTotal
-            );
-            const tracker = Number(result.trackerCashOnHand);
-            const diff = isFinite(Number(result.difference))
-              ? Number(result.difference)
-              : (physical - tracker);
-
-            result.physicalCash = physical;
-            result.difference = diff;
-            result.available = !!(
-              (result.hasTrackerCash !== false) &&
-              isFinite(physical) &&
-              isFinite(tracker)
-            );
-            result.status = !result.available ? 'UNKNOWN'
-              : (Math.abs(diff) <= 0.01 ? 'MATCHED' : (diff < 0 ? 'SHORT' : 'OVER'));
-
-            paint(result);
-            try{ applyServerBalanceLock(result); }catch(_e){}
-          })
-          .withFailureHandler(function(){
-            // Do not manufacture a mismatch from stale device cache.
-            const value=document.getElementById('homeBalanceCheckValue');
-            const note=document.getElementById('homeBalanceCheckNote');
-            const card=document.getElementById('homeBalanceCheck');
-            if(card) card.classList.remove('warn','matched');
-            if(value) value.textContent='OFFLINE';
-            if(note) note.textContent='Could not verify Cash Counter with the server.';
-          })
-          .getCashCounter();
+      if(typeof sendCashCounterStatusToTracker==='function'){
+        sendCashCounterStatusToTracker();
         return;
       }
     }catch(e){}
-
-    // No server connection: show no stale SHORT/OVER decision.
-    const value=document.getElementById('homeBalanceCheckValue');
-    const note=document.getElementById('homeBalanceCheckNote');
-    const card=document.getElementById('homeBalanceCheck');
-    if(card) card.classList.remove('warn','matched');
-    if(value) value.textContent='OFFLINE';
-    if(note) note.textContent='Could not verify Cash Counter with the server.';
+    if(lastStatus) paint(lastStatus);
   };
 
   document.addEventListener('click',function(e){
@@ -9927,8 +9455,8 @@ if(setCashToCountedBtn){
     }}));
 
     showMsg(navigator.onLine
-      ? 'Cash on Hand updated to '+money(counted)+'. Saved locally.'
-      : 'Cash on Hand updated locally. Waiting for manual sync.','ok');
+      ? 'Cash on Hand updated to '+money(counted)+'. Syncing…'
+      : 'Cash on Hand updated locally. Waiting to sync.','ok');
   });
 }
 
@@ -10042,9 +9570,7 @@ $('saveInventoryCorrection').addEventListener('click',()=>{
   }}));
 
   setCashCounterMode('cash');
-  showMsg(navigator.onLine?'Reconciliation saved locally. Verifying server…':'Reconciliation saved offline. Transaction recording is locked until it syncs.','ok');
-  if(navigator.onLine){ MANUAL_SYNC_REQUESTED=true; processOfflineActionQueue(); }
-  setTransactionSaving(false);
+  showMsg(navigator.onLine?'Reconciliation saved. Syncing…':'Reconciliation saved offline. Waiting to sync.','ok');
 });
 
 window.addEventListener('offline-cashcounter-action-synced',function(e){
@@ -10364,12 +9890,9 @@ function load(){
       let saved=null;
       try{saved=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null');}catch(_e){}
       const pendingPieces=(()=>{try{return JSON.parse(localStorage.getItem('gcash_tracker_pending_cash_pieces_v1')||'[]').length>0;}catch(_e){return false;}})();
-      const pendingTx=(()=>{try{return JSON.parse(localStorage.getItem('gcash_tracker_pending_tx_v1')||'[]').length>0;}catch(_e){return false;}})();
-      const pendingActions=(()=>{try{return JSON.parse(localStorage.getItem('gcashTrackerOfflineActionsV1')||'[]').length>0;}catch(_e){return false;}})();
-      // V6: keep optimistic Cash Counter only while there is genuinely unsynced work.
-      // Once all queues are empty, Google Sheets is authoritative. This prevents an
-      // old _localPending snapshot from permanently showing OVER after a server Undo.
-      const keepLocal=!!(saved&&saved.pieces&&(pendingPieces||pendingTx||pendingActions));
+      const localTotal=saved&&saved.pieces?cashCounterPiecesTotal(saved.pieces):null;
+      const remoteTotal=x&&x.pieces?cashCounterPiecesTotal(x.pieces):null;
+      const keepLocal=!!(saved&&saved.pieces&&(pendingPieces || (saved._localPending && localTotal!==remoteTotal)));
       current=keepLocal?saved:x;
       if(!keepLocal && current && current._localPending) current._localPending=false;
       try{localStorage.setItem('gcashCashCounterCurrentV1',JSON.stringify(current));}catch(e){}
@@ -10702,16 +10225,13 @@ $('saveCount').addEventListener('click',()=>{
     id:id,method:'saveCashCount',payload:{pieces:{...pieces}}
   }}));
 
-  showMsg(navigator.onLine?'Cash check saved locally. Verifying server…':'Cash check saved offline. Transaction recording is locked until it syncs.','ok');
-  if(navigator.onLine){ MANUAL_SYNC_REQUESTED=true; processOfflineActionQueue(); }
-  setTransactionSaving(false);
+  showMsg(navigator.onLine?'Cash check saved. Syncing…':'Cash check saved offline. Waiting to sync.','ok');
   setCashCounterMode('cash');
   setTimeout(sendCashCounterStatusToTracker,0);
 });
 
 
 function loadHistory(){
-    if(hasUnsyncedLocalWork()){ render(); return; }
   $('historyList').innerHTML='Loading saved history…';
 
   const denomMeta=[
@@ -11026,7 +10546,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     const post=key==='maya'?tx.newMaya:key==='maribank'?tx.newMaribank:tx.newGcash;
     if(isFinite(Number(pre))&&isFinite(Number(post)))parts.push(cap+' '+peso(pre)+' → '+peso(post));
     if(det)det.textContent=parts.join(' · ');
-    if(sy)sy.textContent=(tx._pendingSync||tx.pendingSync)?'Saved locally.':'SYNCED ✓';
+    if(sy)sy.textContent=(tx._pendingSync||tx.pendingSync)?'Saved locally · Syncing…':'SYNCED ✓';
     try{localStorage.setItem('gcashLastTransactionFastV1',JSON.stringify(tx));}catch(_e){}
     if(flash!==false){
       const f=document.getElementById('recordedFastFlash');
@@ -11088,10 +10608,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     // Reconcile the card with the same records the History tab displays.
     setInterval(()=>showLatest(false),1000);
   });
-  const sync=document.getElementById('syncStatus'); if(sync)new MutationObserver(()=>{const t=String(sync.textContent||'');const el=document.getElementById('ltfSync');if(el){if(/server balance verified/i.test(t))el.textContent='SYNCED ✓';else if(/balance lock|balance check error/i.test(t))el.textContent='BALANCE REVIEW';else if(/sync|verif/i.test(t)){
-      const balanceOk=String(document.getElementById('homeBalanceCheckValue')?.textContent||'').trim()==='BALANCES OK';
-      if(!balanceOk) el.textContent='Verifying…';
-    }}}).observe(sync,{childList:true,subtree:true,characterData:true});
+  const sync=document.getElementById('syncStatus'); if(sync)new MutationObserver(()=>{const t=String(sync.textContent||'');const el=document.getElementById('ltfSync');if(el){if(/^synced\.?$/i.test(t.trim()))el.textContent='SYNCED ✓';else if(/sync/i.test(t))el.textContent='Saved locally · Syncing…';}}).observe(sync,{childList:true,subtree:true,characterData:true});
 })();
 </script>
 
@@ -11231,7 +10748,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     renderCashCounterInventory(current);renderSummary(current);try{sendCashCounterStatusToTracker()}catch(e){}
     try{if(typeof window.__loadGcashCashPiecesHistory==='function')window.__loadGcashCashPiecesHistory()}catch(e){}
     window.dispatchEvent(new CustomEvent('gcash-queue-offline-action',{detail:{id:id,method:'saveCashCounterChangeMoney',payload:{pieces:{...next},exchange:{received:{...receive},given:{...give},transactionId:id}}}}));
-    $('ccChangeStatus').textContent=navigator.onLine?'Change saved on this device. Waiting for manual sync.':'Change saved on this device. Sync it when you are ready.';$('ccChangeStatus').style.color='#0f7b45';
+    $('ccChangeStatus').textContent=navigator.onLine?'Change saved on this device. Syncing in the background…':'Change saved on this device. It will sync when online.';$('ccChangeStatus').style.color='#0f7b45';
     setTimeout(closeOverlays,500);
   });
   refresh();
@@ -11321,323 +10838,6 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
   });
 })();
 </script>
-<style id="fresh-record-style">
-#freshRecordModal .fresh-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
-#freshRecordModal .fresh-field{border:1px solid #d0d5dd;border-radius:14px;padding:10px}
-#freshRecordModal .fresh-field label{display:block;font-weight:800;font-size:13px;margin-bottom:6px}
-#freshRecordModal .fresh-field input{width:100%;box-sizing:border-box;font-size:18px;padding:9px;border:1px solid #d0d5dd;border-radius:10px}
-#freshRecordModal .fresh-total{padding:12px;border-radius:12px;background:#f2f4f7;margin:10px 0}
-#freshRecordModal .fresh-total span{display:block;color:#667085;font-size:12px}
-#freshRecordModal .fresh-total strong{font-size:22px}
-#freshRecordModal .fresh-warning{font-size:12px;line-height:1.45;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:12px;padding:10px;margin:10px 0}
-</style>
-<div id="freshRecordModal" class="capital-modal" aria-hidden="true" style="display:none">
-  <div class="capital-modal-card">
-    <div class="capital-modal-title">Start Fresh Record</div>
-    <div class="capital-modal-help">Enter the money you actually have now. This becomes your new starting point.</div>
-    <div class="fresh-grid">
-      <div class="fresh-field"><label>Cash on Hand</label><input id="freshCash" type="number" min="0" step="0.01" inputmode="decimal" value="0"></div>
-      <div class="fresh-field"><label>GCash</label><input id="freshGcash" type="number" min="0" step="0.01" inputmode="decimal" value="0"></div>
-      <div class="fresh-field"><label>Maya</label><input id="freshMaya" type="number" min="0" step="0.01" inputmode="decimal" value="0"></div>
-      <div class="fresh-field"><label>MariBank</label><input id="freshMaribank" type="number" min="0" step="0.01" inputmode="decimal" value="0"></div>
-    </div>
-    <div class="fresh-total"><span>New Starting Capital</span><strong id="freshTotal">₱0.00</strong></div>
-    <div class="fresh-warning">Your old records will remain in Google Sheets as an archive, but they will no longer affect the new record. Available Earnings, Withdrawn Earnings, fees, expenses, and transaction totals will start from zero. Cash Counter is not changed automatically.</div>
-    <div id="freshStatus" class="status"></div>
-    <div class="capital-modal-actions">
-      <button type="button" id="freshCancel" class="btn">Cancel</button>
-      <button type="button" id="freshSave" class="btn primary">Start Fresh</button>
-    </div>
-  </div>
-</div>
-<script id="fresh-record-script">
-(function(){
-  const $f=id=>document.getElementById(id), modal=$f('freshRecordModal'), btn=$f('startFreshRecordBtn'),
-        save=$f('freshSave'), cancel=$f('freshCancel'), status=$f('freshStatus');
-  if(!modal||!btn||!save) return;
-  const inputs=['freshCash','freshGcash','freshMaya','freshMaribank'];
-  function num(id){const n=Number($f(id).value);return isFinite(n)&&n>=0?n:NaN}
-  function fmt(n){try{return money(n)}catch(e){return '₱'+Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}}
-  function calc(){
-    const vals=inputs.map(num), valid=vals.every(Number.isFinite), total=valid?vals.reduce((a,b)=>a+b,0):0;
-    $f('freshTotal').textContent=valid?fmt(total):'Invalid'; save.disabled=!valid;
-    return {valid,total,vals};
-  }
-  btn.addEventListener('click',()=>{status.textContent='';inputs.forEach(id=>$f(id).value='0');calc();modal.style.display='flex';modal.classList.add('show');modal.setAttribute('aria-hidden','false');});
-  inputs.forEach(id=>$f(id).addEventListener('input',calc));
-  function close(){modal.style.display='none';modal.classList.remove('show');modal.setAttribute('aria-hidden','true');status.textContent=''}
-  cancel.addEventListener('click',close);
-  modal.addEventListener('click',e=>{if(e.target===modal)close()});
-
-  function clearBrokenLocalState(){
-    const keys=[
-      'gcash_tracker_pending_tx_v1','gcash_tracker_pending_cash_pieces_v1',
-      'gcashTrackerOfflineActionsV1','gcashTrackerLocalCacheV1',
-      'gcashCashCounterHistoryV1','gcashCashPiecesAppliedV1',
-      'gcashRepairMoveMoney1000_20260926_v1'
-    ];
-    keys.forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});
-  }
-
-  save.addEventListener('click',()=>{
-    const s=calc(); if(!s.valid)return;
-    const [cash,gcash,maya,maribank]=s.vals;
-    if(!confirm('START A FRESH RECORD?\n\nThis is recovery mode. Unsynced local records on this device will be discarded so they cannot damage the new record.\n\nCash on Hand: '+fmt(cash)+'\nGCash: '+fmt(gcash)+'\nMaya: '+fmt(maya)+'\nMariBank: '+fmt(maribank)+'\n\nNew Starting Capital: '+fmt(s.total))) return;
-
-    save.disabled=true; status.textContent='Starting clean record…'; status.className='status';
-
-    // Call the stable backend baseline function first. Only clear local broken state after server success.
-    google.script.run
-      .withSuccessHandler(data=>{
-        clearBrokenLocalState();
-
-        // Build a clean local baseline immediately.
-        try{
-          history=[]; expenses=[]; transfers=[]; capitalMovements=[];
-          window.__gcashTransactions=history;
-          capitalData=(data&&data.cashOnHand!==undefined)?data:{
-            cashOnHand:cash,gcashBalance:gcash,mayaBalance:maya,maribankBalance:maribank,
-            saripayBalance:0,currentCapital:s.total,availableEarnings:0,withdrawnEarnings:0,
-            expectedTotalMoney:s.total,cashOutAvailable:cash
-          };
-          render(); renderExpenses(); renderCapital(capitalData); renderCapitalActivity();
-          saveLocalTrackerCache();
-        }catch(e){}
-
-        // Cash Counter is intentionally not invented. User can enter the actual bills/coins.
-        try{
-          localStorage.removeItem('gcashCashCounterCurrentV1');
-          if(typeof window.loadCashCounterLatestStatus==='function') setTimeout(window.loadCashCounterLatestStatus,150);
-        }catch(e){}
-
-        status.textContent='Fresh record started.'; status.className='status ok';
-        setTimeout(()=>location.reload(),450);
-      })
-      .withFailureHandler(err=>{
-        save.disabled=false;
-        status.textContent=(err&&err.message)||'Could not start fresh record.';
-        status.className='status err';
-      })
-      .setCapitalBySession(
-        (typeof getSessionToken==='function'?getSessionToken():''),
-        cash,gcash,0,maya,maribank
-      );
-  });
-})();
-</script>
-
-<!-- ONE RECORD SYNC MODE
-Cash In/Cash Out + Money Count: one record and one sync.
-Move Money + Money Count: one atomic sync.
-Change Money: one sync.
-Undo/Delete: reverses linked Cash Counter pieces using the same record ID.
--->
-
-<script>
-(function(){
-  const REPAIR_KEY='gcashSafeOrphanRepair_20260926_v2';
-  if(localStorage.getItem(REPAIR_KEY)==='done') return;
-  setTimeout(function(){
-    try{
-      google.script.run
-        .withSuccessHandler(function(r){
-          if(r && r.repaired){
-            localStorage.setItem(REPAIR_KEY,'done');
-            try{ if(typeof window.loadCashCounterLatestStatus==='function') window.loadCashCounterLatestStatus(); }catch(e){}
-            try{ if(typeof loadCapital==='function') loadCapital(); }catch(e){}
-            setTimeout(function(){ location.reload(); },500);
-          }else if(r && r.ok){
-            localStorage.setItem(REPAIR_KEY,'done');
-          }
-        })
-        .withFailureHandler(function(){})
-        .repairLatestOrphanedTransactionCashPiecesBySession(typeof getSessionToken==='function'?getSessionToken():'');
-    }catch(e){}
-  },1800);
-})();
-</script>
-
-<!-- V7: immediate authoritative Cash Counter + capital refresh after successful Undo -->
-
-
-<!-- V16: Single authoritative Home balance-state controller -->
-<script id="v25-single-authoritative-transaction-controller">
-(function(){
-  function balanceState(){
-    const el=document.getElementById('homeBalanceCheckValue');
-    const t=String(el&&el.textContent||'').trim().toUpperCase();
-    if(t==='BALANCES OK') return 'OK';
-    if(t.includes('SHORT')||t.includes('OVER')||t.includes('MISMATCH')) return 'BAD';
-    return 'CHECKING';
-  }
-
-  function apply(){
-    const state=balanceState();
-    const btn=document.querySelector('#transactionForm .action-record') ||
-              document.querySelector('form .action-record');
-    const label=document.getElementById('ltfSync');
-    const activelySaving=!!(btn && /recording|saving/i.test(String(btn.textContent||'')));
-
-    if(state==='OK'){
-      if(label) label.textContent='SYNCED ✓';
-      if(btn && !activelySaving){
-        btn.disabled=false;
-        btn.textContent='Record Transaction';
-        btn.style.opacity='';
-        btn.style.cursor='';
-      }
-      return;
-    }
-
-    if(state==='BAD'){
-      if(label) label.textContent='BALANCE REVIEW';
-      if(btn && !activelySaving){
-        btn.disabled=true;
-        btn.textContent='Reconcile Cash Counter First';
-        btn.style.opacity='.65';
-        btn.style.cursor='not-allowed';
-      }
-      return;
-    }
-
-    if(label) label.textContent='Checking…';
-    if(btn && !activelySaving){
-      btn.disabled=true;
-      btn.textContent='Checking Balance…';
-      btn.style.opacity='.65';
-      btn.style.cursor='not-allowed';
-    }
-  }
-
-  function start(){
-    const targets=[
-      document.getElementById('homeBalanceCheckValue'),
-      document.getElementById('ltfSync')
-    ].filter(Boolean);
-    const mo=new MutationObserver(()=>setTimeout(apply,0));
-    targets.forEach(x=>mo.observe(x,{childList:true,subtree:true,characterData:true}));
-    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')apply()});
-    window.addEventListener('online',apply);
-    setInterval(apply,1000);
-    apply();
-  }
-
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start);
-  else start();
-})();
-</script>
-
-<!-- V19 SYNC COMPLETION FIX: successful atomic server commit clears pending queue immediately; compatibility with Code.gs responses that do not echo cashCounter. -->
-<!-- V22: exact transaction-ID server acknowledgement recovery. Prevents a committed transaction from staying stuck in Verifying/Syncing when the browser misses the success callback. -->
-<script>
-setTimeout(function(){
-  try{ if(typeof repairStalePendingFromServerHistory_==='function') repairStalePendingFromServerHistory_(); }catch(_e){}
-},1800);
-</script>
-<!-- V23: stale pending repair only. Exact server History ID + MATCHED Cash Counter required before local pending queue is cleared. No money mutation and no transaction resend. -->
-<!-- V24: stale server-confirmed transaction recovery can override a browser txSyncBusy flag left behind by a lost Apps Script callback. -->
-<!-- V25: Cash In/Out now use one direct atomic server commit. Legacy pending queues no longer decide the Record button or Last Transaction sync state. -->
-
-
-
-<!-- V27: direct fix in original server balance lock. Valid MATCHED status no longer requires a separate `available` property. -->
-
-<script id="v28-authoritative-status-guard">
-(function(){
-  function apply(){
-    try{
-      const el=document.getElementById('status');
-      if(!el) return;
-      if(typeof serverBalanceState!=='undefined' && serverBalanceState==='MATCHED'){
-        el.textContent='';
-        el.className='status';
-        el.style.display='none';
-      }else{
-        el.style.display='';
-      }
-    }catch(_e){}
-  }
-  document.addEventListener('input',apply,true);
-  document.addEventListener('change',apply,true);
-  document.addEventListener('click',()=>setTimeout(apply,0),true);
-  setInterval(apply,500);
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',apply);
-  else apply();
-})();
-</script>
-<!-- V30: GitHub-compatible authoritative balance check using the same getCashCounter server endpoint as the Cash Counter page. -->
-
-
-<script id="v31-safe-missing-inventory-repair">
-(function(){
-  let running=false;
-  let attemptedId='';
-
-  function latestTx(){
-    try{
-      const h=window.__gcashTransactions;
-      return Array.isArray(h) && h.length ? h[0] : null;
-    }catch(_e){ return null; }
-  }
-
-  function maybeRepair(){
-    if(running) return;
-    const home=document.getElementById('homeBalanceCheckValue');
-    const state=String(home&&home.textContent||'').trim().toUpperCase();
-    if(state!=='OVER' && state!=='SHORT') return;
-
-    const tx=latestTx();
-    const id=String(tx&&tx.id||'');
-    if(!id || id===attemptedId) return;
-
-    attemptedId=id;
-    running=true;
-
-    google.script.run
-      .withSuccessHandler(function(result){
-        running=false;
-        if(result && String(result.status||'').toUpperCase()==='MATCHED'){
-          try{ applyServerBalanceLock(result); }catch(_e){}
-          if(typeof window.loadCashCounterLatestStatus==='function') window.loadCashCounterLatestStatus();
-          try{ if(typeof loadCashCounter==='function') loadCashCounter(); }catch(_e){}
-          try{ render(); }catch(_e){}
-          return;
-        }
-      })
-      .withFailureHandler(function(){
-        // The backend refuses repair unless every strict safety check passes.
-        // Leave the mismatch visible instead of guessing or reconciling.
-        running=false;
-      })
-      .repairLatestTransactionCashCounterBySession(
-        (typeof getSessionToken==='function') ? getSessionToken() : '',
-        id
-      );
-  }
-
-  function start(){
-    const el=document.getElementById('homeBalanceCheckValue');
-    if(el){
-      new MutationObserver(function(){ setTimeout(maybeRepair,150); })
-        .observe(el,{childList:true,subtree:true,characterData:true});
-    }
-    setTimeout(maybeRepair,1200);
-  }
-
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start);
-  else start();
-})();
-</script>
-<!-- V31: strict automatic recovery of a missing Cash Inventory update using the permanent Money Count for the exact latest transaction. -->
-
-
-<!-- V34 TRUE ATOMIC CASH COUNTER -->
-<!-- GCash Tracker V38.2 money-count live handshake -->
-
-<div id="appVersionV38" aria-label="App version"
-     style="text-align:center;font-size:10px;line-height:1.2;color:#8a94a6;opacity:.8;padding:4px 0 calc(4px + env(safe-area-inset-bottom));">
-  GCash Tracker · V38.2
-</div>
 
 </body>
 </html>
