@@ -11430,5 +11430,66 @@ setTimeout(function(){
 <!-- V23: stale pending repair only. Exact server History ID + MATCHED Cash Counter required before local pending queue is cleared. No money mutation and no transaction resend. -->
 <!-- V24: stale server-confirmed transaction recovery can override a browser txSyncBusy flag left behind by a lost Apps Script callback. -->
 <!-- V25: Cash In/Out now use one direct atomic server commit. Legacy pending queues no longer decide the Record button or Last Transaction sync state. -->
+
+<script id="v26-transaction-balance-message-fix">
+(function(){
+  function findWarning(){
+    const candidates=[...document.querySelectorAll(
+      '#transactionForm div, #transactionForm p, #transactionForm span, #transactionForm small'
+    )];
+    return candidates.find(el=>{
+      const t=String(el.textContent||'').trim();
+      return t==='Checking Cash Counter balance...' ||
+             t.includes('Reconcile Cash Counter first');
+    }) || null;
+  }
+
+  function authoritativeState(){
+    const el=document.getElementById('homeBalanceCheckValue');
+    const t=String(el&&el.textContent||'').trim().toUpperCase();
+    if(t==='BALANCES OK') return 'MATCHED';
+    if(t.includes('SHORT')||t.includes('OVER')||t.includes('MISMATCH')) return 'BAD';
+    return 'CHECKING';
+  }
+
+  function apply(){
+    const warning=findWarning();
+    if(!warning) return;
+
+    const state=authoritativeState();
+
+    if(state==='MATCHED'){
+      warning.textContent='';
+      warning.style.display='none';
+      return;
+    }
+
+    warning.style.display='';
+    if(state==='BAD'){
+      warning.textContent='Reconcile Cash Counter first. Cash Counter and Cash on Hand do not match.';
+      return;
+    }
+
+    warning.textContent='Checking Cash Counter balance...';
+  }
+
+  function start(){
+    const balance=document.getElementById('homeBalanceCheckValue');
+    if(balance){
+      new MutationObserver(()=>setTimeout(apply,0))
+        .observe(balance,{childList:true,subtree:true,characterData:true});
+    }
+    new MutationObserver(()=>setTimeout(apply,0))
+      .observe(document.body,{childList:true,subtree:true});
+    setInterval(apply,750);
+    apply();
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start);
+  else start();
+})();
+</script>
+
+<!-- V26: UI-only balance warning fix. No transaction, Cash Counter, Money Count, History, wallet, or sync calculations changed. -->
 </body>
 </html>
