@@ -11201,5 +11201,76 @@ Undo/Delete: reverses linked Cash Counter pieces using the same record ID.
 </script>
 
 <!-- V7: immediate authoritative Cash Counter + capital refresh after successful Undo -->
+
+
+<!-- V16: Single authoritative Home balance-state controller -->
+<script id="v16-single-balance-state-controller">
+(function(){
+  const PENDING_TX_KEY='gcash_tracker_pending_tx_v1';
+  const PENDING_PIECES_KEY='gcash_tracker_pending_cash_pieces_v1';
+  const OFFLINE_KEY='gcashTrackerOfflineActionsV1';
+  function hasItems(key){
+    try{const v=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(v)&&v.length>0}catch(e){return false}
+  }
+  function hasPending(){return hasItems(PENDING_TX_KEY)||hasItems(PENDING_PIECES_KEY)||hasItems(OFFLINE_KEY)}
+  function state(){
+    const el=document.getElementById('homeBalanceCheckValue');
+    const t=String(el&&el.textContent||'').trim().toUpperCase();
+    if(t==='BALANCES OK') return 'OK';
+    if(t.includes('SHORT')||t.includes('OVER')||t.includes('MISMATCH')) return 'BAD';
+    return 'CHECKING';
+  }
+  function apply(){
+    const s=state();
+    const pending=hasPending();
+    const btn=document.querySelector('#transactionForm .action-record') || document.querySelector('form .action-record');
+    const label=document.getElementById('ltfSync');
+    const currentlyRecording=!!(btn && /recording/i.test(String(btn.textContent||'')));
+
+    if(s==='OK' && !pending){
+      if(label) label.textContent='SYNCED ✓';
+      if(btn && !currentlyRecording){
+        btn.disabled=false;
+        btn.textContent='Record Transaction';
+        btn.style.opacity='';
+        btn.style.cursor='';
+      }
+      return;
+    }
+    if(s==='BAD'){
+      if(label) label.textContent='BALANCE REVIEW';
+      if(btn && !currentlyRecording){
+        btn.disabled=true;
+        btn.textContent='Reconcile Cash Counter First';
+        btn.style.opacity='.65';
+        btn.style.cursor='not-allowed';
+      }
+      return;
+    }
+    // During a real pending sync or while the authoritative balance is unknown,
+    // do not allow another transaction until the state resolves.
+    if(label) label.textContent='Verifying…';
+    if(btn && !currentlyRecording){
+      btn.disabled=true;
+      btn.textContent=pending?'Syncing Transaction…':'Checking Balance…';
+      btn.style.opacity='.65';
+      btn.style.cursor='not-allowed';
+    }
+  }
+  function start(){
+    const targets=[document.getElementById('homeBalanceCheckValue'),document.getElementById('syncStatus'),document.getElementById('ltfSync')].filter(Boolean);
+    const mo=new MutationObserver(()=>setTimeout(apply,0));
+    targets.forEach(x=>mo.observe(x,{childList:true,subtree:true,characterData:true}));
+    window.addEventListener('storage',apply);
+    window.addEventListener('online',apply);
+    window.addEventListener('offline',apply);
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')apply()});
+    setInterval(apply,1000);
+    apply();
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start); else start();
+})();
+</script>
+
 </body>
 </html>
