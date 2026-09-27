@@ -9422,13 +9422,20 @@ document.addEventListener('DOMContentLoaded', function(){
     if(!card||!value||!note) return;
 
     lastStatus=d;
-    const diff=physical-homeCash;
+
+    // V29: use the Cash on Hand returned by the SAME server request as the
+    // Cash Counter. Never compare server Cash Counter against a device-local
+    // wallet/cache value.
+    const serverCash=Number(d.trackerCashOnHand);
+    const authoritativeCash=isFinite(serverCash) ? serverCash : homeCash;
+    if(authoritativeCash===null || !isFinite(authoritativeCash)) return;
+    const diff=physical-authoritativeCash;
     card.classList.remove('warn','matched');
 
     if(Math.abs(diff)<=0.01){
       card.classList.add('matched');
       value.textContent='BALANCES OK';
-      note.textContent='Cash Counter '+money(physical)+' matches Cash on Hand '+money(homeCash)+'.';
+      note.textContent='Cash Counter '+money(physical)+' matches Cash on Hand '+money(authoritativeCash)+'.';
 
       // V15: The same balance result painted on Home is the final source for
       // the Last Transaction status. If there is no Cash Counter update still
@@ -9445,7 +9452,7 @@ document.addEventListener('DOMContentLoaded', function(){
     }else{
       card.classList.add('warn');
       value.textContent=diff<0?'SHORT':'OVER';
-      note.textContent='Cash Counter '+money(physical)+' · Cash on Hand '+money(homeCash)+
+      note.textContent='Cash Counter '+money(physical)+' · Cash on Hand '+money(authoritativeCash)+
         ' · Difference '+(diff<0?'-':'+')+money(Math.abs(diff));
     }
   }
@@ -9465,14 +9472,41 @@ document.addEventListener('DOMContentLoaded', function(){
       paintUpdating();
       return;
     }
-    // Local-only check. Never wait for Apps Script / Google Sheets.
+
+    // V29 CROSS-DEVICE FIX:
+    // Home always asks the server for Cash Inventory + Cash on Hand together.
+    // localStorage is never the authority for the Home balance decision.
     try{
-      if(typeof sendCashCounterStatusToTracker==='function'){
-        sendCashCounterStatusToTracker();
+      if(window.google && google.script && google.script.run){
+        google.script.run
+          .withSuccessHandler(function(result){
+            if(!result) return;
+            paint(result);
+            try{ applyServerBalanceLock(result); }catch(_e){}
+          })
+          .withFailureHandler(function(){
+            // Do not manufacture a mismatch from stale device cache.
+            const value=document.getElementById('homeBalanceCheckValue');
+            const note=document.getElementById('homeBalanceCheckNote');
+            const card=document.getElementById('homeBalanceCheck');
+            if(card) card.classList.remove('warn','matched');
+            if(value) value.textContent='OFFLINE';
+            if(note) note.textContent='Could not verify Cash Counter with the server.';
+          })
+          .getCashCounterLatestStatusBySession(
+            (typeof getSessionToken==='function') ? getSessionToken() : ''
+          );
         return;
       }
     }catch(e){}
-    if(lastStatus) paint(lastStatus);
+
+    // No server connection: show no stale SHORT/OVER decision.
+    const value=document.getElementById('homeBalanceCheckValue');
+    const note=document.getElementById('homeBalanceCheckNote');
+    const card=document.getElementById('homeBalanceCheck');
+    if(card) card.classList.remove('warn','matched');
+    if(value) value.textContent='OFFLINE';
+    if(note) note.textContent='Could not verify Cash Counter with the server.';
   };
 
   document.addEventListener('click',function(e){
@@ -11476,7 +11510,7 @@ setTimeout(function(){
   else apply();
 })();
 </script>
-<!-- V28: final display-only transaction status fix. No money, Cash Counter, History, or transaction calculations changed. -->
+<!-- V29: cross-device fix. Home balance check now compares Cash Counter and Cash on Hand from one authoritative server response. -->
 
 </body>
 </html>
