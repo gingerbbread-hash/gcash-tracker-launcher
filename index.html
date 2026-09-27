@@ -9481,6 +9481,29 @@ document.addEventListener('DOMContentLoaded', function(){
         google.script.run
           .withSuccessHandler(function(result){
             if(!result) return;
+
+            // V30: getCashCounter() is the same server endpoint already used
+            // by the Cash Counter page and works through both Apps Script and
+            // the GitHub JSONP bridge. Normalize its authoritative response
+            // for the Home balance lock.
+            const physical = Number(
+              result.physicalCash !== undefined ? result.physicalCash : result.physicalTotal
+            );
+            const tracker = Number(result.trackerCashOnHand);
+            const diff = isFinite(Number(result.difference))
+              ? Number(result.difference)
+              : (physical - tracker);
+
+            result.physicalCash = physical;
+            result.difference = diff;
+            result.available = !!(
+              (result.hasTrackerCash !== false) &&
+              isFinite(physical) &&
+              isFinite(tracker)
+            );
+            result.status = !result.available ? 'UNKNOWN'
+              : (Math.abs(diff) <= 0.01 ? 'MATCHED' : (diff < 0 ? 'SHORT' : 'OVER'));
+
             paint(result);
             try{ applyServerBalanceLock(result); }catch(_e){}
           })
@@ -9493,9 +9516,7 @@ document.addEventListener('DOMContentLoaded', function(){
             if(value) value.textContent='OFFLINE';
             if(note) note.textContent='Could not verify Cash Counter with the server.';
           })
-          .getCashCounterLatestStatusBySession(
-            (typeof getSessionToken==='function') ? getSessionToken() : ''
-          );
+          .getCashCounter();
         return;
       }
     }catch(e){}
@@ -11510,7 +11531,7 @@ setTimeout(function(){
   else apply();
 })();
 </script>
-<!-- V29: cross-device fix. Home balance check now compares Cash Counter and Cash on Hand from one authoritative server response. -->
+<!-- V30: GitHub-compatible authoritative balance check using the same getCashCounter server endpoint as the Cash Counter page. -->
 
 </body>
 </html>
