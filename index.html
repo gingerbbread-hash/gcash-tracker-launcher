@@ -7851,8 +7851,14 @@ body > .hero{
         if(q.length){
           setTimeout(processPendingTxQueue, 50);
         }else{
-          showSync('Verifying server balance…', true);
-          verifyAuthoritativeBalance({showSuccess:true,showError:true});
+          // The transaction endpoint has already flushed and read back the
+          // authoritative Cash Inventory and Cash on Hand. A MATCHED
+          // committedBalance is therefore the final server verification.
+          showSync('SYNCED ✓ Server balance verified.', true);
+          // Keep a quiet follow-up check for later server changes, but do not
+          // leave the Last Transaction card stuck on Verifying if another
+          // balance check is already in progress.
+          setTimeout(()=>verifyAuthoritativeBalance({showSuccess:false,showError:true}), 800);
           clearTimeout(window.__gcashIdleCapitalRefresh);
           window.__gcashIdleCapitalRefresh=setTimeout(()=>{
             if(!hasUnsyncedLocalWork() && !txSyncBusy){ try{ loadCapital(); }catch(_e){} }
