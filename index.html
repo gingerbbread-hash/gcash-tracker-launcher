@@ -8605,43 +8605,25 @@ body > .hero{
         amount.value='';cashReceived.value='';txType.value='';pendingPayload=null;selectedTransactionWallet='';resetChargeMode();
         delete tx._transactionDraft;delete tx._transactionPayload;
         save.disabled=false;setTransactionSaving(false);
-        if(stat){stat.textContent='Transaction and Cash Count saved together in Google Sheets.';stat.className='ok';}
-        status.textContent='Saved in Google Sheets.';status.className='status ok';
-        // The online-first path previously saved History and the wallet but
-        // never applied the counted denominations to the local Cash Counter.
-        // Use the SAME transaction ID for idempotency, and retain the local
-        // inventory until the server's inventory catches up.
-        try{
-          const id=String(serverTx.id||payload.clientTransactionId||'');
-          const countedDetail={transactionId:id,transactionType:String(serverTx.type||tx.type||''),
-            amount:Number(serverTx.amount||tx.amount||0),fee:Number(serverTx.fee||tx.fee||0),
-            received:{...cashPiecesReceived},given:{...cashPiecesGiven}};
-          const already=loadLocalCashPiecesAppliedIds().includes(id);
-          const saved=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null');
-          const expected=Number(serverTx.newCash);
-          const alreadyAtExpected=saved&&saved.pieces&&Number.isFinite(expected)&&
-            Math.abs(
-              Object.entries(saved.pieces).reduce((sum,entry)=>{
-                const key=entry[0], count=Number(entry[1]||0);
-                const m=String(key).match(/([0-9]+(?:\.[0-9]+)?)/);
-                const denom=m?Number(m[1]):0;
-                return sum + (Number.isFinite(denom)?denom:0)*count;
-              },0)-expected
-            )<0.005;
-          if(!already && !alreadyAtExpected){
-            applyLocalCashPiecesNow(countedDetail);
-          }else if(id && !already){
-            saveLocalCashPiecesAppliedIds([...loadLocalCashPiecesAppliedIds(),id]);
-          }
-          if(typeof window.loadCashCounterLatestStatus==='function')window.loadCashCounterLatestStatus();
-        }catch(cashErr){
-          // Do not claim a failed Cash Counter update is a missing transaction:
-          // the transaction was already committed to Google Sheets.
-          status.textContent='Transaction saved, but Cash Counter needs review: '+
-            String((cashErr&&cashErr.message)||'denominations not updated');
-          status.className='status err';
-          if(stat){stat.textContent=status.textContent;stat.className='err';}
+        const cc=serverTx&&serverTx.cashCounter;
+        if(!cc || String(cc.status||'').toUpperCase()!=='MATCHED' || Math.abs(Number(cc.difference||0))>0.01){
+          save.disabled=false;setTransactionSaving(false);
+          if(stat){stat.textContent='NOT CONFIRMED: Cash Counter did not match Cash on Hand.';stat.className='err';}
+          status.textContent='Not confirmed. Do not record another transaction.';status.className='status err';
+          return;
         }
+        if(stat){stat.textContent='SYNCED ✓ Transaction, Money Count and Cash Counter saved together.';stat.className='ok';}
+        status.textContent='SYNCED ✓';status.className='status ok';
+        // V34: the server has already committed and verified the exact Cash
+        // Inventory. Refresh from that authoritative result. Do not apply the
+        // denomination movement a second time in localStorage.
+        try{
+          if(serverTx.cashCounter){
+            try{applyServerBalanceLock(serverTx.cashCounter);}catch(_e){}
+          }
+          if(typeof window.loadCashCounterLatestStatus==='function') window.loadCashCounterLatestStatus();
+          try{if(typeof loadCashCounter==='function') loadCashCounter();}catch(_e){}
+        }catch(_e){}
         setTimeout(closeCashPiecesRecorder,500);
       }).withFailureHandler(err=>{
         save.disabled=false;setTransactionSaving(false);
@@ -11603,5 +11585,7 @@ setTimeout(function(){
 </script>
 <!-- V31: strict automatic recovery of a missing Cash Inventory update using the permanent Money Count for the exact latest transaction. -->
 
+
+<!-- V34 TRUE ATOMIC CASH COUNTER -->
 </body>
 </html>
