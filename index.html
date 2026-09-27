@@ -5760,21 +5760,39 @@ body > .hero{
   let serverBalanceCheckBusy = false;
 
   function applyServerBalanceLock(result){
-    if(result && result.available && result.status === 'MATCHED' && Math.abs(Number(result.difference||0)) <= 0.01){
+    // V27: getCashCounterLatestStatusBySession() can return a valid
+    // {status:'MATCHED', difference:0, ...} object without an `available`
+    // property. Treat the authoritative status itself as the source of truth.
+    const hasResult = !!result;
+    const statusValue = hasResult ? String(result.status || '').toUpperCase() : '';
+    const differenceValue = hasResult ? Number(result.difference || 0) : NaN;
+
+    if(hasResult && statusValue === 'MATCHED' && isFinite(differenceValue) && Math.abs(differenceValue) <= 0.01){
       serverBalanceState = 'MATCHED';
       serverBalanceMessage = '';
-    }else if(result && result.available){
-      serverBalanceState = String(result.status || 'MISMATCH');
+    }else if(hasResult && (statusValue === 'SHORT' || statusValue === 'OVER' || statusValue === 'MISMATCH')){
+      serverBalanceState = statusValue;
       serverBalanceMessage = 'Reconcile Cash Counter first. Cash Counter and Cash on Hand do not match.';
     }else{
       serverBalanceState = 'UNKNOWN';
       serverBalanceMessage = 'Cash Counter balance could not be verified.';
     }
+
     if(recordTransactionBtn){
       recordTransactionBtn.disabled = transactionSaving || serverBalanceState !== 'MATCHED';
-      recordTransactionBtn.textContent = transactionSaving ? 'Recording…' : (serverBalanceState === 'MATCHED' ? 'Record Transaction' : 'Reconcile Cash Counter First');
+      recordTransactionBtn.textContent = transactionSaving ? 'Recording…' : (serverBalanceState === 'MATCHED' ? 'Record Transaction' : 'Checking Balance…');
       recordTransactionBtn.style.opacity = recordTransactionBtn.disabled ? '.65' : '';
       recordTransactionBtn.style.cursor = recordTransactionBtn.disabled ? 'not-allowed' : '';
+    }
+
+    // Clear only the transaction-form balance warning when the authoritative
+    // server result is MATCHED. Do not touch transaction or money data.
+    if(serverBalanceState === 'MATCHED' && status){
+      const t=String(status.textContent||'');
+      if(/Reconcile Cash Counter first|Checking Cash Counter balance/i.test(t)){
+        status.textContent='';
+        status.className='status';
+      }
     }
   }
 
@@ -11431,65 +11449,8 @@ setTimeout(function(){
 <!-- V24: stale server-confirmed transaction recovery can override a browser txSyncBusy flag left behind by a lost Apps Script callback. -->
 <!-- V25: Cash In/Out now use one direct atomic server commit. Legacy pending queues no longer decide the Record button or Last Transaction sync state. -->
 
-<script id="v26-transaction-balance-message-fix">
-(function(){
-  function findWarning(){
-    const candidates=[...document.querySelectorAll(
-      '#transactionForm div, #transactionForm p, #transactionForm span, #transactionForm small'
-    )];
-    return candidates.find(el=>{
-      const t=String(el.textContent||'').trim();
-      return t==='Checking Cash Counter balance...' ||
-             t.includes('Reconcile Cash Counter first');
-    }) || null;
-  }
 
-  function authoritativeState(){
-    const el=document.getElementById('homeBalanceCheckValue');
-    const t=String(el&&el.textContent||'').trim().toUpperCase();
-    if(t==='BALANCES OK') return 'MATCHED';
-    if(t.includes('SHORT')||t.includes('OVER')||t.includes('MISMATCH')) return 'BAD';
-    return 'CHECKING';
-  }
 
-  function apply(){
-    const warning=findWarning();
-    if(!warning) return;
-
-    const state=authoritativeState();
-
-    if(state==='MATCHED'){
-      warning.textContent='';
-      warning.style.display='none';
-      return;
-    }
-
-    warning.style.display='';
-    if(state==='BAD'){
-      warning.textContent='Reconcile Cash Counter first. Cash Counter and Cash on Hand do not match.';
-      return;
-    }
-
-    warning.textContent='Checking Cash Counter balance...';
-  }
-
-  function start(){
-    const balance=document.getElementById('homeBalanceCheckValue');
-    if(balance){
-      new MutationObserver(()=>setTimeout(apply,0))
-        .observe(balance,{childList:true,subtree:true,characterData:true});
-    }
-    new MutationObserver(()=>setTimeout(apply,0))
-      .observe(document.body,{childList:true,subtree:true});
-    setInterval(apply,750);
-    apply();
-  }
-
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start);
-  else start();
-})();
-</script>
-
-<!-- V26: UI-only balance warning fix. No transaction, Cash Counter, Money Count, History, wallet, or sync calculations changed. -->
+<!-- V27: direct fix in original server balance lock. Valid MATCHED status no longer requires a separate `available` property. -->
 </body>
 </html>
