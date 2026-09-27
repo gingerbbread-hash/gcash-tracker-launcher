@@ -7827,6 +7827,62 @@ body > .hero{
       .getTransactionSyncStatusBySession(getSessionToken(),id);
   }
 
+
+  function repairStalePendingFromServerHistory_(){
+    if(!unlocked || txSyncBusy || !window.google || !google.script || !google.script.run) return;
+    const q=loadPendingTxQueue();
+    if(!q.length) return;
+
+    google.script.run
+      .withSuccessHandler(serverHistory=>{
+        const serverList=Array.isArray(serverHistory)?serverHistory:[];
+        if(!serverList.length) return;
+
+        google.script.run
+          .withSuccessHandler(balance=>{
+            if(!balance || balance.available===false ||
+               String(balance.status||'').toUpperCase()!=='MATCHED' ||
+               Math.abs(Number(balance.difference||0))>0.01) return;
+
+            let changed=false;
+            const keep=[];
+            q.forEach(payload=>{
+              const id=String(payload&&payload.clientTransactionId||'');
+              if(!id){ keep.push(payload); return; }
+              const serverTx=serverList.find(t=>String(t&&t.id||'')===id);
+              if(!serverTx){ keep.push(payload); return; }
+
+              const localTx=history.find(t=>String(t&&t.id||'')===id);
+              if(localTx && localTx.cashPieces && !serverTx.cashPieces){
+                serverTx.cashPieces=localTx.cashPieces;
+              }
+              serverTx._pendingSync=false;
+              delete serverTx._syncError;
+
+              const idx=history.findIndex(t=>String(t&&t.id||'')===id);
+              if(idx>=0) history[idx]=serverTx;
+              else history.unshift(serverTx);
+
+              try{removeQueuedCashPieces(id);}catch(_e){}
+              changed=true;
+            });
+
+            if(!changed) return;
+            savePendingTxQueue(keep);
+            window.__gcashTransactions=history;
+            try{applyServerBalanceLock(balance);}catch(_e){}
+            render();
+            saveLocalTrackerCache();
+            showSync('SYNCED ✓ Server record confirmed.',true);
+            try{window.dispatchEvent(new Event('storage'));}catch(_e){}
+          })
+          .withFailureHandler(()=>{})
+          .getCashCounterLatestStatusBySession(getSessionToken());
+      })
+      .withFailureHandler(()=>{})
+      .getTransactionsBySession(getSessionToken());
+  }
+
   function processPendingTxQueue(){
     /* auto-sync enabled */
     if(txSyncBusy || !unlocked) return;
@@ -7983,6 +8039,9 @@ body > .hero{
 
   function kickFastSync(){
     if(!unlocked) return;
+    // V23: first repair stale pending flags from authoritative server History.
+    // This check does not resend or modify a transaction.
+    try{ repairStalePendingFromServerHistory_(); }catch(_e){}
     try{
       const pendingNow=loadPendingTxQueue();
       if(pendingNow.length) rescuePendingTransactionAck_(pendingNow[0]);
@@ -11357,5 +11416,11 @@ Undo/Delete: reverses linked Cash Counter pieces using the same record ID.
 
 <!-- V19 SYNC COMPLETION FIX: successful atomic server commit clears pending queue immediately; compatibility with Code.gs responses that do not echo cashCounter. -->
 <!-- V22: exact transaction-ID server acknowledgement recovery. Prevents a committed transaction from staying stuck in Verifying/Syncing when the browser misses the success callback. -->
+<script>
+setTimeout(function(){
+  try{ if(typeof repairStalePendingFromServerHistory_==='function') repairStalePendingFromServerHistory_(); }catch(_e){}
+},1800);
+</script>
+<!-- V23: stale pending repair only. Exact server History ID + MATCHED Cash Counter required before local pending queue is cleared. No money mutation and no transaction resend. -->
 </body>
 </html>
