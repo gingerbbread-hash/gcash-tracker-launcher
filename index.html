@@ -8620,7 +8620,14 @@ body > .hero{
           const saved=JSON.parse(localStorage.getItem('gcashCashCounterCurrentV1')||'null');
           const expected=Number(serverTx.newCash);
           const alreadyAtExpected=saved&&saved.pieces&&Number.isFinite(expected)&&
-            Math.abs(total(saved.pieces)-expected)<0.005;
+            Math.abs(
+              Object.entries(saved.pieces).reduce((sum,entry)=>{
+                const key=entry[0], count=Number(entry[1]||0);
+                const m=String(key).match(/([0-9]+(?:\.[0-9]+)?)/);
+                const denom=m?Number(m[1]):0;
+                return sum + (Number.isFinite(denom)?denom:0)*count;
+              },0)-expected
+            )<0.005;
           if(!already && !alreadyAtExpected){
             applyLocalCashPiecesNow(countedDetail);
           }else if(id && !already){
@@ -11577,11 +11584,7 @@ setTimeout(function(){
       })
       .repairLatestTransactionCashCounterBySession(
         (typeof getSessionToken==='function') ? getSessionToken() : '',
-        id,
-        (tx && tx.cashPieces) ? {
-          received:{...(tx.cashPieces.received||{})},
-          given:{...(tx.cashPieces.given||tx.cashPieces.change||{})}
-        } : null
+        id
       );
   }
 
@@ -11598,7 +11601,7 @@ setTimeout(function(){
   else start();
 })();
 </script>
-<!-- V32: fixes the broken atomic server call and safely repairs the latest missing Cash Counter movement from its exact saved Money Count. -->
+<!-- V31: strict automatic recovery of a missing Cash Inventory update using the permanent Money Count for the exact latest transaction. -->
 
 </body>
 </html>
