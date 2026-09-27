@@ -8544,9 +8544,9 @@ body > .hero{
     }
     save.disabled=true;
 
-    // ONLINE-ONLY: transaction is written to Sheets before any local wallet or
+    // V25 PROPER ATOMIC FLOW: transaction is written to Sheets before any local wallet or
     // Cash Counter mutation. Never queue/replay an ambiguous transaction.
-    if(false && tx._transactionDraft){
+    if(tx._transactionDraft){
       if(!navigator.onLine){
         save.disabled=false;
         if(stat){stat.textContent='Internet required. Nothing recorded.';stat.className='err';}
@@ -11354,32 +11354,26 @@ Undo/Delete: reverses linked Cash Counter pieces using the same record ID.
 
 
 <!-- V16: Single authoritative Home balance-state controller -->
-<script id="v16-single-balance-state-controller">
+<script id="v25-single-authoritative-transaction-controller">
 (function(){
-  const PENDING_TX_KEY='gcash_tracker_pending_tx_v1';
-  const PENDING_PIECES_KEY='gcash_tracker_pending_cash_pieces_v1';
-  const OFFLINE_KEY='gcashTrackerOfflineActionsV1';
-  function hasItems(key){
-    try{const v=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(v)&&v.length>0}catch(e){return false}
-  }
-  function hasPending(){return hasItems(PENDING_TX_KEY)||hasItems(OFFLINE_KEY)}
-  function state(){
+  function balanceState(){
     const el=document.getElementById('homeBalanceCheckValue');
     const t=String(el&&el.textContent||'').trim().toUpperCase();
     if(t==='BALANCES OK') return 'OK';
     if(t.includes('SHORT')||t.includes('OVER')||t.includes('MISMATCH')) return 'BAD';
     return 'CHECKING';
   }
-  function apply(){
-    const s=state();
-    const pending=hasPending();
-    const btn=document.querySelector('#transactionForm .action-record') || document.querySelector('form .action-record');
-    const label=document.getElementById('ltfSync');
-    const currentlyRecording=!!(btn && /recording/i.test(String(btn.textContent||'')));
 
-    if(s==='OK' && !pending){
+  function apply(){
+    const state=balanceState();
+    const btn=document.querySelector('#transactionForm .action-record') ||
+              document.querySelector('form .action-record');
+    const label=document.getElementById('ltfSync');
+    const activelySaving=!!(btn && /recording|saving/i.test(String(btn.textContent||'')));
+
+    if(state==='OK'){
       if(label) label.textContent='SYNCED ✓';
-      if(btn && !currentlyRecording){
+      if(btn && !activelySaving){
         btn.disabled=false;
         btn.textContent='Record Transaction';
         btn.style.opacity='';
@@ -11387,9 +11381,10 @@ Undo/Delete: reverses linked Cash Counter pieces using the same record ID.
       }
       return;
     }
-    if(s==='BAD'){
+
+    if(state==='BAD'){
       if(label) label.textContent='BALANCE REVIEW';
-      if(btn && !currentlyRecording){
+      if(btn && !activelySaving){
         btn.disabled=true;
         btn.textContent='Reconcile Cash Counter First';
         btn.style.opacity='.65';
@@ -11397,33 +11392,31 @@ Undo/Delete: reverses linked Cash Counter pieces using the same record ID.
       }
       return;
     }
-    // During a real pending sync or while the authoritative balance is unknown,
-    // do not allow another transaction until the state resolves.
-    if(label) label.textContent='Verifying…';
-    if(btn && !currentlyRecording){
+
+    if(label) label.textContent='Checking…';
+    if(btn && !activelySaving){
       btn.disabled=true;
-      btn.textContent=pending?'Syncing Transaction…':'Checking Balance…';
+      btn.textContent='Checking Balance…';
       btn.style.opacity='.65';
       btn.style.cursor='not-allowed';
     }
   }
+
   function start(){
-    // ONE RECORD mode: a legacy standalone Cash Pieces queue must never block
-    // Record Transaction. Cash Pieces are committed inside the parent transaction.
-    try{
-      if(!hasItems(PENDING_TX_KEY)) localStorage.removeItem(PENDING_PIECES_KEY);
-    }catch(e){}
-    const targets=[document.getElementById('homeBalanceCheckValue'),document.getElementById('syncStatus'),document.getElementById('ltfSync')].filter(Boolean);
+    const targets=[
+      document.getElementById('homeBalanceCheckValue'),
+      document.getElementById('ltfSync')
+    ].filter(Boolean);
     const mo=new MutationObserver(()=>setTimeout(apply,0));
     targets.forEach(x=>mo.observe(x,{childList:true,subtree:true,characterData:true}));
-    window.addEventListener('storage',apply);
-    window.addEventListener('online',apply);
-    window.addEventListener('offline',apply);
     document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')apply()});
+    window.addEventListener('online',apply);
     setInterval(apply,1000);
     apply();
   }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start); else start();
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start);
+  else start();
 })();
 </script>
 
@@ -11436,5 +11429,6 @@ setTimeout(function(){
 </script>
 <!-- V23: stale pending repair only. Exact server History ID + MATCHED Cash Counter required before local pending queue is cleared. No money mutation and no transaction resend. -->
 <!-- V24: stale server-confirmed transaction recovery can override a browser txSyncBusy flag left behind by a lost Apps Script callback. -->
+<!-- V25: Cash In/Out now use one direct atomic server commit. Legacy pending queues no longer decide the Record button or Last Transaction sync state. -->
 </body>
 </html>
