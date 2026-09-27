@@ -8643,25 +8643,39 @@ body > .hero{
       }).addTransactionBySession(getSessionToken(),payload);
       };
 
-      // V37 deployment handshake: NEVER send a money transaction to an older
-      // backend. This prevents an old deployment from saving History first
-      // without the permanent Money Count / Cash Inventory commit.
+      // V38.2: verify deployment through getCashCounter(), an API route already
+      // proven to work from the GitHub launcher. The response carries the backend
+      // version plus the live balance state. No separate version-only RPC is used.
       google.script.run
-        .withSuccessHandler(ver=>{
-          if(!ver || String(ver.version||'')!=='v38.1-money-count-github-bridge' || !ver.atomicTransactionCashPieces || !ver.singleCommitMoneyCount){
+        .withSuccessHandler(check=>{
+          const versionOK=!!(
+            check &&
+            String(check.backendVersion||'')==='v38.2-money-count-live-handshake' &&
+            check.atomicTransactionCashPieces===true &&
+            check.singleCommitMoneyCount===true
+          );
+          if(!versionOK){
             save.disabled=false;setTransactionSaving(false);
-            if(stat){stat.textContent='STOPPED: Index and Code versions do not match V38.1. Nothing was sent. Deploy Code V38.1, then try again.';stat.className='err';}
+            if(stat){stat.textContent='STOPPED: Index and Code versions do not match V38.2. Nothing was sent.';stat.className='err';}
             status.textContent='Backend update required. Nothing recorded.';status.className='status err';
+            return;
+          }
+          const physical=Number(check.physicalCash!==undefined?check.physicalCash:check.physicalTotal);
+          const tracker=Number(check.trackerCashOnHand);
+          if(!isFinite(physical) || !isFinite(tracker) || Math.abs(physical-tracker)>0.01){
+            save.disabled=false;setTransactionSaving(false);
+            if(stat){stat.textContent='STOPPED: Cash Counter must match Cash on Hand before saving. Nothing was sent.';stat.className='err';}
+            status.textContent='Balance lock stopped the transaction. Nothing recorded.';status.className='status err';
             return;
           }
           commitAtomicDraft();
         })
         .withFailureHandler(err=>{
           save.disabled=false;setTransactionSaving(false);
-          if(stat){stat.textContent='Could not verify the Apps Script version. Nothing was sent.';stat.className='err';}
+          if(stat){stat.textContent='Could not verify the live Cash Counter connection. Nothing was sent.';stat.className='err';}
           status.textContent='Nothing recorded.';status.className='status err';
         })
-        .getTrackerBackendVersion();
+        .getCashCounter();
       return;
     }
 
@@ -11618,11 +11632,11 @@ setTimeout(function(){
 
 
 <!-- V34 TRUE ATOMIC CASH COUNTER -->
-<!-- GCash Tracker V38.1 money-count + GitHub bridge -->
+<!-- GCash Tracker V38.2 money-count live handshake -->
 
 <div id="appVersionV38" aria-label="App version"
      style="text-align:center;font-size:10px;line-height:1.2;color:#8a94a6;opacity:.8;padding:4px 0 calc(4px + env(safe-area-inset-bottom));">
-  GCash Tracker · V38.1
+  GCash Tracker · V38.2
 </div>
 
 </body>
