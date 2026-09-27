@@ -11533,5 +11533,68 @@ setTimeout(function(){
 </script>
 <!-- V30: GitHub-compatible authoritative balance check using the same getCashCounter server endpoint as the Cash Counter page. -->
 
+
+<script id="v31-safe-missing-inventory-repair">
+(function(){
+  let running=false;
+  let attemptedId='';
+
+  function latestTx(){
+    try{
+      const h=window.__gcashTransactions;
+      return Array.isArray(h) && h.length ? h[0] : null;
+    }catch(_e){ return null; }
+  }
+
+  function maybeRepair(){
+    if(running) return;
+    const home=document.getElementById('homeBalanceCheckValue');
+    const state=String(home&&home.textContent||'').trim().toUpperCase();
+    if(state!=='OVER' && state!=='SHORT') return;
+
+    const tx=latestTx();
+    const id=String(tx&&tx.id||'');
+    if(!id || id===attemptedId) return;
+
+    attemptedId=id;
+    running=true;
+
+    google.script.run
+      .withSuccessHandler(function(result){
+        running=false;
+        if(result && String(result.status||'').toUpperCase()==='MATCHED'){
+          try{ applyServerBalanceLock(result); }catch(_e){}
+          if(typeof window.loadCashCounterLatestStatus==='function') window.loadCashCounterLatestStatus();
+          try{ if(typeof loadCashCounter==='function') loadCashCounter(); }catch(_e){}
+          try{ render(); }catch(_e){}
+          return;
+        }
+      })
+      .withFailureHandler(function(){
+        // The backend refuses repair unless every strict safety check passes.
+        // Leave the mismatch visible instead of guessing or reconciling.
+        running=false;
+      })
+      .repairLatestTransactionCashCounterBySession(
+        (typeof getSessionToken==='function') ? getSessionToken() : '',
+        id
+      );
+  }
+
+  function start(){
+    const el=document.getElementById('homeBalanceCheckValue');
+    if(el){
+      new MutationObserver(function(){ setTimeout(maybeRepair,150); })
+        .observe(el,{childList:true,subtree:true,characterData:true});
+    }
+    setTimeout(maybeRepair,1200);
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start);
+  else start();
+})();
+</script>
+<!-- V31: strict automatic recovery of a missing Cash Inventory update using the permanent Money Count for the exact latest transaction. -->
+
 </body>
 </html>
