@@ -5785,14 +5785,14 @@ body > .hero{
       recordTransactionBtn.style.cursor = recordTransactionBtn.disabled ? 'not-allowed' : '';
     }
 
-    // Clear only the transaction-form balance warning when the authoritative
-    // server result is MATCHED. Do not touch transaction or money data.
+    // V28: when the authoritative server state is MATCHED, the transaction
+    // form must have no balance warning/status at all.
     if(serverBalanceState === 'MATCHED' && status){
-      const t=String(status.textContent||'');
-      if(/Reconcile Cash Counter first|Checking Cash Counter balance/i.test(t)){
-        status.textContent='';
-        status.className='status';
-      }
+      status.textContent='';
+      status.className='status';
+      status.style.display='none';
+    }else if(status){
+      status.style.display='';
     }
   }
 
@@ -11452,5 +11452,31 @@ setTimeout(function(){
 
 
 <!-- V27: direct fix in original server balance lock. Valid MATCHED status no longer requires a separate `available` property. -->
+
+<script id="v28-authoritative-status-guard">
+(function(){
+  function apply(){
+    try{
+      const el=document.getElementById('status');
+      if(!el) return;
+      if(typeof serverBalanceState!=='undefined' && serverBalanceState==='MATCHED'){
+        el.textContent='';
+        el.className='status';
+        el.style.display='none';
+      }else{
+        el.style.display='';
+      }
+    }catch(_e){}
+  }
+  document.addEventListener('input',apply,true);
+  document.addEventListener('change',apply,true);
+  document.addEventListener('click',()=>setTimeout(apply,0),true);
+  setInterval(apply,500);
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',apply);
+  else apply();
+})();
+</script>
+<!-- V28: final display-only transaction status fix. No money, Cash Counter, History, or transaction calculations changed. -->
+
 </body>
 </html>
