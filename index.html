@@ -7773,6 +7773,60 @@ body > .hero{
     try{ window.dispatchEvent(new CustomEvent('gcash-local-transaction-recorded',{detail:{...tx}})); }catch(_e){}
   }
 
+
+  function finishPendingTransactionFromServer_(payload, serverTx, committedBalance){
+    if(!payload || !serverTx) return false;
+    if(committedBalance && committedBalance.available !== false &&
+       committedBalance.status === 'MATCHED' &&
+       Math.abs(Number(committedBalance.difference||0)) <= 0.01){
+      try{ applyServerBalanceLock(committedBalance); }catch(_e){}
+    }
+
+    const id=String(payload.clientTransactionId||serverTx.id||'');
+    const idx=history.findIndex(x=>String(x.id||'')===String(serverTx.id||id));
+    const localTx=idx>=0?history[idx]:history.find(x=>String(x.id||'')===id);
+    if(localTx && localTx.cashPieces && !serverTx.cashPieces) serverTx.cashPieces=localTx.cashPieces;
+    serverTx._pendingSync=false;
+    delete serverTx._syncError;
+
+    if(idx>=0) history[idx]=serverTx;
+    else {
+      const byClient=history.findIndex(x=>String(x.id||'')===id);
+      if(byClient>=0) history[byClient]=serverTx; else history.unshift(serverTx);
+    }
+    window.__gcashTransactions=history;
+
+    const remaining=loadPendingTxQueue().filter(x=>String(x.clientTransactionId||'')!==id);
+    savePendingTxQueue(remaining);
+    try{removeQueuedCashPieces(id);}catch(_e){}
+    txSyncBusy=false;
+    txRetryDelay=500;
+    render();
+    saveLocalTrackerCache();
+    showSync('SYNCED ✓ Server confirmed transaction.',true);
+    try{ window.dispatchEvent(new Event('storage')); }catch(_e){}
+    return true;
+  }
+
+  function rescuePendingTransactionAck_(payload){
+    if(!payload || !payload.clientTransactionId || !window.google || !google.script || !google.script.run) return;
+    const id=String(payload.clientTransactionId);
+    google.script.run
+      .withSuccessHandler(res=>{
+        if(!res || !res.found || !res.transaction) return;
+        const bal=res.cashCounter;
+        if(bal && bal.status && bal.status!=='MATCHED') return;
+        finishPendingTransactionFromServer_(payload,res.transaction,bal||{
+          available:true,
+          physicalCash:Number(res.transaction.newCash||0),
+          trackerCashOnHand:Number(res.transaction.newCash||0),
+          difference:0,status:'MATCHED'
+        });
+      })
+      .withFailureHandler(()=>{})
+      .getTransactionSyncStatusBySession(getSessionToken(),id);
+  }
+
   function processPendingTxQueue(){
     /* auto-sync enabled */
     if(txSyncBusy || !unlocked) return;
@@ -7800,6 +7854,11 @@ body > .hero{
       q[0]=payload; savePendingTxQueue(q);
     }
     showSync(`Syncing ${q.length} transaction${q.length===1?'':'s'}…`);
+
+    // If Apps Script saved the transaction but the browser lost the success
+    // callback, confirm the exact transaction ID and clear the stale queue.
+    clearTimeout(window.__gcashAckRescueTimer);
+    window.__gcashAckRescueTimer=setTimeout(()=>rescuePendingTransactionAck_(payload),1200);
 
     google.script.run
       .withSuccessHandler(serverTx=>{
@@ -7924,6 +7983,10 @@ body > .hero{
 
   function kickFastSync(){
     if(!unlocked) return;
+    try{
+      const pendingNow=loadPendingTxQueue();
+      if(pendingNow.length) rescuePendingTransactionAck_(pendingNow[0]);
+    }catch(_e){}
     MANUAL_SYNC_REQUESTED=true;
     txRetryDelay=1500;
     cashPiecesRetryDelay=1200;
@@ -11293,5 +11356,6 @@ Undo/Delete: reverses linked Cash Counter pieces using the same record ID.
 </script>
 
 <!-- V19 SYNC COMPLETION FIX: successful atomic server commit clears pending queue immediately; compatibility with Code.gs responses that do not echo cashCounter. -->
+<!-- V22: exact transaction-ID server acknowledgement recovery. Prevents a committed transaction from staying stuck in Verifying/Syncing when the browser misses the success callback. -->
 </body>
 </html>
