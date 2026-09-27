@@ -7026,6 +7026,10 @@ body > .hero{
         offlineActionBusy=false;
         offlineActionRetry=1400;
         handleOfflineActionSuccess(a,data);
+        setTransactionSaving(false);
+        if(a.method==='saveCashCount'||a.method==='saveManualCashCounterCorrection'||a.method==='saveCashCounterChangeMoney'){
+          setTimeout(()=>verifyAuthoritativeBalance({showSuccess:true,showError:true}),100);
+        }
         if(MANUAL_SYNC_REQUESTED) setTimeout(processOfflineActionQueue,0);
       })
       .withFailureHandler(err=>{
@@ -7924,11 +7928,21 @@ body > .hero{
     }
   },15000);
 
+  function hasPendingCashCounterWrite(){
+    try{
+      const q=loadOfflineActionQueue();
+      return q.some(a=>a && (a.method==='saveCashCount' || a.method==='saveManualCashCounterCorrection' || a.method==='saveCashCounterChangeMoney'));
+    }catch(e){ return true; }
+  }
+
   function setTransactionSaving(on){
     transactionSaving = !!on;
+    const pendingCashWrite = hasPendingCashCounterWrite();
     if(recordTransactionBtn){
-      recordTransactionBtn.disabled = transactionSaving || serverBalanceState !== 'MATCHED';
-      recordTransactionBtn.textContent = transactionSaving ? 'Recording…' : (serverBalanceState === 'MATCHED' ? 'Record Transaction' : 'Reconcile Cash Counter First');
+      recordTransactionBtn.disabled = transactionSaving || serverBalanceState !== 'MATCHED' || pendingCashWrite;
+      recordTransactionBtn.textContent = transactionSaving ? 'Recording…' :
+        (pendingCashWrite ? 'Sync Cash Counter First' :
+        (serverBalanceState === 'MATCHED' ? 'Record Transaction' : 'Reconcile Cash Counter First'));
       recordTransactionBtn.style.opacity = recordTransactionBtn.disabled ? '.65' : '';
       recordTransactionBtn.style.cursor = recordTransactionBtn.disabled ? 'not-allowed' : '';
     }
@@ -8605,6 +8619,15 @@ body > .hero{
       status.textContent = serverBalanceMessage || 'Reconcile Cash Counter first.';
       status.className = 'status err';
       verifyAuthoritativeBalance({showError:true});
+      return;
+    }
+
+    if(hasPendingCashCounterWrite()){
+      status.textContent='Cash Counter has a pending save. Wait for it to sync before recording a transaction.';
+      status.className='status err';
+      MANUAL_SYNC_REQUESTED=true;
+      processOfflineActionQueue();
+      setTransactionSaving(false);
       return;
     }
 
@@ -9743,7 +9766,9 @@ $('saveInventoryCorrection').addEventListener('click',()=>{
   }}));
 
   setCashCounterMode('cash');
-  showMsg(navigator.onLine?'Reconciliation saved. Saved locally.':'Reconciliation saved offline. Waiting for manual sync.','ok');
+  showMsg(navigator.onLine?'Reconciliation saved locally. Verifying server…':'Reconciliation saved offline. Transaction recording is locked until it syncs.','ok');
+  if(navigator.onLine){ MANUAL_SYNC_REQUESTED=true; processOfflineActionQueue(); }
+  setTransactionSaving(false);
 });
 
 window.addEventListener('offline-cashcounter-action-synced',function(e){
@@ -10401,7 +10426,9 @@ $('saveCount').addEventListener('click',()=>{
     id:id,method:'saveCashCount',payload:{pieces:{...pieces}}
   }}));
 
-  showMsg(navigator.onLine?'Cash check saved. Saved locally.':'Cash check saved offline. Waiting for manual sync.','ok');
+  showMsg(navigator.onLine?'Cash check saved locally. Verifying server…':'Cash check saved offline. Transaction recording is locked until it syncs.','ok');
+  if(navigator.onLine){ MANUAL_SYNC_REQUESTED=true; processOfflineActionQueue(); }
+  setTransactionSaving(false);
   setCashCounterMode('cash');
   setTimeout(sendCashCounterStatusToTracker,0);
 });
@@ -10785,7 +10812,7 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     // Reconcile the card with the same records the History tab displays.
     setInterval(()=>showLatest(false),1000);
   });
-  const sync=document.getElementById('syncStatus'); if(sync)new MutationObserver(()=>{const t=String(sync.textContent||'');const el=document.getElementById('ltfSync');if(el){if(/^synced\.?$/i.test(t.trim()))el.textContent='SYNCED ✓';else if(/sync/i.test(t))el.textContent='Saved locally.';}}).observe(sync,{childList:true,subtree:true,characterData:true});
+  const sync=document.getElementById('syncStatus'); if(sync)new MutationObserver(()=>{const t=String(sync.textContent||'');const el=document.getElementById('ltfSync');if(el){if(/server balance verified/i.test(t))el.textContent='SYNCED ✓';else if(/balance lock|balance check error/i.test(t))el.textContent='BALANCE REVIEW';else if(/sync|verif/i.test(t))el.textContent='Verifying…';}}).observe(sync,{childList:true,subtree:true,characterData:true});
 })();
 </script>
 
