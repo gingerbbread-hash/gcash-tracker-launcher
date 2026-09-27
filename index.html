@@ -9261,6 +9261,19 @@ document.addEventListener('DOMContentLoaded', function(){
       card.classList.add('matched');
       value.textContent='BALANCES OK';
       note.textContent='Cash Counter '+money(physical)+' matches Cash on Hand '+money(homeCash)+'.';
+
+      // V15: The same balance result painted on Home is the final source for
+      // the Last Transaction status. If there is no Cash Counter update still
+      // pending and no unsynced transaction work, BALANCES OK completes the
+      // verification instead of leaving the card stuck on “Verifying…”.
+      try{
+        const ltf=document.getElementById('ltfSync');
+        const pendingTx=(typeof loadPendingTxQueue==='function' && loadPendingTxQueue().length>0);
+        const pendingOffline=(typeof loadOfflineActionQueue==='function' && loadOfflineActionQueue().length>0);
+        if(ltf && !window.gcashCashCounterUpdatePending && !pendingTx && !pendingOffline){
+          ltf.textContent='SYNCED ✓';
+        }
+      }catch(_e){}
     }else{
       card.classList.add('warn');
       value.textContent=diff<0?'SHORT':'OVER';
@@ -10818,7 +10831,10 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
     // Reconcile the card with the same records the History tab displays.
     setInterval(()=>showLatest(false),1000);
   });
-  const sync=document.getElementById('syncStatus'); if(sync)new MutationObserver(()=>{const t=String(sync.textContent||'');const el=document.getElementById('ltfSync');if(el){if(/server balance verified/i.test(t))el.textContent='SYNCED ✓';else if(/balance lock|balance check error/i.test(t))el.textContent='BALANCE REVIEW';else if(/sync|verif/i.test(t))el.textContent='Verifying…';}}).observe(sync,{childList:true,subtree:true,characterData:true});
+  const sync=document.getElementById('syncStatus'); if(sync)new MutationObserver(()=>{const t=String(sync.textContent||'');const el=document.getElementById('ltfSync');if(el){if(/server balance verified/i.test(t))el.textContent='SYNCED ✓';else if(/balance lock|balance check error/i.test(t))el.textContent='BALANCE REVIEW';else if(/sync|verif/i.test(t)){
+      const balanceOk=String(document.getElementById('homeBalanceCheckValue')?.textContent||'').trim()==='BALANCES OK';
+      if(!balanceOk) el.textContent='Verifying…';
+    }}}).observe(sync,{childList:true,subtree:true,characterData:true});
 })();
 </script>
 
