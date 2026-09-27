@@ -11577,7 +11577,11 @@ setTimeout(function(){
       })
       .repairLatestTransactionCashCounterBySession(
         (typeof getSessionToken==='function') ? getSessionToken() : '',
-        id
+        id,
+        (tx && tx.cashPieces) ? {
+          received:{...(tx.cashPieces.received||{})},
+          given:{...(tx.cashPieces.given||tx.cashPieces.change||{})}
+        } : null
       );
   }
 
@@ -11594,7 +11598,7 @@ setTimeout(function(){
   else start();
 })();
 </script>
-<!-- V31: strict automatic recovery of a missing Cash Inventory update using the permanent Money Count for the exact latest transaction. -->
+<!-- V32: fixes the broken atomic server call and safely repairs the latest missing Cash Counter movement from its exact saved Money Count. -->
 
 </body>
 </html>
