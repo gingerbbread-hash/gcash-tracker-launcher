@@ -5753,6 +5753,54 @@ body > .hero{
   let transactionSaving = false;
   const recordTransactionBtn = form ? form.querySelector('.action-record') : null;
 
+  // SERVER BALANCE LOCK: normal transactions are allowed only when the
+  // authoritative Cash Counter matches authoritative Cash on Hand.
+  let serverBalanceState = 'CHECKING';
+  let serverBalanceMessage = 'Checking Cash Counter balance…';
+  let serverBalanceCheckBusy = false;
+
+  function applyServerBalanceLock(result){
+    if(result && result.available && result.status === 'MATCHED' && Math.abs(Number(result.difference||0)) <= 0.01){
+      serverBalanceState = 'MATCHED';
+      serverBalanceMessage = '';
+    }else if(result && result.available){
+      serverBalanceState = String(result.status || 'MISMATCH');
+      serverBalanceMessage = 'Reconcile Cash Counter first. Cash Counter and Cash on Hand do not match.';
+    }else{
+      serverBalanceState = 'UNKNOWN';
+      serverBalanceMessage = 'Cash Counter balance could not be verified.';
+    }
+    if(recordTransactionBtn){
+      recordTransactionBtn.disabled = transactionSaving || serverBalanceState !== 'MATCHED';
+      recordTransactionBtn.textContent = transactionSaving ? 'Recording…' : (serverBalanceState === 'MATCHED' ? 'Record Transaction' : 'Reconcile Cash Counter First');
+      recordTransactionBtn.style.opacity = recordTransactionBtn.disabled ? '.65' : '';
+      recordTransactionBtn.style.cursor = recordTransactionBtn.disabled ? 'not-allowed' : '';
+    }
+  }
+
+  function verifyAuthoritativeBalance(options){
+    options = options || {};
+    if(!unlocked || serverBalanceCheckBusy) return;
+    serverBalanceCheckBusy = true;
+    google.script.run
+      .withSuccessHandler(result=>{
+        serverBalanceCheckBusy = false;
+        applyServerBalanceLock(result);
+        if(options.showSuccess && serverBalanceState === 'MATCHED') showSync('SYNCED ✓ Server balance verified.', true);
+        if(serverBalanceState !== 'MATCHED' && options.showError !== false){
+          showSync('BALANCE LOCK: ' + serverBalanceMessage);
+        }
+      })
+      .withFailureHandler(()=>{
+        serverBalanceCheckBusy = false;
+        serverBalanceState = 'UNKNOWN';
+        serverBalanceMessage = 'Server balance verification failed. Try again when connected.';
+        applyServerBalanceLock(null);
+        if(options.showError !== false) showSync('BALANCE CHECK ERROR: Server balance could not be verified.');
+      })
+      .getCashCounterLatestStatusBySession(getSessionToken());
+  }
+
   let history = [];
   window.__gcashTransactions = history;
   let selectedPeriod = 'today';
@@ -7751,6 +7799,21 @@ body > .hero{
 
     google.script.run
       .withSuccessHandler(serverTx=>{
+        const committedBalance = serverTx && serverTx.cashCounter;
+        if(!committedBalance || committedBalance.status !== 'MATCHED' || Math.abs(Number(committedBalance.difference||0)) > 0.01){
+          txSyncBusy = false;
+          serverBalanceState = committedBalance && committedBalance.status ? String(committedBalance.status) : 'UNKNOWN';
+          serverBalanceMessage = 'Server did not confirm Cash Counter = Cash on Hand.';
+          applyServerBalanceLock(committedBalance || null);
+          const failedId=String(payload.clientTransactionId||'');
+          const failedTx=history.find(x=>String(x.id||'')===failedId);
+          if(failedTx){ failedTx._syncError='Server balance verification failed.'; failedTx._pendingSync=true; }
+          render(); saveLocalTrackerCache();
+          showSync('SYNC ERROR: Server balance was not verified. Next transaction is blocked.');
+          verifyAuthoritativeBalance({showError:true});
+          return;
+        }
+        applyServerBalanceLock(committedBalance);
         const idx = history.findIndex(x => String(x.id) === String(serverTx.id));
         // Preserve locally recorded Cash Count even when an older Apps Script
         // response does not echo the cashPieces field back to the browser.
@@ -7784,7 +7847,8 @@ body > .hero{
         if(q.length){
           setTimeout(processPendingTxQueue, 50);
         }else{
-          showSync('Synced.', true);
+          showSync('Verifying server balance…', true);
+          verifyAuthoritativeBalance({showSuccess:true,showError:true});
           clearTimeout(window.__gcashIdleCapitalRefresh);
           window.__gcashIdleCapitalRefresh=setTimeout(()=>{
             if(!hasUnsyncedLocalWork() && !txSyncBusy){ try{ loadCapital(); }catch(_e){} }
@@ -7846,16 +7910,27 @@ body > .hero{
   window.addEventListener('online',kickFastSync);
   window.addEventListener('focus',kickFastSync);
   document.addEventListener('visibilitychange',()=>{
-    if(document.visibilityState==='visible') kickFastSync();
+    if(document.visibilityState==='visible'){
+      kickFastSync();
+      setTimeout(()=>verifyAuthoritativeBalance({showError:true}),300);
+    }
   });
+
+  // Detect delayed/stale server changes instead of silently accepting them.
+  setTimeout(()=>verifyAuthoritativeBalance({showError:true}),500);
+  setInterval(()=>{
+    if(document.visibilityState === 'visible' && !txSyncBusy && !hasUnsyncedLocalWork()){
+      verifyAuthoritativeBalance({showError:true});
+    }
+  },15000);
 
   function setTransactionSaving(on){
     transactionSaving = !!on;
     if(recordTransactionBtn){
-      recordTransactionBtn.disabled = transactionSaving;
-      recordTransactionBtn.textContent = transactionSaving ? 'Recording…' : 'Record Transaction';
-      recordTransactionBtn.style.opacity = transactionSaving ? '.65' : '';
-      recordTransactionBtn.style.cursor = transactionSaving ? 'not-allowed' : '';
+      recordTransactionBtn.disabled = transactionSaving || serverBalanceState !== 'MATCHED';
+      recordTransactionBtn.textContent = transactionSaving ? 'Recording…' : (serverBalanceState === 'MATCHED' ? 'Record Transaction' : 'Reconcile Cash Counter First');
+      recordTransactionBtn.style.opacity = recordTransactionBtn.disabled ? '.65' : '';
+      recordTransactionBtn.style.cursor = recordTransactionBtn.disabled ? 'not-allowed' : '';
     }
   }
 
@@ -8525,6 +8600,13 @@ body > .hero{
     }
 
     if(!unlocked){ status.textContent=''; status.className='status err'; return; }
+
+    if(serverBalanceState !== 'MATCHED'){
+      status.textContent = serverBalanceMessage || 'Reconcile Cash Counter first.';
+      status.className = 'status err';
+      verifyAuthoritativeBalance({showError:true});
+      return;
+    }
 
     const enteredAmount=Number(amount.value);
     const enteredCash=Number(cashReceived.value||0);
