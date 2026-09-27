@@ -7829,7 +7829,8 @@ body > .hero{
 
 
   function repairStalePendingFromServerHistory_(){
-    if(!unlocked || txSyncBusy || !window.google || !google.script || !google.script.run) return;
+    // Recovery must be allowed even while the old sync request is stuck busy.
+    if(!unlocked || !window.google || !google.script || !google.script.run) return;
     const q=loadPendingTxQueue();
     if(!q.length) return;
 
@@ -7870,6 +7871,11 @@ body > .hero{
             if(!changed) return;
             savePendingTxQueue(keep);
             window.__gcashTransactions=history;
+            // Release a browser request that is still marked busy even though
+            // the exact transaction is already confirmed in server History.
+            txSyncBusy=false;
+            txRetryDelay=500;
+            try{clearTimeout(window.__gcashAckRescueTimer);}catch(_e){}
             try{applyServerBalanceLock(balance);}catch(_e){}
             render();
             saveLocalTrackerCache();
@@ -8049,7 +8055,14 @@ body > .hero{
     MANUAL_SYNC_REQUESTED=true;
     txRetryDelay=1500;
     cashPiecesRetryDelay=1200;
-    processPendingTxQueue();
+    // Do not immediately resend a stale transaction on app focus/open.
+    // Recovery checks server History first. Normal new records still call
+    // processPendingTxQueue() immediately from the Money Count save flow.
+    setTimeout(()=>{
+      try{
+        if(loadPendingTxQueue().length && !txSyncBusy) processPendingTxQueue();
+      }catch(_e){}
+    },2500);
     processPendingCashPiecesQueue();
     processOfflineActionQueue();
   }
@@ -11422,5 +11435,6 @@ setTimeout(function(){
 },1800);
 </script>
 <!-- V23: stale pending repair only. Exact server History ID + MATCHED Cash Counter required before local pending queue is cleared. No money mutation and no transaction resend. -->
+<!-- V24: stale server-confirmed transaction recovery can override a browser txSyncBusy flag left behind by a lost Apps Script callback. -->
 </body>
 </html>
