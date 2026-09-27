@@ -8296,28 +8296,77 @@ body > .hero{
     }
 
     if(tx._walletTransferDraft){
+      // CASH MOVE DIRECT COMMIT FIX:
+      // Cash-on-Hand Move Money is server-first. No local wallet/Cash Counter
+      // mutation and no legacy offline queue before Apps Script confirms it.
+      if(!navigator.onLine){
+        save.disabled=false; save.textContent='Save Cash Pieces';
+        if(stat){stat.textContent='Internet is required to move money to or from Cash on Hand. Nothing was recorded.';stat.className='err';}
+        return;
+      }
+
       const id=offlineActionId('MOVECASH');
       const payload={
         amount:Number(tx.amount||0), fromWallet:tx.fromWallet, toWallet:tx.toWallet,
         received:{...cashPiecesReceived}, given:{...cashPiecesGiven}, clientActionId:id
       };
 
-      try{applyLocalMoveMoney(payload,id);}catch(e){
-        save.disabled=false; save.textContent='Save Cash Pieces';
-        if(stat){stat.textContent=(e&&e.message)||'Could not save transfer.';stat.className='err';}
-        return;
-      }
+      save.disabled=true;
+      save.textContent='Saving…';
+      if(stat){stat.textContent='Saving transfer and Cash Counter together…';stat.className='';}
 
-      try{
-        window.dispatchEvent(new CustomEvent('gcash-local-cash-pieces',{
-          detail:{transactionId:id,received:{...cashPiecesReceived},given:{...cashPiecesGiven},expectedCashMovement:(tx.toWallet==='Cash on Hand'?Number(tx.amount||0):-Number(tx.amount||0))}
-        }));
-      }catch(e){}
+      google.script.run
+        .withSuccessHandler(result=>{
+          const cc=result&&result.cashCounter;
+          const transfer=result&&result.transfer;
+          const capital=result&&result.capital;
+          const matched=!!(cc && String(cc.status||'')==='MATCHED' &&
+            Math.abs(Number(cc.difference||0))<=0.01);
 
-      queueOfflineAction({id:id,method:'addMayaTransferWithCashPiecesBySession',payload:payload});
-      save.disabled=false; save.textContent='Saved';
-      if(stat){stat.textContent=navigator.onLine?'Saved. Syncing transfer and Cash Counter…':'Saved offline. Waiting to sync.';stat.className='ok';}
-      setTimeout(closeCashPiecesRecorder,100);
+          if(!transfer || !capital || !matched){
+            save.disabled=false;
+            save.textContent='Save Cash Pieces';
+            if(stat){
+              stat.textContent='Transfer response was not fully confirmed. Do not retry. Check Move Money History and Cash Counter first.';
+              stat.className='err';
+            }
+            return;
+          }
+
+          capitalData=capital;
+          const idx=mayaTransfers.findIndex(x=>String(x.id||'')===String(transfer.id||''));
+          if(idx>=0) mayaTransfers[idx]=transfer;
+          else mayaTransfers.unshift(transfer);
+
+          renderCapital(capitalData);
+          renderMayaTransfers();
+          renderCapitalActivity();
+          saveLocalTrackerCache();
+
+          try{
+            if(typeof window.loadCashCounterLatestStatus==='function') window.loadCashCounterLatestStatus();
+            if(typeof window.__loadGcashCashPiecesHistory==='function') window.__loadGcashCashPiecesHistory();
+          }catch(_e){}
+
+          save.disabled=false;
+          save.textContent='Saved';
+          if(stat){stat.textContent='SYNCED ✓ Transfer and Cash Counter saved together.';stat.className='ok';}
+          status.textContent='Move Money saved.';
+          status.className='status ok';
+          setTimeout(closeCashPiecesRecorder,650);
+        })
+        .withFailureHandler(err=>{
+          save.disabled=false;
+          save.textContent='Save Cash Pieces';
+          const msg=(err&&err.message)||'No confirmation from Apps Script';
+          if(stat){
+            stat.textContent='NOT CONFIRMED: '+msg+'. Do not retry. Check Move Money History and Cash Counter first.';
+            stat.className='err';
+          }
+          status.textContent='Move Money was not confirmed. Do not submit it again until checked.';
+          status.className='status err';
+        })
+        .addMayaTransferWithCashPiecesBySession(getSessionToken(),payload);
       return;
     }
 
@@ -10839,5 +10888,6 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
 })();
 </script>
 
+<div id="cashMoveFixVersion" style="text-align:center;font-size:10px;line-height:1.2;color:#8a94a6;opacity:.75;padding:3px 0 calc(3px + env(safe-area-inset-bottom));">GCash Tracker · Backup + Cash Move Fix 1</div>
 </body>
 </html>
