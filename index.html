@@ -7582,7 +7582,7 @@ body > .hero{
   const CASH_PIECES_QUEUE_KEY = 'gcash_tracker_pending_cash_pieces_v1';
   let txSyncBusy = false;
   let cashPiecesSyncBusy = false;
-  let txRetryDelay = 1500;
+  let txRetryDelay = 500;
   let cashPiecesRetryDelay = 1200;
   const cashPiecesPromptIds = new Set();
 
@@ -7833,7 +7833,7 @@ body > .hero{
         savePendingTxQueue(q);
         try{removeQueuedCashPieces(serverTx.id);}catch(_e){}
         txSyncBusy = false;
-        txRetryDelay = 1500;
+        txRetryDelay = 500;
 
         const syncedDate = dateKey(serverTx);
         if(syncedDate){
@@ -7849,7 +7849,7 @@ body > .hero{
         cashPiecesPromptIds.delete(String(serverTx.id||''));
 
         if(q.length){
-          setTimeout(processPendingTxQueue, 50);
+          setTimeout(processPendingTxQueue, 0);
         }else{
           // The transaction endpoint has already flushed and read back the
           // authoritative Cash Inventory and Cash on Hand. A MATCHED
@@ -7858,7 +7858,7 @@ body > .hero{
           // Keep a quiet follow-up check for later server changes, but do not
           // leave the Last Transaction card stuck on Verifying if another
           // balance check is already in progress.
-          setTimeout(()=>verifyAuthoritativeBalance({showSuccess:false,showError:true}), 800);
+          setTimeout(()=>verifyAuthoritativeBalance({showSuccess:false,showError:true}), 100);
           clearTimeout(window.__gcashIdleCapitalRefresh);
           window.__gcashIdleCapitalRefresh=setTimeout(()=>{
             if(!hasUnsyncedLocalWork() && !txSyncBusy){ try{ loadCapital(); }catch(_e){} }
@@ -7880,7 +7880,7 @@ body > .hero{
           );
           savePendingTxQueue(remaining);
           showSync('Deleted transaction will not sync.', true);
-          setTimeout(processPendingTxQueue, 50);
+          setTimeout(processPendingTxQueue, 0);
           return;
         }
 
@@ -8566,10 +8566,10 @@ body > .hero{
 
       // Both the transaction and its Cash Pieces now exist locally as one
       // completed operation. Sync them in the correct parent-then-pieces order.
-      setTimeout(()=>{
-        closeCashPiecesRecorder();
-        processPendingTxQueue();
-      },120);
+      closeCashPiecesRecorder();
+      // V17 FAST SYNC: start the single authoritative server commit immediately.
+      // Transaction + Money Count + Cash Counter remain one protected operation.
+      processPendingTxQueue();
       return;
     }
 
@@ -11272,5 +11272,6 @@ Undo/Delete: reverses linked Cash Counter pieces using the same record ID.
 })();
 </script>
 
+<!-- V17 FAST SYNC: no artificial delay before authoritative transaction commit. -->
 </body>
 </html>
