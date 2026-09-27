@@ -8592,7 +8592,23 @@ body > .hero{
       if(stat){stat.textContent='Waiting for Google Sheets confirmation…';stat.className='';}
       setTransactionSaving(true);
       payload.cashPieces={received:{...cashPiecesReceived},given:{...cashPiecesGiven},fee:Number(tx.fee||0)};
+      const commitAtomicDraft = ()=>{
       google.script.run.withSuccessHandler(serverTx=>{
+        const cc=serverTx&&serverTx.cashCounter;
+        const pieces=serverTx&&serverTx.cashPieces;
+        const responseValid=!!(
+          serverTx && String(serverTx.id||'')===String(payload.clientTransactionId) &&
+          pieces && pieces.received && pieces.given &&
+          cc && String(cc.status||'').toUpperCase()==='MATCHED' &&
+          Math.abs(Number(cc.difference||0))<=0.01
+        );
+        if(!responseValid){
+          save.disabled=false;setTransactionSaving(false);
+          if(stat){stat.textContent='Server response was incomplete. Transaction ID will be checked before any retry.';stat.className='err';}
+          status.textContent='Checking transaction ID before retry…';status.className='status';
+          rescuePendingTransactionAck_(payload);
+          return;
+        }
         try{
           const old=JSON.parse(localStorage.getItem(unresolvedKey)||'[]');
           localStorage.setItem(unresolvedKey,JSON.stringify(old.filter(x=>x.payload&&x.payload.clientTransactionId!==payload.clientTransactionId)));
@@ -8605,13 +8621,6 @@ body > .hero{
         amount.value='';cashReceived.value='';txType.value='';pendingPayload=null;selectedTransactionWallet='';resetChargeMode();
         delete tx._transactionDraft;delete tx._transactionPayload;
         save.disabled=false;setTransactionSaving(false);
-        const cc=serverTx&&serverTx.cashCounter;
-        if(!cc || String(cc.status||'').toUpperCase()!=='MATCHED' || Math.abs(Number(cc.difference||0))>0.01){
-          save.disabled=false;setTransactionSaving(false);
-          if(stat){stat.textContent='NOT CONFIRMED: Cash Counter did not match Cash on Hand.';stat.className='err';}
-          status.textContent='Not confirmed. Do not record another transaction.';status.className='status err';
-          return;
-        }
         if(stat){stat.textContent='SYNCED ✓ Transaction, Money Count and Cash Counter saved together.';stat.className='ok';}
         status.textContent='SYNCED ✓';status.className='status ok';
         // V34: the server has already committed and verified the exact Cash
@@ -8628,9 +8637,31 @@ body > .hero{
       }).withFailureHandler(err=>{
         save.disabled=false;setTransactionSaving(false);
         const msg=(err&&err.message)||'No confirmation';
-        if(stat){stat.textContent='NOT CONFIRMED: '+msg+'. Check Google Sheets for transaction ID '+payload.clientTransactionId+' before retrying. Draft preserved on device.';stat.className='err';}
-        status.textContent='Unconfirmed. Do not submit this transaction again until checked.';status.className='status err';
+        if(stat){stat.textContent='Confirmation interrupted: '+msg+'. Checking the same transaction ID automatically…';stat.className='err';}
+        status.textContent='Checking transaction ID…';status.className='status';
+        rescuePendingTransactionAck_(payload);
       }).addTransactionBySession(getSessionToken(),payload);
+      };
+
+      // V37 deployment handshake: NEVER send a money transaction to an older
+      // backend. This prevents an old deployment from saving History first
+      // without the permanent Money Count / Cash Inventory commit.
+      google.script.run
+        .withSuccessHandler(ver=>{
+          if(!ver || String(ver.version||'')!=='v37-atomic-draft-commit' || !ver.atomicTransactionCashPieces){
+            save.disabled=false;setTransactionSaving(false);
+            if(stat){stat.textContent='STOPPED: Apps Script is still using an older backend. Nothing was sent. Deploy Code V37, then try again.';stat.className='err';}
+            status.textContent='Backend update required. Nothing recorded.';status.className='status err';
+            return;
+          }
+          commitAtomicDraft();
+        })
+        .withFailureHandler(err=>{
+          save.disabled=false;setTransactionSaving(false);
+          if(stat){stat.textContent='Could not verify the Apps Script version. Nothing was sent.';stat.className='err';}
+          status.textContent='Nothing recorded.';status.className='status err';
+        })
+        .getTrackerBackendVersion();
       return;
     }
 
@@ -11587,5 +11618,6 @@ setTimeout(function(){
 
 
 <!-- V34 TRUE ATOMIC CASH COUNTER -->
+<!-- GCash Tracker V37 matched atomic pair -->
 </body>
 </html>
