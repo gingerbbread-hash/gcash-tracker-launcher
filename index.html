@@ -8648,9 +8648,9 @@ body > .hero{
       // without the permanent Money Count / Cash Inventory commit.
       google.script.run
         .withSuccessHandler(ver=>{
-          if(!ver || String(ver.version||'')!=='v38-money-count-single-commit' || !ver.atomicTransactionCashPieces || !ver.singleCommitMoneyCount){
+          if(!ver || String(ver.version||'')!=='v38.1-money-count-github-bridge' || !ver.atomicTransactionCashPieces || !ver.singleCommitMoneyCount){
             save.disabled=false;setTransactionSaving(false);
-            if(stat){stat.textContent='STOPPED: Index and Code versions do not match V38. Nothing was sent. Deploy Code V38, then try again.';stat.className='err';}
+            if(stat){stat.textContent='STOPPED: Index and Code versions do not match V38.1. Nothing was sent. Deploy Code V38.1, then try again.';stat.className='err';}
             status.textContent='Backend update required. Nothing recorded.';status.className='status err';
             return;
           }
@@ -11618,11 +11618,11 @@ setTimeout(function(){
 
 
 <!-- V34 TRUE ATOMIC CASH COUNTER -->
-<!-- GCash Tracker V38 money-count single-commit -->
+<!-- GCash Tracker V38.1 money-count + GitHub bridge -->
 
 <div id="appVersionV38" aria-label="App version"
      style="text-align:center;font-size:10px;line-height:1.2;color:#8a94a6;opacity:.8;padding:4px 0 calc(4px + env(safe-area-inset-bottom));">
-  GCash Tracker · V38
+  GCash Tracker · V38.1
 </div>
 
 </body>
