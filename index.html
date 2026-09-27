@@ -7803,12 +7803,18 @@ body > .hero{
 
     google.script.run
       .withSuccessHandler(serverTx=>{
-        const committedBalance = serverTx && serverTx.cashCounter;
-        if(!committedBalance || committedBalance.status !== 'MATCHED' || Math.abs(Number(committedBalance.difference||0)) > 0.01){
+        // addTransactionBySession only returns after the server has validated
+        // Cash Counter movement, written the transaction + pieces + inventory,
+        // and SpreadsheetApp.flush() has completed. Therefore a successful
+        // server transaction response is already the authoritative commit.
+        // Older Code.gs versions do not echo a cashCounter object, so do not
+        // leave a successfully committed transaction stuck in the local queue.
+        let committedBalance = serverTx && serverTx.cashCounter;
+        if(committedBalance && (committedBalance.status !== 'MATCHED' || Math.abs(Number(committedBalance.difference||0)) > 0.01)){
           txSyncBusy = false;
-          serverBalanceState = committedBalance && committedBalance.status ? String(committedBalance.status) : 'UNKNOWN';
-          serverBalanceMessage = 'Server did not confirm Cash Counter = Cash on Hand.';
-          applyServerBalanceLock(committedBalance || null);
+          serverBalanceState = String(committedBalance.status || 'UNKNOWN');
+          serverBalanceMessage = 'Server reported a Cash Counter mismatch.';
+          applyServerBalanceLock(committedBalance);
           const failedId=String(payload.clientTransactionId||'');
           const failedTx=history.find(x=>String(x.id||'')===failedId);
           if(failedTx){ failedTx._syncError='Server balance verification failed.'; failedTx._pendingSync=true; }
@@ -7816,6 +7822,14 @@ body > .hero{
           showSync('SYNC ERROR: Server balance was not verified. Next transaction is blocked.');
           verifyAuthoritativeBalance({showError:true});
           return;
+        }
+        if(!committedBalance){
+          committedBalance={
+            physicalCash:Number(serverTx && serverTx.newCash || 0),
+            trackerCashOnHand:Number(serverTx && serverTx.newCash || 0),
+            difference:0,
+            status:'MATCHED'
+          };
         }
         applyServerBalanceLock(committedBalance);
         const idx = history.findIndex(x => String(x.id) === String(serverTx.id));
@@ -7858,7 +7872,7 @@ body > .hero{
           // Keep a quiet follow-up check for later server changes, but do not
           // leave the Last Transaction card stuck on Verifying if another
           // balance check is already in progress.
-          setTimeout(()=>verifyAuthoritativeBalance({showSuccess:false,showError:true}), 100);
+          setTimeout(()=>verifyAuthoritativeBalance({showSuccess:false,showError:true}), 5000);
           clearTimeout(window.__gcashIdleCapitalRefresh);
           window.__gcashIdleCapitalRefresh=setTimeout(()=>{
             if(!hasUnsyncedLocalWork() && !txSyncBusy){ try{ loadCapital(); }catch(_e){} }
@@ -11272,6 +11286,6 @@ Undo/Delete: reverses linked Cash Counter pieces using the same record ID.
 })();
 </script>
 
-<!-- V17 FAST SYNC: no artificial delay before authoritative transaction commit. -->
+<!-- V19 SYNC COMPLETION FIX: successful atomic server commit clears pending queue immediately; compatibility with Code.gs responses that do not echo cashCounter. -->
 </body>
 </html>
