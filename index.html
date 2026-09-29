@@ -6012,7 +6012,9 @@ body > .hero{
       const z=document.createElement('button');z.type='button';z.dataset.calDate=key;z.className='cal-day'+(txs.length?' has':'')+(calSelected===key?' sel':'');
       z.innerHTML=`<span class="cal-num">${day}</span>${txs.length?`<span class="cal-fee">${money(fees)}</span>`:''}`;grid.appendChild(z);
     }
-    const mt=history.filter(x=>dateKey(x).startsWith(prefix)); countText.textContent=`${mt.length} transaction${mt.length===1?'':'s'} · ${title.textContent}`;
+    const mt=history.filter(x=>dateKey(x).startsWith(prefix));
+    const monthEarnings=mt.reduce((sum,x)=>sum+Number(x.fee||0),0);
+    countText.textContent=`${mt.length} transaction${mt.length===1?'':'s'} · Total Earnings ${money(monthEarnings)} · ${title.textContent}`;
     if(calSelected.startsWith(prefix))renderDay(calSelected);else $('calDetail').style.display='none';
   }
   function render(){
