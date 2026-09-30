@@ -6012,9 +6012,7 @@ body > .hero{
       const z=document.createElement('button');z.type='button';z.dataset.calDate=key;z.className='cal-day'+(txs.length?' has':'')+(calSelected===key?' sel':'');
       z.innerHTML=`<span class="cal-num">${day}</span>${txs.length?`<span class="cal-fee">${money(fees)}</span>`:''}`;grid.appendChild(z);
     }
-    const mt=history.filter(x=>dateKey(x).startsWith(prefix));
-    const monthEarnings=mt.reduce((sum,x)=>sum+Number(x.fee||0),0);
-    countText.textContent=`${mt.length} transaction${mt.length===1?'':'s'} · Total Earnings ${money(monthEarnings)} · ${title.textContent}`;
+    const mt=history.filter(x=>dateKey(x).startsWith(prefix)); countText.textContent=`${mt.length} transaction${mt.length===1?'':'s'} · ${title.textContent}`;
     if(calSelected.startsWith(prefix))renderDay(calSelected);else $('calDetail').style.display='none';
   }
   function render(){
@@ -6467,40 +6465,11 @@ body > .hero{
     if(fromWallet==='Cash on Hand'||toWallet==='Cash on Hand'){openMoveMoneyCashPiecesDraft(amount,fromWallet,toWallet);return;}
     const id=offlineActionId('MOVE');
     const payload={amount,fromWallet,toWallet,clientActionId:id};
-    if(!navigator.onLine){
-      mayaTransferStatus.textContent='Internet connection is required to save Move Money.';
-      mayaTransferStatus.className='status err';
-      return;
-    }
-    saveMayaTransferBtn.disabled=true;
-    mayaTransferStatus.textContent='Saving…';
-    mayaTransferStatus.className='status';
-    google.script.run
-      .withSuccessHandler(data=>{
-        saveMayaTransferBtn.disabled=false;
-        if(!data||!data.transfer||!data.capital){
-          mayaTransferStatus.textContent='Transfer was not confirmed. Check Move Money History before retrying.';
-          mayaTransferStatus.className='status err';
-          return;
-        }
-        const idx=mayaTransfers.findIndex(x=>String(x.id||'')===String(data.transfer.id||''));
-        if(idx>=0) mayaTransfers[idx]=data.transfer;
-        else mayaTransfers.unshift(data.transfer);
-        renderCapital(data.capital);
-        renderMayaTransfers();
-        renderCapitalActivity();
-        saveLocalTrackerCache();
-        mayaTransferStatus.textContent='Saved.';
-        mayaTransferStatus.className='status ok';
-        mayaTransferModal.classList.remove('show');
-        mayaTransferModal.style.display='none';
-      })
-      .withFailureHandler(err=>{
-        saveMayaTransferBtn.disabled=false;
-        mayaTransferStatus.textContent=(err&&err.message)||'Could not save transfer.';
-        mayaTransferStatus.className='status err';
-      })
-      .addMayaTransferBySession(getSessionToken(),payload);
+    try{applyLocalMoveMoney(payload,id);}catch(e){mayaTransferStatus.textContent=(e&&e.message)||'Could not transfer funds.';mayaTransferStatus.className='status err';return;}
+    queueOfflineAction({id:id,method:'addMayaTransferBySession',payload:payload});
+    mayaTransferStatus.textContent=navigator.onLine?'Saved. Syncing…':'Saved offline. Waiting to sync.';
+    mayaTransferStatus.className='status ok';
+    cancelMayaTransferBtn.click();
   });
   mayaTransferHistoryList.addEventListener('click',e=>{const b=e.target.closest('[data-remove-maya-transfer]');if(!b)return;const id=b.getAttribute('data-remove-maya-transfer');if(!confirm('Reverse this wallet transfer? Linked Cash Counter pieces will also be reversed.'))return;google.script.run.withSuccessHandler(d=>{mayaTransfers=(d&&d.transfers)||mayaTransfers.filter(x=>String(x.id)!==String(id));if(d&&d.capital)renderCapital(d.capital);renderMayaTransfers();renderCapitalActivity();saveLocalTrackerCache();if(typeof window.loadCashCounterLatestStatus==='function')setTimeout(window.loadCashCounterLatestStatus,100);}).withFailureHandler(e=>alert((e&&e.message)||'Could not reverse transfer.')).deleteMayaTransferBySession(getSessionToken(),id);});
 
@@ -10919,6 +10888,6 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
 })();
 </script>
 
-<div id="cashMoveFixVersion" style="text-align:center;font-size:10px;line-height:1.2;color:#8a94a6;opacity:.75;padding:3px 0 calc(3px + env(safe-area-inset-bottom));">GCash Tracker · Earnings + Digital Move Fix 2</div>
+<div id="cashMoveFixVersion" style="text-align:center;font-size:10px;line-height:1.2;color:#8a94a6;opacity:.75;padding:3px 0 calc(3px + env(safe-area-inset-bottom));">GCash Tracker · Backup + Cash Move Fix 1</div>
 </body>
 </html>
