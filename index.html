@@ -7681,14 +7681,11 @@ body > .hero{
   }
 
   function processPendingTxQueue(){
-    if(txSyncBusy || !unlocked) return;
+    if(txSyncBusy || !unlocked || !navigator.onLine) return;
+
     const q = loadPendingTxQueue();
     if(!q.length){
-      // A Cash Pieces record may already be waiting for its parent transaction.
-      setTimeout(()=>processPendingCashPiecesQueue(), 0);
       refreshFastSyncStatus();
-      // Do not block the customer flow with a full Google Sheets reload.
-      // Reconcile quietly after the app has been idle for a few seconds.
       clearTimeout(window.__gcashIdleCapitalRefresh);
       window.__gcashIdleCapitalRefresh=setTimeout(()=>{
         if(!loadPendingTxQueue().length && !txSyncBusy){ try{ loadCapital(); }catch(_e){} }
@@ -7698,70 +7695,89 @@ body > .hero{
 
     txSyncBusy = true;
     const payload = q[0];
-    showSync(`Syncing ${q.length} transaction${q.length===1?'':'s'}…`);
+    const txId = String(payload.clientTransactionId || '');
+    showSync(`Checking ${q.length} pending transaction${q.length===1?'':'s'}…`);
 
-    google.script.run
-      .withSuccessHandler(serverTx=>{
-        const idx = history.findIndex(x => String(x.id) === String(serverTx.id));
-        // Preserve locally recorded Cash Count even when an older Apps Script
-        // response does not echo the cashPieces field back to the browser.
+    function finishConfirmed(serverTx){
+      if(serverTx){
+        const idx = history.findIndex(x => String(x.id) === String(serverTx.id || txId));
         const localTx = idx >= 0 ? history[idx] : null;
         if(localTx && localTx.cashPieces && !serverTx.cashPieces){
-          serverTx.cashPieces=localTx.cashPieces;
+          serverTx.cashPieces = localTx.cashPieces;
         }
         if(idx >= 0) history[idx] = serverTx;
         else history.unshift(serverTx);
         window.__gcashTransactions = history;
+      }
 
-        q.shift();
-        savePendingTxQueue(q);
-        txSyncBusy = false;
-        txRetryDelay = 1500;
+      const latest = loadPendingTxQueue().filter(
+        x => String(x.clientTransactionId || '') !== txId
+      );
+      savePendingTxQueue(latest);
 
-        const syncedDate = dateKey(serverTx);
-        if(syncedDate){
-          const parts = syncedDate.split('-').map(Number);
-          calMonth = new Date(parts[0], parts[1]-1, 1);
-          calSelected = syncedDate;
-        }
+      // Current backend commits Transaction + Cash Count + Cash Inventory together.
+      // Remove the old second-step Cash Pieces queue only after the server confirms
+      // this exact transaction ID.
+      removeQueuedCashPieces(txId);
 
-        render();
-        saveLocalTrackerCache();
+      txSyncBusy = false;
+      txRetryDelay = 1500;
+      cashPiecesPromptIds.delete(txId);
+      render();
+      saveLocalTrackerCache();
 
-        // If Cash Pieces were already entered while this transaction was syncing,
-        // send them now that the parent transaction exists in Google Sheets.
-        cashPiecesPromptIds.delete(String(serverTx.id||''));
-        setTimeout(()=>processPendingCashPiecesQueue(serverTx.id), 20);
+      if(latest.length){
+        setTimeout(processPendingTxQueue, 80);
+      }else{
+        showSync('Synced.', true);
+        try{
+          if(typeof window.loadCashCounterLatestStatus==='function'){
+            setTimeout(window.loadCashCounterLatestStatus,100);
+          }
+        }catch(_e){}
+        clearTimeout(window.__gcashIdleCapitalRefresh);
+        window.__gcashIdleCapitalRefresh=setTimeout(()=>{
+          if(!loadPendingTxQueue().length && !txSyncBusy){ try{ loadCapital(); }catch(_e){} }
+        },1500);
+      }
+    }
 
-        if(q.length){
-          setTimeout(processPendingTxQueue, 50);
-        }else{
-          showSync('Synced.', true);
-          clearTimeout(window.__gcashIdleCapitalRefresh);
-          window.__gcashIdleCapitalRefresh=setTimeout(()=>{
-            if(!loadPendingTxQueue().length && !txSyncBusy){ try{ loadCapital(); }catch(_e){} }
-          },5000);
-        }
-      })
-      .withFailureHandler(err=>{
-        txSyncBusy = false;
-        const msg=(err && err.message) || 'Google Sheets sync delayed.';
+    function failAndRetry(err){
+      txSyncBusy = false;
+      const msg = (err && err.message) || 'Google Sheets sync delayed.';
+      if(msg.toLowerCase().includes('cancelled before sync')){
+        const latest = loadPendingTxQueue().filter(
+          x => String(x.clientTransactionId || '') !== txId
+        );
+        savePendingTxQueue(latest);
+        removeQueuedCashPieces(txId);
+        showSync('Deleted transaction will not sync.', true);
+        setTimeout(processPendingTxQueue,80);
+        return;
+      }
+      showSync(msg + ' Record remains safely on this device and will retry.');
+      scheduleTxRetry();
+    }
 
-        if(msg.toLowerCase().includes('cancelled before sync')){
-          const remaining = loadPendingTxQueue().filter(
-            x => String(x.clientTransactionId || '') !== String(payload.clientTransactionId || '')
-          );
-          savePendingTxQueue(remaining);
-          showSync('Deleted transaction will not sync.', true);
-          setTimeout(processPendingTxQueue, 50);
+    // Recovery-safe sync:
+    // 1) ask Sheets whether this exact ID already exists;
+    // 2) if yes, clear only its local pending copy;
+    // 3) if no, send the original payload with its same idempotent ID.
+    google.script.run
+      .withSuccessHandler(statusResult=>{
+        if(statusResult && statusResult.found && statusResult.transaction){
+          finishConfirmed(statusResult.transaction);
           return;
         }
 
-        showSync(msg + ' Transaction is safe on this device and will retry.');
-        // Keep the queue intact. Retry quickly without creating duplicates.
-        scheduleTxRetry();
+        showSync(`Syncing ${q.length} transaction${q.length===1?'':'s'}…`);
+        google.script.run
+          .withSuccessHandler(serverTx=>finishConfirmed(serverTx))
+          .withFailureHandler(failAndRetry)
+          .addTransactionBySession(getSessionToken(), payload);
       })
-      .addTransactionBySession(getSessionToken(), payload);
+      .withFailureHandler(failAndRetry)
+      .getTransactionSyncStatusBySession(getSessionToken(), txId);
   }
 
   function restorePendingTransactions(){
@@ -10919,6 +10935,6 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
 })();
 </script>
 
-<div id="cashMoveFixVersion" style="text-align:center;font-size:10px;line-height:1.2;color:#8a94a6;opacity:.75;padding:3px 0 calc(3px + env(safe-area-inset-bottom));">GCash Tracker · Earnings + Digital Move Fix 2</div>
+<div id="cashMoveFixVersion" style="text-align:center;font-size:10px;line-height:1.2;color:#8a94a6;opacity:.75;padding:3px 0 calc(3px + env(safe-area-inset-bottom));">GCash Tracker · Sync Repair 3</div>
 </body>
 </html>
