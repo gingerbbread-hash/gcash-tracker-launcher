@@ -10976,6 +10976,352 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
 })();
 </script>
 
-<div id="cashMoveFixVersion" style="text-align:center;font-size:10px;line-height:1.2;color:#8a94a6;opacity:.75;padding:3px 0 calc(3px + env(safe-area-inset-bottom));">GCash Tracker · History Cash In-Out 2</div>
+<div id="cashMoveFixVersion" style="text-align:center;font-size:10px;line-height:1.2;color:#8a94a6;opacity:.75;padding:3px 0 calc(3px + env(safe-area-inset-bottom));">GCash Tracker · Professional Banking UI 1</div>
+
+<style id="professional-banking-ui-v1">
+/* =========================================================
+   PROFESSIONAL BANKING UI V1
+   VISUAL OVERRIDE ONLY. No transaction/accounting/sync logic.
+   ========================================================= */
+:root{
+  --pro-bg:#f2f6fb;
+  --pro-surface:#ffffff;
+  --pro-surface-2:#f8fafc;
+  --pro-text:#142033;
+  --pro-muted:#667085;
+  --pro-line:#dbe4ef;
+  --pro-shadow:0 8px 24px rgba(20,32,51,.07);
+  --pro-shadow-soft:0 3px 12px rgba(20,32,51,.055);
+  --pro-radius:18px;
+}
+html{background:var(--pro-bg)}
+body{
+  background:var(--pro-bg) !important;
+  color:var(--pro-text);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+.app{
+  width:min(100%,760px) !important;
+  margin:0 auto !important;
+  padding-bottom:calc(78px + env(safe-area-inset-bottom)) !important;
+}
+
+/* Header */
+.hero{
+  border-radius:0 0 24px 24px !important;
+  box-shadow:0 8px 26px rgba(11,94,215,.16) !important;
+  padding:18px 16px 16px !important;
+  margin:0 -8px 14px !important;
+}
+.hero h1,.cash-app-title{
+  letter-spacing:-.035em !important;
+  font-weight:900 !important;
+}
+.hero p{opacity:.88 !important}
+
+/* Global professional card language */
+.card,
+.history-section,
+#cashCounterNative .card{
+  background:var(--pro-surface) !important;
+  border:1px solid var(--pro-line) !important;
+  border-radius:var(--pro-radius) !important;
+  box-shadow:var(--pro-shadow-soft) !important;
+}
+.section-title{
+  color:var(--pro-text) !important;
+  font-weight:900 !important;
+  letter-spacing:-.02em !important;
+}
+.subtle,.note,.muted{color:var(--pro-muted) !important}
+
+/* Form controls */
+input,select,textarea{
+  background:#fff !important;
+  border:1px solid #cfd9e6 !important;
+  border-radius:13px !important;
+  color:var(--pro-text) !important;
+  box-shadow:0 1px 2px rgba(16,24,40,.025) !important;
+}
+input:focus,select:focus,textarea:focus{
+  border-color:#4d8ff7 !important;
+  box-shadow:0 0 0 3px rgba(11,94,215,.11) !important;
+  outline:none !important;
+}
+button,.btn{
+  border-radius:13px !important;
+  font-weight:850 !important;
+  letter-spacing:-.01em;
+}
+.btn-primary,#recordBtn{
+  box-shadow:0 6px 16px rgba(11,94,215,.18) !important;
+}
+
+/* HOME */
+#tabHomePage .balance-card,
+#tabHomePage .home-balance-mini{
+  background:#fff !important;
+  border:1px solid var(--pro-line) !important;
+  box-shadow:var(--pro-shadow-soft) !important;
+  border-radius:16px !important;
+}
+#tabHomePage .balance-card strong,
+#tabHomePage .home-balance-mini strong{
+  letter-spacing:-.025em !important;
+}
+#tabHomePage .today-metric,
+#tabHomePage .result-box,
+#tabHomePage .metric{
+  background:var(--pro-surface-2) !important;
+  border:1px solid #e5ebf3 !important;
+  border-radius:14px !important;
+}
+
+/* WALLETS */
+#tabWalletsPage .capital-balance,
+#tabWalletsPage .wallet-card,
+#tabWalletsPage .balance-card,
+#tabWalletsPage .metric{
+  background:#fff !important;
+  border:1px solid var(--pro-line) !important;
+  border-radius:16px !important;
+  box-shadow:var(--pro-shadow-soft) !important;
+}
+#tabWalletsPage .capital-balance strong,
+#tabWalletsPage .wallet-card strong{
+  letter-spacing:-.025em !important;
+}
+
+/* CASH COUNTER */
+#cashCounterNative .metric,
+#cashCounterNative .result-box{
+  background:var(--pro-surface-2) !important;
+  border:1px solid #e4eaf2 !important;
+  border-radius:14px !important;
+}
+#cashCounterNative table{
+  border-collapse:separate !important;
+  border-spacing:0 6px !important;
+}
+#cashCounterNative th{
+  color:var(--pro-muted) !important;
+  font-size:10px !important;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+}
+#cashCounterNative td{
+  background:#fff;
+  border-top:1px solid #e7edf4;
+  border-bottom:1px solid #e7edf4;
+}
+#cashCounterNative td:first-child{
+  border-left:1px solid #e7edf4;
+  border-radius:11px 0 0 11px;
+}
+#cashCounterNative td:last-child{
+  border-right:1px solid #e7edf4;
+  border-radius:0 11px 11px 0;
+}
+
+/* HISTORY */
+#tabHistoryPage .history-section{
+  padding:14px !important;
+}
+#tabHistoryPage .history-view-header{
+  align-items:flex-start !important;
+  gap:6px !important;
+}
+#tabHistoryPage #countText{
+  font-size:11px !important;
+  line-height:1.35 !important;
+}
+#tabHistoryPage .cal-nav{
+  background:var(--pro-surface-2);
+  border:1px solid #e5ebf3;
+  border-radius:15px;
+  padding:5px;
+  margin-top:10px !important;
+}
+#tabHistoryPage .cal-nav button{
+  background:#fff !important;
+  border:1px solid #dce5ef !important;
+  box-shadow:0 1px 3px rgba(16,24,40,.04);
+}
+#tabHistoryPage #calTitle{
+  color:var(--pro-text);
+  letter-spacing:-.02em;
+}
+#tabHistoryPage .cal-week{
+  padding:5px 0 1px;
+  color:#7a8699 !important;
+}
+#tabHistoryPage .cal-day{
+  background:#fff !important;
+  border:1px solid #e2e8f0 !important;
+  border-radius:11px !important;
+  box-shadow:none !important;
+}
+#tabHistoryPage .cal-day.has{
+  background:#f1f7ff !important;
+  border-color:#cfe0f7 !important;
+}
+#tabHistoryPage .cal-day.sel{
+  outline:none !important;
+  background:#e9f2ff !important;
+  border:2px solid #0b5ed7 !important;
+}
+#tabHistoryPage .cal-fee{
+  color:#0f9f63 !important;
+  font-weight:900 !important;
+}
+
+/* Monthly Cash In / Cash Out wallet cards */
+#tabHistoryPage .history-flow-grid,
+#tabHistoryPage .monthly-flow-grid,
+#tabHistoryPage .account-flow-grid{
+  gap:10px !important;
+}
+#tabHistoryPage .history-flow-card,
+#tabHistoryPage .monthly-flow-card,
+#tabHistoryPage .account-flow-card{
+  border-radius:17px !important;
+  border:1px solid var(--pro-line) !important;
+  box-shadow:var(--pro-shadow-soft) !important;
+  overflow:hidden;
+}
+
+/* Transaction list */
+#tabHistoryPage .history-tx-card,
+#historySection .history-tx-card{
+  border:1px solid #dbe4ef !important;
+  border-radius:17px !important;
+  background:#fff !important;
+  padding:13px !important;
+  margin:9px 0 !important;
+  box-shadow:0 5px 16px rgba(20,32,51,.055) !important;
+}
+#tabHistoryPage .history-tx-card:active{
+  transform:scale(.997);
+}
+#tabHistoryPage .history-tx-amount,
+#historySection .history-tx-amount{
+  font-size:20px !important;
+  letter-spacing:-.025em !important;
+}
+#tabHistoryPage .history-tx-meta,
+#tabHistoryPage .history-tx-fee{
+  color:#667085 !important;
+}
+#tabHistoryPage .history-tx-actions,
+#historySection .history-tx-actions{
+  border-top:1px solid #edf1f6 !important;
+}
+#tabHistoryPage .cc-hist-side{
+  border:1px solid #e2e8f0;
+  border-radius:13px !important;
+}
+
+/* Bottom navigation */
+.bottom-tab-nav{
+  position:fixed !important;
+  left:50% !important;
+  transform:translateX(-50%) !important;
+  bottom:0 !important;
+  width:min(100%,760px) !important;
+  z-index:1000 !important;
+  background:rgba(255,255,255,.94) !important;
+  border-top:1px solid #dfe6ef !important;
+  box-shadow:0 -8px 24px rgba(20,32,51,.07) !important;
+  backdrop-filter:blur(16px);
+  -webkit-backdrop-filter:blur(16px);
+  padding-bottom:env(safe-area-inset-bottom) !important;
+}
+.bottom-tab-btn{
+  background:transparent !important;
+  border:0 !important;
+  color:#667085 !important;
+  border-radius:12px !important;
+  min-height:52px !important;
+}
+.bottom-tab-btn.active{
+  color:#0b5ed7 !important;
+  background:#edf5ff !important;
+}
+.bottom-tab-btn .tab-icon{
+  font-size:19px !important;
+}
+
+/* Modal polish */
+.modal-card,.modal-content,[role="dialog"] .card{
+  border-radius:22px !important;
+  border:1px solid var(--pro-line) !important;
+  box-shadow:0 24px 60px rgba(16,24,40,.18) !important;
+}
+
+/* Mobile first */
+@media(max-width:600px){
+  body{padding-left:8px !important;padding-right:8px !important}
+  .app{width:100% !important}
+  .hero{margin-left:-8px !important;margin-right:-8px !important}
+  #tabHomePage,#tabWalletsPage,#tabHistoryPage{padding-left:0 !important;padding-right:0 !important}
+  .card{border-radius:16px !important}
+  #tabHistoryPage .history-section{padding:10px !important}
+  #tabHistoryPage .cal-day{min-height:56px !important;padding:5px 3px !important}
+  #tabHistoryPage .history-tx-card{padding:12px !important}
+}
+
+/* Desktop/tablet */
+@media(min-width:761px){
+  body{padding-top:18px !important}
+  .app{border-radius:24px;overflow:visible}
+  .hero{border-radius:24px !important;margin-left:0 !important;margin-right:0 !important}
+  .bottom-tab-nav{bottom:14px !important;border:1px solid #dfe6ef !important;border-radius:18px !important;width:min(calc(100% - 32px),728px) !important}
+}
+
+/* Automatic professional dark appearance, visual only */
+@media(prefers-color-scheme:dark){
+  :root{
+    --pro-bg:#0e1520;
+    --pro-surface:#151f2c;
+    --pro-surface-2:#111a25;
+    --pro-text:#edf3fb;
+    --pro-muted:#9ba9ba;
+    --pro-line:#263447;
+    --pro-shadow:0 8px 24px rgba(0,0,0,.20);
+    --pro-shadow-soft:0 3px 14px rgba(0,0,0,.18);
+  }
+  html,body{background:var(--pro-bg) !important;color:var(--pro-text) !important}
+  .card,.history-section,#cashCounterNative .card,
+  #tabHomePage .balance-card,#tabHomePage .home-balance-mini,
+  #tabWalletsPage .capital-balance,#tabWalletsPage .wallet-card,
+  #tabWalletsPage .balance-card,#tabWalletsPage .metric,
+  #tabHistoryPage .history-tx-card,#historySection .history-tx-card{
+    background:var(--pro-surface) !important;
+    border-color:var(--pro-line) !important;
+    color:var(--pro-text) !important;
+  }
+  input,select,textarea,#tabHistoryPage .cal-nav button,#tabHistoryPage .cal-day{
+    background:#111a25 !important;
+    color:var(--pro-text) !important;
+    border-color:#2a3a4f !important;
+  }
+  #tabHomePage .today-metric,#tabHomePage .result-box,#tabHomePage .metric,
+  #cashCounterNative .metric,#cashCounterNative .result-box,
+  #tabHistoryPage .cal-nav{
+    background:var(--pro-surface-2) !important;
+    border-color:#263447 !important;
+  }
+  #tabHistoryPage .cal-day.has{background:#14263d !important;border-color:#29496f !important}
+  #tabHistoryPage .cal-day.sel{background:#17365c !important;border-color:#4d94f5 !important}
+  #tabHistoryPage #calTitle,.section-title{color:var(--pro-text) !important}
+  .bottom-tab-nav{background:rgba(21,31,44,.95) !important;border-color:#263447 !important}
+  .bottom-tab-btn{color:#9ba9ba !important}
+  .bottom-tab-btn.active{color:#72aaff !important;background:#172b45 !important}
+  #cashCounterNative td{background:#151f2c !important;border-color:#263447 !important}
+  .subtle,.note,.muted,#tabHistoryPage .history-tx-meta,#tabHistoryPage .history-tx-fee{color:var(--pro-muted) !important}
+}
+</style>
+
 </body>
 </html>
