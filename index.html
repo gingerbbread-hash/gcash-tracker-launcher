@@ -7681,7 +7681,8 @@ body > .hero{
       else if(payload.feeLocation === 'GCash') afterGcash += feeValue;
     }
 
-    const now = new Date();
+    const originalDate = payload.originalTimestamp ? new Date(payload.originalTimestamp) : new Date();
+    const now = Number.isFinite(originalDate.getTime()) ? originalDate : new Date();
     return {
       id: payload.clientTransactionId,
       timestamp: now.toISOString(),
@@ -7755,6 +7756,24 @@ body > .hero{
 
     txSyncBusy = true;
     const payload = q[0];
+
+    // Preserve the time the transaction was actually recorded, not the later sync time.
+    // This also upgrades older pending queue items when their local History copy still
+    // contains the original timestamp.
+    if(!payload.originalTimestamp){
+      const localOriginal = history.find(x =>
+        String(x.id || '') === String(payload.clientTransactionId || '')
+      );
+      if(localOriginal && localOriginal.timestamp){
+        const d = new Date(localOriginal.timestamp);
+        if(Number.isFinite(d.getTime())){
+          payload.originalTimestamp = d.toISOString();
+          q[0] = payload;
+          savePendingTxQueue(q);
+        }
+      }
+    }
+
     showSync(`Syncing ${q.length} transaction${q.length===1?'':'s'}…`);
 
     google.script.run
@@ -8594,7 +8613,8 @@ body > .hero{
       cashReceived:isFinite(enteredCash)?enteredCash:0,
       feeLocation:'',
       walletDestination:'',
-      clientTransactionId
+      clientTransactionId,
+      originalTimestamp:new Date().toISOString()
     };
     typeModal.classList.add('show');
     typeModal.style.display='flex';
@@ -10976,6 +10996,6 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
 })();
 </script>
 
-<div id="cashMoveFixVersion" style="text-align:center;font-size:10px;line-height:1.2;color:#8a94a6;opacity:.75;padding:3px 0 calc(3px + env(safe-area-inset-bottom));">GCash Tracker · History Cash In-Out 2</div>
+<div id="cashMoveFixVersion" style="text-align:center;font-size:10px;line-height:1.2;color:#8a94a6;opacity:.75;padding:3px 0 calc(3px + env(safe-area-inset-bottom));">GCash Tracker · History Cash In-Out 2 · Original Date Fix 1</div>
 </body>
 </html>
