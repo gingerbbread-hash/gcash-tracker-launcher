@@ -1393,6 +1393,27 @@ body.app-locked #historyToggle{
 .cal-exp{background:#fff7ed;color:#9a3412;border-radius:10px;padding:8px;margin:7px 0;font-size:11px}
 @media(max-width:480px){.cal-grid,.cal-week{gap:3px}.cal-day{min-height:57px;padding:4px 3px}.cal-fee{font-size:8px}}
 
+/* Modern History monthly account flow. Visual-only addition around existing History logic. */
+.history-wallet-flow{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:10px 0 14px}
+.history-flow-card{position:relative;overflow:hidden;border-radius:18px;padding:14px 14px 12px;border:1px solid;box-shadow:0 5px 16px rgba(16,24,40,.06)}
+.history-flow-gcash{background:linear-gradient(135deg,#eef6ff 0%,#dcecff 100%);border-color:#b9d7ff}
+.history-flow-maya{background:linear-gradient(135deg,#effcf5 0%,#dcf7e8 100%);border-color:#b7e9cd}
+.history-flow-name{font-size:17px;font-weight:950;color:#101828;margin-bottom:10px}
+.history-flow-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:#475467;margin-top:7px}
+.history-flow-row strong{font-size:15px;font-weight:950;white-space:nowrap}
+.history-flow-row:first-of-type strong{color:#15803d}
+.history-flow-row:last-of-type strong{color:#d92d20}
+@media(max-width:380px){.history-wallet-flow{gap:7px}.history-flow-card{padding:11px 10px}.history-flow-name{font-size:15px}.history-flow-row{font-size:10px}.history-flow-row strong{font-size:13px}}
+
+/* Cleaner transaction presentation while preserving every existing detail/action. */
+#tabHistoryPage .history-tx-card,#historySection .history-tx-card{border:1px solid #d8e3f0;border-radius:18px;background:#fff;padding:14px;margin:10px 0;box-shadow:0 5px 16px rgba(16,24,40,.055)}
+#tabHistoryPage .history-tx-head,#historySection .history-tx-head{align-items:center;margin-bottom:9px}
+#tabHistoryPage .history-tx-amount,#historySection .history-tx-amount{font-size:21px;font-weight:950}
+#tabHistoryPage .history-tx-meta,#historySection .history-tx-meta{font-size:10px;color:#667085}
+#tabHistoryPage .history-tx-fee,#historySection .history-tx-fee{font-size:10px;color:#667085;margin-top:5px}
+#tabHistoryPage .history-tx-card .badge,#historySection .history-tx-card .badge,#tabHistoryPage .history-wallet-pill,#historySection .history-wallet-pill,#tabHistoryPage .history-sync-pill,#historySection .history-sync-pill{border-radius:999px}
+#tabHistoryPage .history-tx-actions,#historySection .history-tx-actions{padding-top:7px;border-top:1px solid #eef2f6;margin-top:10px}
+
 .history-tx-card{
   border:1px solid #dfe7f1;
   border-radius:16px;
@@ -5189,6 +5210,18 @@ body > .hero{
 
   <section class="card history-section collapsed" id="historySection">
     <div class="history-view-header"><h2 class="section-title">History Calendar</h2><div class="subtle" id="countText">0 transactions</div></div>
+    <div class="history-wallet-flow" id="historyWalletFlow" aria-label="Monthly account movement">
+      <div class="history-flow-card history-flow-gcash">
+        <div class="history-flow-name">GCash</div>
+        <div class="history-flow-row"><span>Incoming</span><strong id="historyGcashIncoming">₱0.00</strong></div>
+        <div class="history-flow-row"><span>Outgoing</span><strong id="historyGcashOutgoing">₱0.00</strong></div>
+      </div>
+      <div class="history-flow-card history-flow-maya">
+        <div class="history-flow-name">Maya</div>
+        <div class="history-flow-row"><span>Incoming</span><strong id="historyMayaIncoming">₱0.00</strong></div>
+        <div class="history-flow-row"><span>Outgoing</span><strong id="historyMayaOutgoing">₱0.00</strong></div>
+      </div>
+    </div>
     <div class="cal-nav"><button id="calPrev" type="button">‹</button><div id="calTitle"></div><button id="calNext" type="button">›</button></div>
     <div class="cal-week"><div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div></div>
     <div id="calGrid" class="cal-grid"></div>
@@ -6014,6 +6047,30 @@ body > .hero{
     }
     const mt=history.filter(x=>dateKey(x).startsWith(prefix));
     const monthEarnings=mt.reduce((sum,x)=>sum+Number(x.fee||0),0);
+
+    // Actual digital-account movement for the displayed month.
+    // Cash In sends principal OUT of the selected digital wallet.
+    // Cash Out sends principal INTO the selected digital wallet.
+    // A fee affects that wallet only when feeLocation is that same wallet.
+    const flow={GCash:{incoming:0,outgoing:0},Maya:{incoming:0,outgoing:0}};
+    mt.forEach(tx=>{
+      const wallet=transactionWalletLabel(tx);
+      if(!flow[wallet]) return;
+      const amountValue=Number(tx.amount||0);
+      const feeValue=Number(tx.fee||0);
+      const feeHere=String(tx.feeLocation||'')===wallet ? feeValue : 0;
+      if(tx.type==='Cash Out'){
+        flow[wallet].incoming += amountValue + feeHere;
+      }else if(tx.type==='Cash In'){
+        flow[wallet].outgoing += Math.max(0,amountValue - feeHere);
+      }
+    });
+    const setFlow=(id,value)=>{const el=$(id);if(el)el.textContent=money(value)};
+    setFlow('historyGcashIncoming',flow.GCash.incoming);
+    setFlow('historyGcashOutgoing',flow.GCash.outgoing);
+    setFlow('historyMayaIncoming',flow.Maya.incoming);
+    setFlow('historyMayaOutgoing',flow.Maya.outgoing);
+
     countText.textContent=`${mt.length} transaction${mt.length===1?'':'s'} · Total Earnings ${money(monthEarnings)} · ${title.textContent}`;
     if(calSelected.startsWith(prefix))renderDay(calSelected);else $('calDetail').style.display='none';
   }
@@ -10919,6 +10976,6 @@ $('countGrid').innerHTML=grid('count',zero());refreshCount();load();
 })();
 </script>
 
-<div id="cashMoveFixVersion" style="text-align:center;font-size:10px;line-height:1.2;color:#8a94a6;opacity:.75;padding:3px 0 calc(3px + env(safe-area-inset-bottom));">GCash Tracker · Earnings + Digital Move Fix 2</div>
+<div id="cashMoveFixVersion" style="text-align:center;font-size:10px;line-height:1.2;color:#8a94a6;opacity:.75;padding:3px 0 calc(3px + env(safe-area-inset-bottom));">GCash Tracker · History Modern Flow 1</div>
 </body>
 </html>
